@@ -14,9 +14,10 @@ def fig_lpc():
 
     lpc_c = lpc.lpc(signal, 8)
 
-    print(lpc_c)
+    data, sr = soundfile.read("inputs/maskoff_tone.wav", dtype="int16")
+    signal = data[start:start + bs]
 
     signal2 = lfilter(a=[1], b=lpc_c, x=signal)
 
-    plot_list([signal, signal2], "temp.png")
-    plot_list([signal - signal2], "residual.png")
+    plot_list([signal, signal2], "lpc_signals.png")
+    plot_list([signal - signal2], "lpc_residual.png")
