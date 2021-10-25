@@ -1,5 +1,5 @@
 import numpy as np
-import scipy
+from scipy.linalg import solve_toeplitz
 
 
 def lpc(signal, p: int):
@@ -14,4 +14,4 @@ def lpc(signal, p: int):
 
     r = np.correlate(signal, signal, 'full')[len(signal) - 1:len(signal) + p]
 
-    return scipy.linalg.solve_toeplitz(r[:-1], r[1:])
+    return solve_toeplitz(r[:-1], r[1:])
