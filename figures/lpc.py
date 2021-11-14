@@ -19,6 +19,7 @@ def fig_lpc():
     e = lpc.lpc_predict(signal, lpc_c)
     x = lpc.lpc_reconstruct(e, lpc_c)
     # TODO: The residual is float, so quantize something somewhere so that we could actually save space...
+    # TODO: the LPC coefficients need to be quantized before computing the residual
 
     plot_list([signal, x], "lpc_signals.png")
     plot_list([e], "lpc_residual.png")
