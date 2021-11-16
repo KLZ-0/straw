@@ -2,7 +2,6 @@ import math
 
 import numpy as np
 from scipy.linalg import solve_toeplitz
-from scipy.signal import lfilter
 
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
