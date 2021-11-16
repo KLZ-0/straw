@@ -2,10 +2,9 @@ import sys
 from os import path
 from pathlib import Path
 
-import numpy as np
-
 # only for debug
 import matplotlib.pyplot as plt
+import numpy as np
 
 FIG_SIZE = (10, 2.5)
 
