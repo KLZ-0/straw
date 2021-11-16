@@ -55,6 +55,10 @@ class Encoder:
             frames.append(data[i:i + self._frame_size])
         return np.stack(frames[:-1])
 
+    def create_frames(self):
+        self._data = [self._slice_data_into_frames(channel) for channel in self._data]
+        self._data_fp = [self._slice_data_into_frames(channel) for channel in self._data_fp]
+
     def load_stream(self, stream, samplerate):
         pass
 

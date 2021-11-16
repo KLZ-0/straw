@@ -6,4 +6,5 @@ def run(args):
 
     e = Encoder()
     e.load_files(args.input_files)
+    e.create_frames()
     e.encode()
