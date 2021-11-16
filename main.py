@@ -1,8 +1,6 @@
 import argparse
 
-import figures
 import straw
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
@@ -20,7 +18,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.figures:
-        figures.generate_all()
+        pass
     else:
         straw.run(args)
 

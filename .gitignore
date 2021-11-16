@@ -2,3 +2,6 @@
 /.idea/
 /inputs/
 /outputs/
+/build/
+/dist/
+*.egg-info/

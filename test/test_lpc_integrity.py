@@ -2,7 +2,7 @@ import unittest
 
 import soundfile
 
-from straw import lpc
+from src.straw import lpc
 
 
 class LPCSignalIntegrity(unittest.TestCase):

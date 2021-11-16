@@ -1,7 +1,7 @@
 import numpy as np
 import soundfile
 
-from straw import lpc
+from src.straw import lpc
 
 
 class Encoder:
