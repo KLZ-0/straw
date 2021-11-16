@@ -1,87 +1,76 @@
+import math
+
 import numpy as np
 from scipy.linalg import solve_toeplitz
 from scipy.signal import lfilter
 
+FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
-def _get_e(x, a):
+
+def _quantize_lpc(lpc_c, order, precision):
     """
-    Prediction implemented according to https://www.hpl.hp.com/techreports/1999/HPL-1999-144.pdf
-    TODO: optimize this shit
-    :param x: input signal
-    :param a: LPC coefficients
-    :return: residual
+    Implementation: https://github.com/xiph/flac/blob/master/src/libFLAC/lpc.c
+    TODO: can be heavily optimized
+    :param lpc_c:
+    :param order:
+    :param precision:
+    :return:
     """
-    e = np.zeros(len(x))
+    # reserve 1 bit for sign
+    precision -= 1
 
-    for n in range(len(x)):
-        # sm = x[n]
-        sm = 0
-        for k in range(len(a)):
-            if n - k - 1 < 0:
-                continue
+    qmax = 1 << precision
+    qmin = -qmax
+    qmax -= 1
 
-            sm += a[k] * x[n - k - 1]
+    cmax = 0.0
+    for i in range(order):
+        d = np.abs(lpc_c[i])
+        if d > cmax:
+            cmax = d
 
-        e[n] = x[n] - sm
+    if cmax <= 0:
+        return None
 
-    return e
+    max_shiftlimit = 1 << (1 << (FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN-1)) - 1
+    min_shiftlimit = -max_shiftlimit - 1
 
+    _, log2cmax = math.frexp(cmax)
+    log2cmax -= 1
 
-def _get_x(e, a):
-    """
-    Reconstruction implemented according to https://www.hpl.hp.com/techreports/1999/HPL-1999-144.pdf
-    TODO: optimize this shit
-    :param e: residual
-    :param a: LPC coefficients
-    :return: original signal
-    """
-    x = np.zeros(len(e))
+    shift = precision - log2cmax - 1
 
-    for n in range(len(e)):
-        # sm = x[n]
-        sm = 0
-        for k in range(len(a)):
-            if n - k - 1 < 0:
-                continue
+    if shift > max_shiftlimit:
+        shift = max_shiftlimit
+    elif shift < min_shiftlimit:
+        return None
 
-            sm += a[k] * x[n - k - 1]
+    # if shift >= 0
+    error = 0.0
+    q = 0
+    qlp_c = np.zeros(len(lpc_c), dtype="i4")
+    for i in range(order):
+        error += lpc_c[i] * (1 << shift)
+        q = round(error)
 
-        x[n] = e[n] + sm
+        # overflows
+        if q > qmax+1:
+            print("Overflow1")
+        if q < qmin:
+            print("Overflow2")
 
-    return x
+        if q > qmax:
+            q = qmax
+        elif q < qmin:
+            q = qmin
 
+        error -= q
+        qlp_c[i] = q
 
-def lpc_predict(signal, lpc_c):
-    """
-    Prediction implemented according to https://www.hpl.hp.com/techreports/1999/HPL-1999-144.pdf
-    TODO: optimize this shit
-    :param signal: input signal
-    :param lpc_c: LPC coefficients
-    :return: residual
-    """
-    e = _get_e(signal, lpc_c)
-    res = signal - lfilter(np.concatenate(([0], lpc_c)), 1, signal)
-    # TODO: e != res
-
-    return e
-
-
-def lpc_reconstruct(residual, lpc_c):
-    """
-    Reconstruction implemented according to https://www.hpl.hp.com/techreports/1999/HPL-1999-144.pdf
-    TODO: optimize this shit
-    :param residual: residual
-    :param lpc_c: LPC coefficients
-    :return: original signal
-    """
-    x = _get_x(residual, lpc_c)
-    rec = residual + lfilter([1], np.concatenate(([1], -lpc_c)), residual)
-    # TODO: x != rec
-
-    return x
+    return qlp_c, shift
 
 
-def lpc(signal, p: int):
+def _compute_lpc(signal, p: int):
     """
     Calculates p LPC coefficients
     For fast Levinson-Durbin implementation see:
@@ -94,3 +83,64 @@ def lpc(signal, p: int):
     r = np.correlate(signal, signal, 'full')[len(signal) - 1:len(signal) + p]
 
     return solve_toeplitz(r[:-1], r[1:])
+
+
+def compute_qlp(signal, order: int, qlp_coeff_precision: int):
+    """
+    Compute LPC and quantize the LPC coefficients
+    :param signal: input signal
+    :param order: maximal LPC order
+    :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
+    :return: tuple(quantization level, qlp coefficients)
+    """
+    lpc = _compute_lpc(signal, order)
+    return _quantize_lpc(lpc, order, qlp_coeff_precision)
+
+
+def compute_residual(data, qlp, order, lp_quantization):
+    """
+    Computes the residual from the given signal with quantized LPC coefficients
+    :param data: input signal
+    :param qlp: quantized LPC coefficients
+    :param order: LPC order
+    :param lp_quantization: quantization level
+    :return: residual as a numpy array
+    """
+    if order <= 0:
+        return None
+
+    # the slower but clearer version...
+    residual = np.zeros(len(data), dtype="i4")
+
+    for i in range(len(data)):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * data[i - j - 1]
+        residual[i] = data[i] - (_sum >> lp_quantization)
+
+    return residual
+
+
+def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
+    """
+    Restores the original signal given the residual with quantized LPC coefficients
+    :param residual: residual signal
+    :param qlp: quantized LPC coefficients
+    :param order: LPC order
+    :param lp_quantization: quantization level
+    :param warmup_samples: warmup samples (the first order samples from the original signal)
+    :return: reconstructed signal as a numpy array
+    """
+    if order <= 0:
+        return None
+
+    # the slower but clearer version...
+    data = np.pad(warmup_samples, (0, len(residual) - order))
+
+    for i in range(order, len(residual)):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * data[i - j - 1]
+        data[i] = residual[i] + (_sum >> lp_quantization)
+
+    return data

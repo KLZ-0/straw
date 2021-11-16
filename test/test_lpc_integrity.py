@@ -9,18 +9,21 @@ class LPCSignalIntegrity(unittest.TestCase):
     def test_reconstruction(self):
         data, sr = soundfile.read("../inputs/maskoff_tone.wav")
 
+        lpc_order = 8
+        lpc_precision = 12  # bits
+
         bs = int(sr * 0.020)
         start = 400
 
-        lpc_c = lpc.lpc(data[start:start + bs], 8)
+        qlp, quant_level = lpc.compute_qlp(data[start:start + bs], lpc_order, lpc_precision)
 
         data, sr = soundfile.read("../inputs/maskoff_tone.wav", dtype="int16")
         signal = data[start:start + bs]
 
-        e = lpc.lpc_predict(signal, lpc_c)
-        x = lpc.lpc_reconstruct(e, lpc_c)
+        residual = lpc.compute_residual(signal, qlp, lpc_order, quant_level)
+        restored = lpc.restore_signal(residual, qlp, lpc_order, quant_level, signal[:lpc_order])
 
-        self.assertEqual((signal - x).any(), False)
+        self.assertEqual((signal - restored).any(), False)
 
 
 if __name__ == '__main__':
