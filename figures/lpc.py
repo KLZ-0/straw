@@ -1,3 +1,6 @@
+import math
+
+import numpy as np
 import soundfile
 
 from straw import lpc
@@ -7,19 +10,20 @@ from .plotter import plot_list
 def fig_lpc():
     data, sr = soundfile.read("inputs/maskoff_tone.wav")
 
+    lpc_order = 8
+    lpc_precision = 12  # bits
+
     bs = int(sr * 0.020)
     start = 400
     signal = data[start:start + bs]
 
-    lpc_c = lpc.lpc(signal, 8)
+    qlp, quant_level = lpc.compute_qlp(signal, lpc_order, lpc_precision)
 
     data, sr = soundfile.read("inputs/maskoff_tone.wav", dtype="int16")
     signal = data[start:start + bs]
 
-    e = lpc.lpc_predict(signal, lpc_c)
-    x = lpc.lpc_reconstruct(e, lpc_c)
-    # TODO: The residual is float, so quantize something somewhere so that we could actually save space...
-    # TODO: the LPC coefficients need to be quantized before computing the residual
+    residual = lpc.compute_residual(signal, qlp, lpc_order, quant_level)
+    restored = lpc.restore_signal(residual, qlp, lpc_order, quant_level, signal[:lpc_order])
 
-    plot_list([signal, x], "lpc_signals.png")
-    plot_list([e], "lpc_residual.png")
+    plot_list([signal, restored], "lpc_signals.png")
+    plot_list([residual], "lpc_residual.png")
