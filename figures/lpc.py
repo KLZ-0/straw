@@ -49,7 +49,7 @@ def quantize_lpc(lpc_c, order, precision):
     # if shift >= 0
     error = 0.0
     q = 0
-    qlp_c = np.zeros(len(lpc_c), dtype="i")
+    qlp_c = np.zeros(len(lpc_c), dtype="i4")
     for i in range(order):
         error += lpc_c[i] * (1 << shift)
         q = round(error)
@@ -70,6 +70,33 @@ def quantize_lpc(lpc_c, order, precision):
 
     return qlp_c, shift
 
+
+def compute_residual(data, qlp, order, lp_quantization):
+    if order <= 0:
+        return None
+
+    # the slower but clearer version...
+    residual = np.zeros(len(data), dtype="i4")
+
+    for i in range(len(data)):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * data[i - j - 1]
+        residual[i] = data[i] - (_sum >> lp_quantization)
+
+    return residual
+
+
+def restore_signal(residual, qlp, order, lp_quantization, data):
+    # the slower but clearer version...
+    # data = np.zeros(len(residual), dtype="i4")
+
+    for i in range(order, len(residual)):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * data[i - j - 1]
+        data[i] = residual[i] + (_sum >> lp_quantization)
+
 def fig_lpc():
     data, sr = soundfile.read("inputs/maskoff_tone.wav")
 
@@ -80,9 +107,10 @@ def fig_lpc():
     lpc_c = lpc.lpc(signal, 8)
 
     data, sr = soundfile.read("inputs/maskoff_tone.wav", dtype="int16")
+    signal = data[start:start + bs]
 
     # tmp
-    warmup = data[:8]
+    warmup = signal[:8]
     qlp, shift = quantize_lpc(lpc_c, 8, 12)
     expected = np.asarray([1108, -803, 375, -435, 521, -545, 395, -114])
     print("warmup samples:", warmup)
@@ -92,12 +120,15 @@ def fig_lpc():
     print("Expected:", expected)
     # tmp
 
-    signal = data[start:start + bs]
+    residual = compute_residual(signal, qlp, 8, shift)
 
-    e = lpc.lpc_predict(signal, lpc_c)
-    x = lpc.lpc_reconstruct(e, lpc_c)
-    # TODO: The residual is float, so quantize something somewhere so that we could actually save space...
-    # TODO: the LPC coefficients need to be quantized before computing the residual
+    restored = np.pad(warmup, (0, len(residual) - 8))
+    restore_signal(residual, qlp, 8, shift, restored)
 
-    plot_list([signal, x], "lpc_signals.png")
-    plot_list([e], "lpc_residual.png")
+    print(signal - restored)
+
+    # e = lpc.lpc_predict(signal, lpc_c)
+    # x = lpc.lpc_reconstruct(e, lpc_c)
+
+    plot_list([signal, restored], "lpc_signals.png")
+    plot_list([residual], "lpc_residual.png")
