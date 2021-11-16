@@ -1,4 +1,5 @@
 import math
+import sys
 
 import numpy as np
 from scipy.linalg import solve_toeplitz
@@ -47,6 +48,11 @@ def _quantize_lpc(lpc_c, order, precision):
         return None
 
     # if shift >= 0
+    # TODO: add way for negative shift
+    if shift < 0:
+        print("Negative shift not yet supported", file=sys.stderr)
+        exit(1)
+
     error = 0.0
     q = 0
     qlp_c = np.zeros(len(lpc_c), dtype="i4")
@@ -55,7 +61,7 @@ def _quantize_lpc(lpc_c, order, precision):
         q = round(error)
 
         # overflows
-        if q > qmax+1:
+        if q > qmax + 1:
             print("Overflow1")
         if q < qmin:
             print("Overflow2")
