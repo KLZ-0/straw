@@ -1,12 +1,15 @@
 import numpy as np
 import soundfile
 
+from straw import lpc
+
 
 class Encoder:
     _data = None
     _data_fp = None
     _samplerate = None
     _frame_size = None
+    _residuals = None
 
     _frame_duration = None
 
@@ -56,7 +59,13 @@ class Encoder:
         pass
 
     def encode(self):
-        pass
+        self._residuals = []
+        for channel, frames in enumerate(self._data):
+            for frame_number, frame in enumerate(frames):
+                qlp, quant_level = lpc.compute_qlp(self._data_fp[channel][frame_number],
+                                                   self._lpc_order, self._lpc_precision)
+
+                self._residuals.append(lpc.compute_residual(frame, qlp, self._lpc_order, quant_level))
 
     def save_file(self, filename):
         pass
@@ -66,3 +75,4 @@ class Encoder:
         self._data_fp = None
         self._samplerate = None
         self._frame_size = None
+        self._residuals = None
