@@ -40,9 +40,9 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._data_fp.append(self._slice_data_into_frames(data))
+            self._data_fp.append(data)
             # TODO: load the actual dtype from the file itself
-            self._data.append(self._slice_data_into_frames(soundfile.read(filename, dtype="int16")[0]))
+            self._data.append(soundfile.read(filename, dtype="int16")[0])
 
         return True
 
