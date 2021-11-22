@@ -6,6 +6,7 @@ from scipy.linalg import solve_toeplitz
 
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
+from straw.compiled.lpc import compute_residual as compiled_residual
 
 # TODO: modify LPC to take integer input and produce float LPC coefficients or quantize them in the process
 
@@ -124,6 +125,10 @@ def compute_residual(data, qlp, order, lp_quantization):
         for j in range(order):
             _sum += qlp[j] * data[i - j - 1]
         residual[i] = data[i] - (_sum >> lp_quantization)
+
+    print(residual)
+    print(compiled_residual(0.5, 1))
+    exit(0)
 
     return residual
 

@@ -1,5 +1,8 @@
 #include <Python.h>
 #include <math.h>
+#include <numpy/ndarraytypes.h>
+#include <numpy/ufuncobject.h>
+#include <numpy/npy_3kcompat.h>
 
 // Actual functions
 

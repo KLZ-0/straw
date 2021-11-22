@@ -2,10 +2,11 @@
     Setup file primarily for compilation of C extensions (for now)
 """
 
+import numpy as np
 import setuptools
 
 lpc = setuptools.Extension("straw.compiled.lpc", sources=["extensions/lpc.c"],
-                           include_dirs=["/usr/local/lib"])
+                           include_dirs=["/usr/local/lib", np.get_include()])
 
 setuptools.setup(name="straw",
                  package_dir={"": "src"},
