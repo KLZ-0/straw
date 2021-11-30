@@ -117,13 +117,13 @@ def compute_residual(data, qlp, order, lp_quantization):
         return None
 
     # the slower but clearer version...
-    residual = np.zeros(len(data), dtype="i4")
+    residual = np.zeros(len(data) - order, dtype="i4")
 
-    for i in range(len(data)):
+    for i in range(order, len(data)):
         _sum = 0
         for j in range(order):
             _sum += qlp[j] * data[i - j - 1]
-        residual[i] = data[i] - (_sum >> lp_quantization)
+        residual[i - order] = data[i] - (_sum >> lp_quantization)
 
     return residual
 
@@ -142,12 +142,12 @@ def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
         return None
 
     # the slower but clearer version...
-    data = np.pad(warmup_samples, (0, len(residual) - order))
+    data = np.pad(warmup_samples, (0, len(residual)))
 
-    for i in range(order, len(residual)):
+    for i in range(order, len(residual) + order):
         _sum = 0
         for j in range(order):
             _sum += qlp[j] * data[i - j - 1]
-        data[i] = residual[i] + (_sum >> lp_quantization)
+        data[i] = residual[i - order] + (_sum >> lp_quantization)
 
     return data
