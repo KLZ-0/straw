@@ -113,19 +113,9 @@ def compute_residual(data, qlp, order, lp_quantization):
     :param lp_quantization: quantization level
     :return: residual as a numpy array
     """
-    if order <= 0:
-        return None
 
-    # the slower but clearer version...
-    residual = np.zeros(len(data) - order, dtype="i4")
-
-    for i in range(order, len(data)):
-        _sum = 0
-        for j in range(order):
-            _sum += qlp[j] * data[i - j - 1]
-        residual[i - order] = data[i] - (_sum >> lp_quantization)
-
-    return residual
+    _sum = np.convolve(data, qlp, mode="full")[order - 1:] >> lp_quantization
+    return data[order:] - _sum[:-order]
 
 
 def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
