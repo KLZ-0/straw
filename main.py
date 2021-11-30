@@ -5,7 +5,7 @@ import straw
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
     parser.add_argument("-i", "--input", dest="input_files", metavar="INPUT_FILE", type=str, nargs="+",
-                        help="Input files")
+                        help="Input files", required=True)
     parser.add_argument("-o", "--output", dest="output_file", metavar="OUTPUT_FILE", type=str,
                         help="Output file")
     parser.add_argument("-d", "--decode", dest="decode", action="store_true",
