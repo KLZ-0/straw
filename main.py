@@ -1,6 +1,6 @@
 import argparse
 
-import src.straw as straw
+import straw
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
