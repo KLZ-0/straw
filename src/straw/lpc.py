@@ -114,6 +114,9 @@ def compute_residual(data, qlp, order, lp_quantization):
     :return: residual as a numpy array
     """
 
+    if order <= 0:
+        return None
+
     _sum = np.convolve(data, qlp, mode="full")[order - 1:] >> lp_quantization
     return data[order:] - _sum[:-order]
 
