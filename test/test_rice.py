@@ -1,6 +1,7 @@
 import unittest
 
 from straw import rice
+from test.resources import rice_str
 
 
 class Rice(unittest.TestCase):
@@ -15,7 +16,7 @@ class Rice(unittest.TestCase):
 
         for i in range(20):
             r.encode_single(i)
-            r_o += rice.rice_str(i, 4)
+            r_o += rice_str(i, 4)
 
         self.assertEqual(r.data.to01(), r_o)
 

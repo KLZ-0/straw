@@ -29,37 +29,3 @@ class Ricer:
             self._append_n_bits(r, b)
         else:
             self._append_n_bits(r + tmp, b + 1)
-
-
-def rice_str(num, m):
-    """
-    Return the rice encoded number with golomb parameter m
-    TODO: probably rework to pure rice encoding with m -> k so that m = 2^k
-    TODO: also create a version with bitstream output instead of ascii
-    :param num: number to be encoded
-    :param m: rice parameter
-    :return: None
-    """
-    out = ""
-
-    q = num // m
-    r = num % m
-
-    # Quotient code
-    for _ in range(q):
-        out += "1"
-    out += "0"
-
-    # separator
-    # print(",", end="")
-
-    # Remainder code
-    b = int(np.log2(m))
-    tmp = np.power(2, b + 1) - m
-
-    if r < tmp:
-        out += ("{0:0" + str(b) + "b}").format(r)
-    else:
-        out += ("{0:0" + str(b + 1) + "b}").format(r + tmp)
-
-    return out
