@@ -1,6 +1,6 @@
 import unittest
 
-from src.straw import lpc
+from straw import lpc
 from test import get_signal_float, get_signal
 
 
