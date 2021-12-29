@@ -47,13 +47,7 @@ class Encoder:
         return True
 
     def _slice_data_into_frames(self, data):
-        # TODO: What to do with the last frame
-        # FIXME: We should definitely NOT throw it away like it is done currently!
-
-        frames = []
-        for i in range(0, data.shape[0], self._frame_size):
-            frames.append(data[i:i + self._frame_size])
-        return np.stack(frames[:-1])
+        return [data[i:i + self._frame_size] for i in range(0, len(data), self._frame_size)]
 
     def create_frames(self):
         self._data = [self._slice_data_into_frames(channel) for channel in self._data]
