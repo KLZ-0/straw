@@ -10,7 +10,7 @@ class Ricer:
 
     def __init__(self, m):
         self.m = m
-        self.k = np.log2(self.m)
+        self.k = int(np.log2(self.m))
         self.data = bitarray()
 
     def _append_n_bits(self, number, n):
@@ -36,7 +36,7 @@ class Ricer:
         self.data.append(0)
 
         # Remainder code
-        b = int(self.k)
+        b = self.k
         tmp = (1 << b + 1) - self.m
 
         if r < tmp:
