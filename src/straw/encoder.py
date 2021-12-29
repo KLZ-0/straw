@@ -21,8 +21,15 @@ class Encoder:
     _encoder = Ricer(4)
 
     # Member variables
+    _raw = None
     _data = None
-    _residuals = None
+
+    def usage_mib(self):
+        """
+        Returns the deep memory usage of the given dataframe in mebibytes
+        :return: deep memory usage of the given dataframe in mebibytes
+        """
+        return self._data.memory_usage(index=True, deep=True).sum() / (2 ** 20)
 
     def load_files(self, filenames: list):
         """
@@ -30,7 +37,7 @@ class Encoder:
         :param filenames: list of files to load
         :return: True on success, False on error
         """
-        self._data = []
+        self._raw = []
 
         # TODO: verify if the files are from the same recording
         for filename in filenames:
@@ -43,7 +50,7 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._data.append(data)
+            self._raw.append(data)
 
         return True
 
@@ -51,24 +58,34 @@ class Encoder:
         return [data[i:i + self._frame_size] for i in range(0, len(data), self._frame_size)]
 
     def create_frames(self):
-        self._data = pd.DataFrame({k: self._slice_data_into_frames(v) for k, v in enumerate(self._data)})
+        ds = {"seq": [], "frame": [], "channel": []}
+        for channel, channel_data in enumerate(self._raw):
+            sliced = self._slice_data_into_frames(channel_data)
+            ds["seq"] += [i for i in range(len(sliced))]
+            ds["frame"] += sliced
+            ds["channel"] += [channel for _ in range(len(sliced))]
+
+        self._raw = None  # free this reference, we don't need it anymore
+        self._data = pd.DataFrame(ds)
 
     def load_stream(self, stream, samplerate):
         pass
 
     def encode(self):
-        self._residuals = []
-        for channel, frames in enumerate(self._data):
-            for frame_number, frame in enumerate(frames):
-                qlp, quant_level = lpc.compute_qlp(self._data[channel][frame_number],
-                                                   self._lpc_order, self._lpc_precision)
+        self._data[["qlp", "shift"]] = self._data[["frame"]].apply(
+            lpc.compute_qlp,
+            result_type="expand",
+            axis=1,
+            args=(self._lpc_order, self._lpc_precision))
 
-                self._residuals.append(lpc.compute_residual(frame, qlp, self._lpc_order, quant_level))
+        self._data["residual"] = self._data[["frame", "qlp", "shift"]].apply(
+            lpc.compute_residual,
+            axis=1,
+            args=[self._lpc_order])
 
     def save_file(self, filename):
-        print(f"Number of frames: {len(self._residuals)}")
-        for res in self._residuals:
-            self._encoder.encode_frame(res)
+        print(f"Number of frames: {len(self._data)}")
+        self._data["residual"].apply(self._encoder.encode_frame)
 
         size = self._encoder.get_size_bits_unaligned()
         print(f"Source size: {self._source_size}")
@@ -76,7 +93,7 @@ class Encoder:
         print(f"Ratio = {np.ceil(size / 8) / self._source_size:.2f}")
 
     def _clean(self):
+        self._raw = None
         self._data = None
         self._samplerate = None
         self._frame_size = None
-        self._residuals = None

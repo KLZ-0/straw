@@ -3,3 +3,4 @@ scipy
 soundfile
 matplotlib
 bitarray
+pandas

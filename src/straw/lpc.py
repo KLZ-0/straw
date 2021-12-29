@@ -2,6 +2,7 @@ import math
 import sys
 
 import numpy as np
+import pandas as pd
 from scipy.linalg import solve_toeplitz
 
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
@@ -75,18 +76,18 @@ def _quantize_lpc(lpc_c, order, precision):
     return qlp_c, shift
 
 
-def _compute_lpc(signal, p: int):
+def _compute_lpc(signal: pd.DataFrame, p: int):
     """
     Calculates p LPC coefficients
     For fast Levinson-Durbin implementation see:
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_toeplitz.html
-    :param signal: input signal
+    :param signal: input dataframe with columns [frame]
     :param p: LPC order
     :return: array of length p containing LPC coefficients
     """
 
     # Extend to 64 bits to prevent overflows
-    signal = signal.astype("i8")
+    signal = signal["frame"].astype("i8")
 
     r = np.correlate(signal, signal, 'full')[len(signal) - 1:len(signal) + p]
 
@@ -105,21 +106,19 @@ def compute_qlp(signal, order: int, qlp_coeff_precision: int):
     return _quantize_lpc(lpc, order, qlp_coeff_precision)
 
 
-def compute_residual(data, qlp, order, lp_quantization):
+def compute_residual(data: pd.DataFrame, order: int):
     """
     Computes the residual from the given signal with quantized LPC coefficients
-    :param data: input signal
-    :param qlp: quantized LPC coefficients
+    :param data: input dataframe with columns [frame, qlp, shift]
     :param order: LPC order
-    :param lp_quantization: quantization level
     :return: residual as a numpy array
     """
 
     if order <= 0:
         return None
 
-    _sum = np.convolve(data, qlp, mode="full")[order - 1:] >> lp_quantization
-    return data[order:] - _sum[:-order]
+    _sum = np.convolve(data["frame"], data["qlp"], mode="full")[order - 1:] >> data["shift"]
+    return data["frame"][order:] - _sum[:-order]
 
 
 def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
