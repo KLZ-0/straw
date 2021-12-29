@@ -97,7 +97,7 @@ def _compute_lpc(signal: pd.DataFrame, p: int):
 def compute_qlp(signal, order: int, qlp_coeff_precision: int):
     """
     Compute LPC and quantize the LPC coefficients
-    :param signal: input signal
+    :param signal: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
     :return: tuple(quantization level, qlp coefficients)
