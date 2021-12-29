@@ -22,7 +22,7 @@ class Ricer:
         """
         self.data.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
-    def encode_single(self, s):
+    def encode_single(self, s: int):
         """
         Encodes a single number s and appends it to the end of the current bitstream
         :param s: number to encode
@@ -37,7 +37,7 @@ class Ricer:
 
         # Remainder code
         b = int(self.k)
-        tmp = np.power(2, b + 1) - self.m
+        tmp = (1 << b + 1) - self.m
 
         if r < tmp:
             self._append_n_bits(r, b)
