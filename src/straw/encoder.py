@@ -21,7 +21,6 @@ class Encoder:
 
     # Member variables
     _data = None
-    _data_fp = None
     _residuals = None
 
     def load_files(self, filenames: list):
@@ -31,11 +30,10 @@ class Encoder:
         :return: True on success, False on error
         """
         self._data = []
-        self._data_fp = []
 
         # TODO: verify if the files are from the same recording
         for filename in filenames:
-            data, sr = soundfile.read(filename)
+            data, sr = soundfile.read(filename, dtype="int16")
             self._source_size = len(data) * 2
             if self._samplerate is None:
                 self._samplerate = sr
@@ -44,9 +42,7 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._data_fp.append(data)
-            # TODO: load the actual dtype from the file itself
-            self._data.append(soundfile.read(filename, dtype="int16")[0])
+            self._data.append(data)
 
         return True
 
@@ -61,7 +57,6 @@ class Encoder:
 
     def create_frames(self):
         self._data = [self._slice_data_into_frames(channel) for channel in self._data]
-        self._data_fp = [self._slice_data_into_frames(channel) for channel in self._data_fp]
 
     def load_stream(self, stream, samplerate):
         pass
@@ -70,7 +65,7 @@ class Encoder:
         self._residuals = []
         for channel, frames in enumerate(self._data):
             for frame_number, frame in enumerate(frames):
-                qlp, quant_level = lpc.compute_qlp(self._data_fp[channel][frame_number],
+                qlp, quant_level = lpc.compute_qlp(self._data[channel][frame_number],
                                                    self._lpc_order, self._lpc_precision)
 
                 self._residuals.append(lpc.compute_residual(frame, qlp, self._lpc_order, quant_level))
@@ -87,7 +82,6 @@ class Encoder:
 
     def _clean(self):
         self._data = None
-        self._data_fp = None
         self._samplerate = None
         self._frame_size = None
         self._residuals = None
