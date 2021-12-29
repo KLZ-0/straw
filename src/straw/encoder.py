@@ -2,23 +2,27 @@ import numpy as np
 import soundfile
 
 from . import lpc
+from .rice import Ricer
 
 
 class Encoder:
-    _data = None
-    _data_fp = None
-    _samplerate = None
-    _frame_size = None
-    _residuals = None
-
-    _frame_duration = None
-
+    # Values which should be parametrized
     # TODO: find the best values for these
     _lpc_order = 8
     _lpc_precision = 12  # bits
+    _frame_size = 4096  # bytes
 
-    def __init__(self, frame_duration=0.020):
-        self._frame_duration = frame_duration
+    # Data from source
+    _source_size = 0
+    _samplerate = None
+
+    # Member utils
+    _encoder = Ricer(4)
+
+    # Member variables
+    _data = None
+    _data_fp = None
+    _residuals = None
 
     def load_files(self, filenames: list):
         """
@@ -32,9 +36,9 @@ class Encoder:
         # TODO: verify if the files are from the same recording
         for filename in filenames:
             data, sr = soundfile.read(filename)
+            self._source_size = len(data) * 2
             if self._samplerate is None:
                 self._samplerate = sr
-                self._frame_size = int(sr * self._frame_duration)
 
             if self._samplerate != sr:
                 self._clean()
@@ -72,7 +76,14 @@ class Encoder:
                 self._residuals.append(lpc.compute_residual(frame, qlp, self._lpc_order, quant_level))
 
     def save_file(self, filename):
-        pass
+        print(f"Number of frames: {len(self._residuals)}")
+        for res in self._residuals:
+            self._encoder.encode_frame(res)
+
+        size = self._encoder.get_size_bits_unaligned()
+        print(f"Source size: {self._source_size}")
+        print(f"Length of bitstream: {size} bits (bytes: {size / 8:.2f} unaligned, {np.ceil(size / 8):.0f} aligned)")
+        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.2f}")
 
     def _clean(self):
         self._data = None
