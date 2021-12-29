@@ -46,6 +46,16 @@ class Ricer:
         else:
             self._append_n_bits(r + tmp, b + 1)
 
+    def encode_frame(self, frame: np.array):
+        """
+        Encodes a whole frame and appends it to the end of the current bitstream
+        NOTE: This is really fucking inneficient - it needs to be heavily optimized
+        :param frame: frame to encode
+        :return: None
+        """
+        for v in frame:
+            self.encode_single(v)
+
     def get_size_bits_unaligned(self):
         """
         Size of the current bitstream
