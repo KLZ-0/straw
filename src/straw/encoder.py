@@ -84,6 +84,7 @@ class Encoder:
             args=[self._lpc_order])
 
     def save_file(self, filename):
+        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
         print(f"Number of frames: {len(self._data)}")
         self._data["residual"].apply(self._encoder.encode_frame)
 
