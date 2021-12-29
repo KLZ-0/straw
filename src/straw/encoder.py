@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import soundfile
 
 from . import lpc
@@ -50,7 +51,7 @@ class Encoder:
         return [data[i:i + self._frame_size] for i in range(0, len(data), self._frame_size)]
 
     def create_frames(self):
-        self._data = [self._slice_data_into_frames(channel) for channel in self._data]
+        self._data = pd.DataFrame({k: self._slice_data_into_frames(v) for k, v in enumerate(self._data)})
 
     def load_stream(self, stream, samplerate):
         pass
