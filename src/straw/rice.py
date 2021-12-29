@@ -20,8 +20,7 @@ class Ricer:
         :param n: number of bits to append
         :return: None
         """
-        for i in range(n):
-            self.data.append(number >> (n - i - 1) & 1)
+        self.data.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
     def encode_single(self, s):
         """
@@ -33,8 +32,7 @@ class Ricer:
         q = s // self.m
         r = s % self.m
 
-        for _ in range(q):
-            self.data.append(1)
+        self.data.extend([1 for _ in range(q)])
         self.data.append(0)
 
         # Remainder code
