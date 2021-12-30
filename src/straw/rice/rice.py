@@ -3,7 +3,7 @@ import pyximport
 from bitarray import bitarray
 
 pyximport.install()
-from .ext import rice_encode
+from . import rice_encode
 
 
 class Ricer:
