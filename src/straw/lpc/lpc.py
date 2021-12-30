@@ -95,7 +95,7 @@ def _compute_lpc(signal: pd.DataFrame, p: int):
 
     r = _autocorr(signal, p + 1)
 
-    return solve_toeplitz(r[:-1], r[1:])
+    return solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
 
 def compute_qlp(signal, order: int, qlp_coeff_precision: int):
