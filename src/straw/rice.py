@@ -61,3 +61,11 @@ class Ricer:
         :return: number of raw bits in the current bitstream
         """
         return len(self.data)
+
+    def frame_to_bitstream(self, frame: np.array) -> bitarray:
+        self.data = bitarray()
+
+        for v in frame:
+            self.encode_single(v)
+
+        return self.data
