@@ -69,7 +69,6 @@ class Ricer:
     def frame_to_bitstream(self, frame: np.array) -> bitarray:
         self.data = bitarray()
 
-        for v in frame:
-            rice_encode.encode(self.data, v, self.m, self.k)
+        rice_encode.encode_frame(self.data, frame, self.m, self.k)
 
         return self.data
