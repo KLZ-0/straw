@@ -3,12 +3,12 @@ import unittest
 import pandas as pd
 
 from straw import lpc
-from test import get_signal
+from . import resources
 
 
 class LPCSignalIntegrity(unittest.TestCase):
     def test_reconstruction(self):
-        signal, sr = get_signal()
+        signal, sr = resources.get_signal()
 
         lpc_order = 8
         lpc_precision = 12  # bits

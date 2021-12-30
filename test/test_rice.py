@@ -3,8 +3,7 @@ import unittest
 import numpy as np
 
 from straw import rice
-from test import resources
-from test.resources import rice_str
+from . import resources
 
 
 class Rice(unittest.TestCase):
@@ -20,7 +19,7 @@ class Rice(unittest.TestCase):
 
         r_o = ""
         for i in frame:
-            r_o += rice_str(i, 4)
+            r_o += resources.rice_str(i, 4)
 
         data = self.r.frame_to_bitstream(frame)
 
@@ -31,7 +30,7 @@ class Rice(unittest.TestCase):
 
         r_o = ""
         for i in frame:
-            r_o += rice_str(i, 4)
+            r_o += resources.rice_str(i, 4)
 
         data = self.r.frame_to_bitstream(frame)
 
