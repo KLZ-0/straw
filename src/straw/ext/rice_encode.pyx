@@ -8,7 +8,7 @@ def append_n_bits(bits: bitarray, number: cython.int, n: cython.int):
 
 @cython.cdivision(True)
 def encode(bits: bitarray, s: cython.int, m: cython.int, k: cython.int):
-    cdef int q, r, b, tmp
+    cdef int q, r, tmp
 
     # Quotient code
     q = s / m
@@ -19,10 +19,9 @@ def encode(bits: bitarray, s: cython.int, m: cython.int, k: cython.int):
     bits.append(0)
 
     # Remainder code
-    b = k
-    tmp = (1 << b + 1) - m
+    tmp = (1 << k + 1) - m
 
     if r < tmp:
-        append_n_bits(bits, r, b)
+        append_n_bits(bits, r, k)
     else:
-        append_n_bits(bits, r + tmp, b + 1)
+        append_n_bits(bits, r + tmp, k + 1)
