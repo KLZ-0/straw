@@ -14,7 +14,8 @@ def encode(bits: bitarray, s: cython.int, m: cython.int, k: cython.int):
     q = s / m
     r = s % m
 
-    bits.extend([1 for _ in range(q)])
+    for _ in range(q):
+        bits.append(1)
     bits.append(0)
 
     # Remainder code
