@@ -4,3 +4,4 @@ soundfile
 matplotlib
 bitarray
 pandas
+cython

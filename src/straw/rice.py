@@ -1,5 +1,9 @@
 import numpy as np
+import pyximport
 from bitarray import bitarray
+
+pyximport.install()
+from .ext import rice_encode
 
 
 class Ricer:
@@ -66,6 +70,6 @@ class Ricer:
         self.data = bitarray()
 
         for v in frame:
-            self.encode_single(v)
+            rice_encode.encode(self.data, v, self.m, self.k)
 
         return self.data
