@@ -76,6 +76,10 @@ def _quantize_lpc(lpc_c, order, precision):
     return qlp_c, shift
 
 
+def _autocorr(signal: np.array, target_len: int) -> np.array:
+    return np.asarray([signal[:len(signal) - i].dot(signal[i:]) for i in range(target_len)])
+
+
 def _compute_lpc(signal: pd.DataFrame, p: int):
     """
     Calculates p LPC coefficients
@@ -89,7 +93,7 @@ def _compute_lpc(signal: pd.DataFrame, p: int):
     # Extend to 64 bits to prevent overflows
     signal = signal["frame"].astype("i8")
 
-    r = np.correlate(signal, signal, 'full')[len(signal) - 1:len(signal) + p]
+    r = _autocorr(signal, p + 1)
 
     return solve_toeplitz(r[:-1], r[1:])
 
