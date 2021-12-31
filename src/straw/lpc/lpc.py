@@ -31,7 +31,7 @@ def _quantize_lpc(lpc_c, order, precision) -> (np.array, int):
             cmax = d
 
     if cmax <= 0:
-        return 0, 0
+        return None, 0
 
     max_shiftlimit = 1 << (1 << (FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN-1)) - 1
     min_shiftlimit = -max_shiftlimit - 1
@@ -44,7 +44,7 @@ def _quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     if shift > max_shiftlimit:
         shift = max_shiftlimit
     elif shift < min_shiftlimit:
-        return 0, 0
+        return None, 0
 
     # if shift >= 0
     # TODO: add way for negative shift
@@ -111,7 +111,7 @@ def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int)
     """
     lpc = _compute_lpc(signal, order)
     if lpc is None:
-        return 0, 0
+        return None, 0
 
     return _quantize_lpc(lpc, order, qlp_coeff_precision)
 
@@ -124,7 +124,7 @@ def compute_residual(data: pd.DataFrame, order: int) -> np.array:
     :return: residual as a numpy array
     """
 
-    if order <= 0 or data["qlp"] is 0:
+    if order <= 0 or data["qlp"] is None:
         return None
 
     _sum = np.convolve(data["frame"], data["qlp"], mode="full")[order - 1:] >> data["shift"]

@@ -72,11 +72,12 @@ class Encoder:
         pass
 
     def encode(self):
-        self._data[["qlp", "shift"]] = self._data[["frame"]].apply(
+        tmp = self._data[["frame"]].apply(
             lpc.compute_qlp,
-            result_type="expand",
             axis=1,
             args=(self._lpc_order, self._lpc_precision))
+
+        self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
         # Make sure shift is int
         self._data["shift"] = self._data["shift"].astype("i1")
