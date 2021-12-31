@@ -78,6 +78,9 @@ class Encoder:
             axis=1,
             args=(self._lpc_order, self._lpc_precision))
 
+        # Make sure shift is int
+        self._data["shift"] = self._data["shift"].astype("i1")
+
         self._data["residual"] = self._data[["frame", "qlp", "shift"]].apply(
             lpc.compute_residual,
             axis=1,

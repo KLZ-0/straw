@@ -23,5 +23,8 @@ class Ricer:
         :return: encoded bitarray
         """
         data = bitarray()
-        rice_encode.encode_frame(data, frame, self.m, self.k)
+
+        if frame is not None:
+            rice_encode.encode_frame(data, frame, self.m, self.k)
+
         return data
