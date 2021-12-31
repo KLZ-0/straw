@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import soundfile
 
 from . import lpc
@@ -20,8 +21,15 @@ class Encoder:
     _encoder = Ricer(4)
 
     # Member variables
+    _raw = None
     _data = None
-    _residuals = None
+
+    def usage_mib(self):
+        """
+        Returns the deep memory usage of the given dataframe in mebibytes
+        :return: deep memory usage of the given dataframe in mebibytes
+        """
+        return self._data.memory_usage(index=True, deep=True).sum() / (2 ** 20)
 
     def load_files(self, filenames: list):
         """
@@ -29,7 +37,7 @@ class Encoder:
         :param filenames: list of files to load
         :return: True on success, False on error
         """
-        self._data = []
+        self._raw = []
 
         # TODO: verify if the files are from the same recording
         for filename in filenames:
@@ -42,46 +50,57 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._data.append(data)
+            self._raw.append(data)
 
         return True
 
     def _slice_data_into_frames(self, data):
-        # TODO: What to do with the last frame
-        # FIXME: We should definitely NOT throw it away like it is done currently!
-
-        frames = []
-        for i in range(0, data.shape[0], self._frame_size):
-            frames.append(data[i:i + self._frame_size])
-        return np.stack(frames[:-1])
+        return [data[i:i + self._frame_size] for i in range(0, len(data), self._frame_size)]
 
     def create_frames(self):
-        self._data = [self._slice_data_into_frames(channel) for channel in self._data]
+        ds = {"seq": [], "frame": [], "channel": []}
+        for channel, channel_data in enumerate(self._raw):
+            sliced = self._slice_data_into_frames(channel_data)
+            ds["seq"] += [i for i in range(len(sliced))]
+            ds["frame"] += sliced
+            ds["channel"] += [channel for _ in range(len(sliced))]
+
+        self._raw = None  # free this reference, we don't need it anymore
+        self._data = pd.DataFrame(ds)
 
     def load_stream(self, stream, samplerate):
         pass
 
     def encode(self):
-        self._residuals = []
-        for channel, frames in enumerate(self._data):
-            for frame_number, frame in enumerate(frames):
-                qlp, quant_level = lpc.compute_qlp(self._data[channel][frame_number],
-                                                   self._lpc_order, self._lpc_precision)
+        tmp = self._data[["frame"]].apply(
+            lpc.compute_qlp,
+            axis=1,
+            args=(self._lpc_order, self._lpc_precision))
 
-                self._residuals.append(lpc.compute_residual(frame, qlp, self._lpc_order, quant_level))
+        self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
+
+        # Make sure shift is int
+        self._data["shift"] = self._data["shift"].astype("i1")
+
+        self._data["residual"] = self._data[["frame", "qlp", "shift"]].apply(
+            lpc.compute_residual,
+            axis=1,
+            args=[self._lpc_order])
 
     def save_file(self, filename):
-        print(f"Number of frames: {len(self._residuals)}")
-        for res in self._residuals:
-            self._encoder.encode_frame(res)
+        print(f"Number of frames: {len(self._data)}")
+        self._data["stream"] = self._encoder.frames_to_bitstream(self._data["residual"])
+        self._data["stream_len"] = self._data["stream"].apply(len)
 
-        size = self._encoder.get_size_bits_unaligned()
+        size = self._data["stream_len"].sum()
         print(f"Source size: {self._source_size}")
         print(f"Length of bitstream: {size} bits (bytes: {size / 8:.2f} unaligned, {np.ceil(size / 8):.0f} aligned)")
         print(f"Ratio = {np.ceil(size / 8) / self._source_size:.2f}")
 
+        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
+
     def _clean(self):
+        self._raw = None
         self._data = None
         self._samplerate = None
         self._frame_size = None
-        self._residuals = None

@@ -1,0 +1,1 @@
+from .rice import Ricer

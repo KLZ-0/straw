@@ -2,12 +2,13 @@ import math
 import sys
 
 import numpy as np
+import pandas as pd
 from scipy.linalg import solve_toeplitz
 
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
 
-def _quantize_lpc(lpc_c, order, precision):
+def _quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     """
     Implementation: https://github.com/xiph/flac/blob/master/src/libFLAC/lpc.c
     TODO: can be heavily optimized
@@ -30,7 +31,7 @@ def _quantize_lpc(lpc_c, order, precision):
             cmax = d
 
     if cmax <= 0:
-        return None
+        return None, 0
 
     max_shiftlimit = 1 << (1 << (FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN-1)) - 1
     min_shiftlimit = -max_shiftlimit - 1
@@ -43,7 +44,7 @@ def _quantize_lpc(lpc_c, order, precision):
     if shift > max_shiftlimit:
         shift = max_shiftlimit
     elif shift < min_shiftlimit:
-        return None
+        return None, 0
 
     # if shift >= 0
     # TODO: add way for negative shift
@@ -75,51 +76,59 @@ def _quantize_lpc(lpc_c, order, precision):
     return qlp_c, shift
 
 
-def _compute_lpc(signal, p: int):
+def _autocorr(signal: np.array, target_len: int) -> np.array:
+    return np.asarray([signal[:len(signal) - i].dot(signal[i:]) for i in range(target_len)])
+
+
+def _compute_lpc(signal: pd.DataFrame, p: int) -> np.array:
     """
     Calculates p LPC coefficients
     For fast Levinson-Durbin implementation see:
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_toeplitz.html
-    :param signal: input signal
+    :param signal: input dataframe with columns [frame]
     :param p: LPC order
     :return: array of length p containing LPC coefficients
     """
 
     # Extend to 64 bits to prevent overflows
-    signal = signal.astype("i8")
+    signal = signal["frame"].astype("i8")
 
-    r = np.correlate(signal, signal, 'full')[len(signal) - 1:len(signal) + p]
+    if not signal.any():
+        return None
 
-    return solve_toeplitz(r[:-1], r[1:])
+    r = _autocorr(signal, p + 1)
+
+    return solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
 
-def compute_qlp(signal, order: int, qlp_coeff_precision: int):
+def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int):
     """
     Compute LPC and quantize the LPC coefficients
-    :param signal: input signal
+    :param signal: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
-    :return: tuple(quantization level, qlp coefficients)
+    :return: tuple(qlp coefficients, quantization level)
     """
     lpc = _compute_lpc(signal, order)
+    if lpc is None:
+        return None, 0
+
     return _quantize_lpc(lpc, order, qlp_coeff_precision)
 
 
-def compute_residual(data, qlp, order, lp_quantization):
+def compute_residual(data: pd.DataFrame, order: int) -> np.array:
     """
     Computes the residual from the given signal with quantized LPC coefficients
-    :param data: input signal
-    :param qlp: quantized LPC coefficients
+    :param data: input dataframe with columns [frame, qlp, shift]
     :param order: LPC order
-    :param lp_quantization: quantization level
     :return: residual as a numpy array
     """
 
-    if order <= 0:
+    if order <= 0 or data["qlp"] is None:
         return None
 
-    _sum = np.convolve(data, qlp, mode="full")[order - 1:] >> lp_quantization
-    return data[order:] - _sum[:-order]
+    _sum = np.convolve(data["frame"], data["qlp"], mode="full")[order - 1:] >> data["shift"]
+    return (data["frame"][order:] - _sum[:-order]).astype(np.int16)
 
 
 def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
