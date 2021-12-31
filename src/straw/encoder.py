@@ -89,7 +89,7 @@ class Encoder:
 
     def save_file(self, filename):
         print(f"Number of frames: {len(self._data)}")
-        self._data["stream"] = self._data["residual"].apply(self._encoder.frame_to_bitstream)
+        self._data["stream"] = self._encoder.frames_to_bitstream(self._data["residual"])
         self._data["stream_len"] = self._data["stream"].apply(len)
 
         size = self._data["stream_len"].sum()
