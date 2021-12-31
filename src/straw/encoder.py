@@ -88,7 +88,6 @@ class Encoder:
             args=[self._lpc_order])
 
     def save_file(self, filename):
-        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
         print(f"Number of frames: {len(self._data)}")
         self._data["stream"] = self._data["residual"].apply(self._encoder.frame_to_bitstream)
         self._data["stream_len"] = self._data["stream"].apply(len)
@@ -97,6 +96,8 @@ class Encoder:
         print(f"Source size: {self._source_size}")
         print(f"Length of bitstream: {size} bits (bytes: {size / 8:.2f} unaligned, {np.ceil(size / 8):.0f} aligned)")
         print(f"Ratio = {np.ceil(size / 8) / self._source_size:.2f}")
+
+        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
 
     def _clean(self):
         self._raw = None
