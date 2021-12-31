@@ -3,6 +3,7 @@ import pandas as pd
 import soundfile
 
 from . import lpc
+from .compute import ParallelCompute
 from .rice import Ricer
 
 
@@ -72,20 +73,16 @@ class Encoder:
         pass
 
     def encode(self):
-        tmp = self._data[["frame"]].apply(
-            lpc.compute_qlp,
-            axis=1,
-            args=(self._lpc_order, self._lpc_precision))
+        p = ParallelCompute(args=(self._lpc_order, self._lpc_precision), apply_kwargs={"axis": 1})
+        tmp = p.apply(self._data[["frame"]], lpc.compute_qlp)
 
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
         # Make sure shift is int
         self._data["shift"] = self._data["shift"].astype("i1")
 
-        self._data["residual"] = self._data[["frame", "qlp", "shift"]].apply(
-            lpc.compute_residual,
-            axis=1,
-            args=[self._lpc_order])
+        p.args = [self._lpc_order]
+        self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
 
     def save_file(self, filename):
         print(f"Number of frames: {len(self._data)}")

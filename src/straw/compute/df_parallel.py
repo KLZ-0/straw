@@ -12,8 +12,9 @@ based on https://stackoverflow.com/a/53135031
 class ParallelCompute:
     cpus = None
     args = None
+    apply_kwargs = None
 
-    def __init__(self, cpus=cpu_count(), args=None):
+    def __init__(self, cpus=cpu_count(), args=None, apply_kwargs={}):
         """
         Initialize the compute class
         :param cpus: number of CPUs to use when parallel is True, None means use all
@@ -21,6 +22,7 @@ class ParallelCompute:
         """
         self.cpus = cpus
         self.args = args
+        self.apply_kwargs = apply_kwargs
 
     def _parallelize(self, data, func):
         data_split = np.array_split(data, self.cpus)
@@ -31,7 +33,7 @@ class ParallelCompute:
         return data
 
     def _run_on_subset(self, func, data_subset):
-        return data_subset.apply(func, args=self.args)
+        return data_subset.apply(func, args=self.args, **self.apply_kwargs)
 
     def apply(self, data, func) -> pd.Series:
         """
