@@ -15,7 +15,7 @@ class Rice(unittest.TestCase):
         Encode bitstream of numbers from 0 up to 20
         :return:
         """
-        frame = np.arange(20)
+        frame = np.arange(20, dtype=np.int16)
 
         r_o = ""
         for i in frame:

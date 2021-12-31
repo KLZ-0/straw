@@ -3,7 +3,7 @@
 import cython
 from bitarray import bitarray
 
-def append_n_bits(bits: bitarray, int number, int n):
+def append_n_bits(bits: bitarray, short number, short n):
     """
     Appends the n bits of number to the end of the current bitstream
     :param bits: bitaray to which the bits will be appended
@@ -14,7 +14,7 @@ def append_n_bits(bits: bitarray, int number, int n):
     bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, int[:] frame, int m, int k):
+def encode_frame(bits: bitarray, short[:] frame, short m, short k):
     """
     Encodes a whole residual frame and appends it to the end of the current bitstream
     :param bits: bitaray to which the bits will be appended
@@ -23,7 +23,7 @@ def encode_frame(bits: bitarray, int[:] frame, int m, int k):
     :param k: rice k constant
     :return: None
     """
-    cdef int q, r, tmp, s
+    cdef short q, r, tmp, s
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
 

@@ -128,7 +128,7 @@ def compute_residual(data: pd.DataFrame, order: int) -> np.array:
         return None
 
     _sum = np.convolve(data["frame"], data["qlp"], mode="full")[order - 1:] >> data["shift"]
-    return data["frame"][order:] - _sum[:-order]
+    return (data["frame"][order:] - _sum[:-order]).astype(np.int16)
 
 
 def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
