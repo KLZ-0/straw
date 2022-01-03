@@ -43,7 +43,7 @@ class Encoder:
         # TODO: verify if the files are from the same recording
         for filename in filenames:
             data, sr = soundfile.read(filename, dtype="int16")
-            self._source_size = len(data) * 2
+            self._source_size += data.nbytes
             if self._samplerate is None:
                 self._samplerate = sr
 
@@ -51,7 +51,12 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._raw.append(data)
+            if len(data.shape) > 1:
+                self._source_size = data.nbytes
+                self._raw = data.swapaxes(1, 0)
+                return True
+
+            self._raw.append(data.flatten("F"))
 
         return True
 
