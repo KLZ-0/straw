@@ -3,6 +3,7 @@ import pandas as pd
 import soundfile
 
 from . import lpc
+from .compute import ParallelCompute
 from .rice import Ricer
 
 
@@ -42,7 +43,7 @@ class Encoder:
         # TODO: verify if the files are from the same recording
         for filename in filenames:
             data, sr = soundfile.read(filename, dtype="int16")
-            self._source_size = len(data) * 2
+            self._source_size += data.nbytes
             if self._samplerate is None:
                 self._samplerate = sr
 
@@ -50,7 +51,12 @@ class Encoder:
                 self._clean()
                 return False
 
-            self._raw.append(data)
+            if len(data.shape) > 1:
+                self._source_size = data.nbytes
+                self._raw = data.swapaxes(1, 0)
+                return True
+
+            self._raw.append(data.flatten("F"))
 
         return True
 
@@ -72,20 +78,16 @@ class Encoder:
         pass
 
     def encode(self):
-        tmp = self._data[["frame"]].apply(
-            lpc.compute_qlp,
-            axis=1,
-            args=(self._lpc_order, self._lpc_precision))
+        p = ParallelCompute(args=(self._lpc_order, self._lpc_precision), apply_kwargs={"axis": 1})
+        tmp = p.apply(self._data[["frame"]], lpc.compute_qlp)
 
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
         # Make sure shift is int
         self._data["shift"] = self._data["shift"].astype("i1")
 
-        self._data["residual"] = self._data[["frame", "qlp", "shift"]].apply(
-            lpc.compute_residual,
-            axis=1,
-            args=[self._lpc_order])
+        p.args = [self._lpc_order]
+        self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
 
     def save_file(self, filename):
         print(f"Number of frames: {len(self._data)}")
@@ -95,7 +97,7 @@ class Encoder:
         size = self._data["stream_len"].sum()
         print(f"Source size: {self._source_size}")
         print(f"Length of bitstream: {size} bits (bytes: {size / 8:.2f} unaligned, {np.ceil(size / 8):.0f} aligned)")
-        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.2f}")
+        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}")
 
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
 
