@@ -14,13 +14,44 @@ The interface and imports are subject to frequent change.
 
 **The use of this library in its current form is strongly discouraged!**
 
+# Installation
+
+Create a Python virtual environment, activate it and install the dependencies
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+# Usage
+
+For now, straw can be run either using the provided launcher script `main.py` in an activated virtual environment:
+
+```shell
+source venv/bin/activate
+python3 main.py -i /path/to/source.wav -o /path/to/output.straw
+```
+
+Or used as a library, for example:
+
+```python
+from straw.encoder import Encoder
+
+e = Encoder()
+e.load_files("/path/to/source.wav")
+e.create_frames()
+e.encode()
+e.save_file("/path/to/output.straw")
+```
+
 # Design
 
 The base design of Straw is based on [FLAC](https://xiph.org/flac).
 
-Linear prediction (LPC) is used to generate and predict signal which after substraction results in a residual signal
-with lower entropy. This residual is then efficiently encoded using rice coding to achieve a similar file size to FLAC
-for single channel audio.
+Linear prediction (LPC) is used to generate and predict a signal which substracted from the original signal results in a
+residual with lower entropy. This residual is then efficiently encoded using rice coding to achieve a similar file size
+to FLAC for single channel audio.
 
 In addition to these techniques, Straw also takes advantage of waweform similarities between multiple channels.
 
