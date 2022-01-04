@@ -30,6 +30,10 @@ For now, straw can be run either using the provided launcher script `main.py` in
 
 ```shell
 source venv/bin/activate
+export PYTHONPATH=$PYTHONPATH:src
+```
+
+```shell
 python3 main.py -i /path/to/source.wav -o /path/to/output.straw
 ```
 
