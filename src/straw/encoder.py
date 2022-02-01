@@ -95,8 +95,9 @@ class Encoder:
         self._data["stream_len"] = self._data["stream"].apply(len)
 
         size = self._data["stream_len"].sum()
-        print(f"Source size: {self._source_size}")
-        print(f"Length of bitstream: {size} bits (bytes: {size / 8:.2f} unaligned, {np.ceil(size / 8):.0f} aligned)")
+        print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)")
+        print(f"Length of bitstream: {size} bits, "
+              f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)")
         print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}")
 
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
