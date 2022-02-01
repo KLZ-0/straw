@@ -76,6 +76,12 @@ def _quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     return qlp_c, shift
 
 
+def _quant_alt(lpc_c, order, precision):
+    cmax = np.max(np.abs(lpc_c))
+    shift = precision - math.frexp(cmax)[1] - 1
+    return (lpc_c * 2 ** shift).round().astype(np.int32), shift
+
+
 def _autocorr(signal: np.array, target_len: int) -> np.array:
     return np.asarray([signal[:len(signal) - i].dot(signal[i:]) for i in range(target_len)])
 
