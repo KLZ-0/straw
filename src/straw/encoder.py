@@ -78,7 +78,8 @@ class Encoder:
         pass
 
     def encode(self):
-        p = ParallelCompute(args=(self._lpc_order, self._lpc_precision), apply_kwargs={"axis": 1})
+        p = ParallelCompute(args=(self._lpc_order, self._lpc_precision),
+                            apply_kwargs={"axis": 1, "result_type": "reduce"})
         tmp = p.apply(self._data[["frame"]], lpc.compute_qlp)
 
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
