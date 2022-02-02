@@ -1,3 +1,6 @@
+import sys
+from typing import TextIO
+
 import numpy as np
 import pandas as pd
 import soundfile
@@ -24,6 +27,9 @@ class Encoder:
     # Member variables
     _raw = None
     _data = None
+
+    def __init__(self, args=None):
+        self._args = args
 
     def usage_mib(self):
         """
@@ -91,17 +97,23 @@ class Encoder:
         self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
 
     def save_file(self, filename):
-        print(f"Number of frames: {len(self._data)}")
         self._data["stream"] = self._encoder.frames_to_bitstream(self._data["residual"])
         self._data["stream_len"] = self._data["stream"].apply(len)
+        # TODO: actually save bitstreams
 
+    def print_stats(self, stream: TextIO = sys.stdout):
+        print(f"Number of frames: {len(self._data)}", file=stream)
+        print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
-        print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)")
         print(f"Length of bitstream: {size} bits, "
-              f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)")
-        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}")
+              f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)", file=stream)
+        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}", file=stream)
 
-        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB")
+        # FIXME: this is misleading
+        print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
+
+    def sample_frame(self):
+        return self._data.loc[0]
 
     def _clean(self):
         self._raw = None
