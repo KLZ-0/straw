@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 from scipy.linalg import solve_toeplitz
 
+from straw.lpc import steps
+
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
 
@@ -125,16 +127,17 @@ def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int)
 def compute_residual(data: pd.DataFrame, order: int) -> np.array:
     """
     Computes the residual from the given signal with quantized LPC coefficients
+    Pandas-lever wrapper
     :param data: input dataframe with columns [frame, qlp, shift]
     :param order: LPC order
     :return: residual as a numpy array
     """
 
-    if order <= 0 or data["qlp"] is None:
+    predicted = steps.predict_signal(data["frame"], data["qlp"], order, data["shift"])
+    if predicted is None:
         return None
 
-    _sum = np.convolve(data["frame"], data["qlp"], mode="full")[order - 1:] >> data["shift"]
-    return (data["frame"][order:] - _sum[:-order]).astype(np.int16)
+    return (data["frame"][order:] - predicted).astype(np.int16)
 
 
 def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
