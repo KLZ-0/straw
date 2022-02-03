@@ -14,11 +14,15 @@ if __name__ == '__main__':
     # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",
                         help="Generate figures - temporary option for runs with non-consistent behavior")
+    parser.add_argument("--figures-show", dest="fig_show", action="store_true", help="Show figures")
+    parser.add_argument("--figures-dir", dest="fig_dir", metavar="FIG_DIR", type=str,
+                        default="outputs", help="Override figure directory (default='outputs')")
 
     args = parser.parse_args()
 
     if args.figures:
-        pass
+        from figures import plot_all
+
+        plot_all(args)
     else:
         straw.run(args)
-
