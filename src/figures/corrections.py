@@ -44,7 +44,7 @@ class CorrectionsPlot:
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(f))] + [i for i in range(len(f))],
-            "value": np.append(f, f * 0.6),
+            "value": np.append(f, f * 0.8),
             "type": ["original" for _ in range(len(f))] + ["gain" for _ in range(len(f))],
         })
 
@@ -88,7 +88,7 @@ class CorrectionsPlot:
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(f))] + [i for i in range(len(f))],
-            "value": np.append(f, frame["frame"][:152] * 0.6 - 1000),
+            "value": np.append(f, frame["frame"][:152] * 0.8 - 1000),
             "type": ["original" for _ in range(len(f))] + ["deformed" for _ in range(len(f))],
         })
 
