@@ -128,7 +128,6 @@ def predict_signal(frame: np.array, qlp: np.array, shift: int):
     The resulting predicted signal starts with the order-th sample
     :param frame: signal frame
     :param qlp: quantized LPC coefficients
-    :param order: LPC order
     :param shift: coefficient quantization shift
     :return: predicted frame with shape [order:]
     """
