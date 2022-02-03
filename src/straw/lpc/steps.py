@@ -2,7 +2,6 @@ import math
 import sys
 
 import numpy as np
-import pandas as pd
 from scipy.linalg import solve_toeplitz
 
 
@@ -15,18 +14,18 @@ def _autocorr(signal: np.array, target_len: int) -> np.array:
     return np.asarray([signal[:len(signal) - i].dot(signal[i:]) for i in range(target_len)])
 
 
-def compute_lpc(signal: pd.DataFrame, p: int) -> np.array:
+def compute_lpc(signal: np.array, p: int) -> np.array:
     """
     Calculates p LPC coefficients
     For fast Levinson-Durbin implementation see:
     https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_toeplitz.html
-    :param signal: input dataframe with columns [frame]
+    :param signal: input signal
     :param p: LPC order
     :return: array of length p containing LPC coefficients
     """
 
     # Extend to 64 bits to prevent overflows
-    signal = signal["frame"].astype("i8")
+    signal = signal.astype("i8")
 
     if not signal.any():
         return None

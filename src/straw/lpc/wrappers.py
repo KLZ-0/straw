@@ -12,7 +12,7 @@ def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int)
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
     :return: tuple(qlp coefficients, quantization level)
     """
-    lpc = steps.compute_lpc(signal, order)
+    lpc = steps.compute_lpc(signal["frame"], order)
     if lpc is None:
         return None, 0
 
