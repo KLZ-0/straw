@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-# NOTE: Do not import this without checking for args -> seaborn and and mpl should be optional dependencies
-# TODO: plot predicted vs original signal
+# NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
 import straw
 from straw.lpc import steps
 

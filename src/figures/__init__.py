@@ -1,4 +1,5 @@
 import straw
+from .corrections import CorrectionsPlot
 from .lpc import LPCPlot
 
 
@@ -10,3 +11,7 @@ def plot_all(args=None):
 
     LPCPlot(e, args).prediction_comparison()
     LPCPlot(e, args).residual()
+    CorrectionsPlot(e, args).shift()
+    CorrectionsPlot(e, args).gain()
+    CorrectionsPlot(e, args).offset()
+    CorrectionsPlot(e, args).all()
