@@ -9,6 +9,7 @@ def plot_all(args=None):
     e.create_frames()
     e.encode()
 
+    LPCPlot(e, args).print_lpc_and_qlp()
     LPCPlot(e, args).prediction_comparison()
     LPCPlot(e, args).residual()
     CorrectionsPlot(e, args).shift()

@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,6 +18,24 @@ class LPCPlot:
         self.fig_dir = Path(getattr(self._args, "fig_dir", "outputs"))
         self.fig_dir.mkdir(parents=True, exist_ok=True)
         self.fig_show = getattr(self._args, "fig_show", False)
+
+    def print_lpc_and_qlp(self):
+        frame = self._e.sample_frame()
+        lpc = steps.compute_lpc(frame["frame"], 8)
+        qlp, shift = steps.quantize_lpc(lpc, 8, 12)
+
+        df = pd.DataFrame({
+            "LPC": lpc,
+            "QLP": qlp
+        })
+
+        sys.stderr.flush()
+        print("%%%%%%%% INSERT TABLE %%%%%%%%")
+        print(df.T.to_latex(caption="Example coefficients for 8-order predictor",
+                            position="H", float_format="{:0.3f}".format,
+                            header=[f"$a_{i + 1}$" for i in range(len(lpc))], escape=False)
+              , end="")
+        print("%%%%%%%% INSERT TABLE %%%%%%%%")
 
     def prediction_comparison(self):
         frame = self._e.sample_frame()
