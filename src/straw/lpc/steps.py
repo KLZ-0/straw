@@ -122,7 +122,7 @@ def quant_alt(lpc_c, order, precision):
 ##############
 
 
-def predict_signal(frame: np.array, qlp: np.array, order: int, shift: int):
+def predict_signal(frame: np.array, qlp: np.array, shift: int):
     """
     Executes LPC prediction
     The resulting predicted signal starts with the order-th sample
@@ -132,10 +132,10 @@ def predict_signal(frame: np.array, qlp: np.array, order: int, shift: int):
     :param shift: coefficient quantization shift
     :return: predicted frame with shape [order:]
     """
-    if order <= 0 or qlp is None:
+    if qlp is None or len(qlp) == 0:
         return None
 
-    return np.convolve(frame, qlp, mode="full")[order - 1:-order] >> shift
+    return np.convolve(frame, qlp, mode="full")[len(qlp) - 1:-len(qlp)] >> shift
 
 
 ###############

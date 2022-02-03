@@ -19,17 +19,16 @@ def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int)
     return steps.quantize_lpc(lpc, order, qlp_coeff_precision)
 
 
-def compute_residual(data: pd.DataFrame, order: int) -> np.array:
+def compute_residual(data: pd.DataFrame) -> np.array:
     """
     Computes the residual from the given signal with quantized LPC coefficients
     Pandas-lever wrapper
     :param data: input dataframe with columns [frame, qlp, shift]
-    :param order: LPC order
     :return: residual as a numpy array
     """
 
-    predicted = steps.predict_signal(data["frame"], data["qlp"], order, data["shift"])
+    predicted = steps.predict_signal(data["frame"], data["qlp"], data["shift"])
     if predicted is None:
         return None
 
-    return (data["frame"][order:] - predicted).astype(np.int16)
+    return (data["frame"][len(data["qlp"]):] - predicted).astype(np.int16)

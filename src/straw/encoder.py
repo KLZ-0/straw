@@ -93,7 +93,7 @@ class Encoder:
         # Make sure shift is int
         self._data["shift"] = self._data["shift"].astype("i1")
 
-        p.args = [self._lpc_order]
+        p.args = None
         self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
 
     def save_file(self, filename):
