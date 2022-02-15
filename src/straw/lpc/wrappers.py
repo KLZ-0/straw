@@ -4,19 +4,19 @@ import pandas as pd
 from straw.lpc import steps
 
 
-def compute_qlp(signal, order: int, qlp_coeff_precision: int) -> (np.array, int):
+def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
     """
     Compute LPC and quantize the LPC coefficients
-    :param signal: input dataframe with columns [frame]
+    :param frame: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
     :return: tuple(qlp coefficients, quantization level)
     """
-    lpc = steps.compute_lpc(signal["frame"], order)
+    lpc = steps.compute_lpc(frame["frame"], order)
     if lpc is None:
         return None, 0
 
-    return steps.quantize_lpc(lpc, order, qlp_coeff_precision)
+    return steps.quantize_lpc(lpc, qlp_coeff_precision)
 
 
 def compute_residual(data: pd.DataFrame) -> np.array:

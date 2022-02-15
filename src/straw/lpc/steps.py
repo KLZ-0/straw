@@ -42,14 +42,13 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
 
-def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
+def quantize_lpc(lpc_c, precision) -> (np.array, int):
     """
     Implementation: https://github.com/xiph/flac/blob/master/src/libFLAC/lpc.c
     TODO: can be heavily optimized
     :param lpc_c:
-    :param order:
     :param precision:
-    :return:
+    :return: tuple(QLP, shift)
     """
     # reserve 1 bit for sign
     precision -= 1
@@ -59,7 +58,7 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     qmax -= 1
 
     cmax = 0.0
-    for i in range(order):
+    for i in range(len(lpc_c)):
         d = np.abs(lpc_c[i])
         if d > cmax:
             cmax = d
@@ -89,7 +88,7 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     error = 0.0
     q = 0
     qlp_c = np.zeros(len(lpc_c), dtype="i4")
-    for i in range(order):
+    for i in range(len(lpc_c)):
         error += lpc_c[i] * (1 << shift)
         q = round(error)
 
@@ -110,7 +109,7 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     return qlp_c, shift
 
 
-def quant_alt(lpc_c, order, precision):
+def quant_alt(lpc_c, precision):
     cmax = np.max(np.abs(lpc_c))
     shift = precision - math.frexp(cmax)[1] - 1
     return (lpc_c * 2 ** shift).round().astype(np.int32), shift
