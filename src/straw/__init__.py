@@ -5,7 +5,7 @@ def run(args):
     import timeit, sys
     print(args)
 
-    e = Encoder()
+    e = Encoder(args)
 
     start = timeit.default_timer()
     e.load_files(args.input_files)
@@ -26,5 +26,7 @@ def run(args):
     e.save_file(args.output_file)
     stop = timeit.default_timer()
     print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
+
+    e.print_stats()
 
     print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
