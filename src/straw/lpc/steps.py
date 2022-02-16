@@ -169,16 +169,16 @@ def predict_signal(frame: np.array, qlp: np.array, shift: int):
 ###############
 
 
-def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
+def restore_signal(residual, qlp, lp_quantization, warmup_samples):
     """
     Restores the original signal given the residual with quantized LPC coefficients
     :param residual: residual signal
     :param qlp: quantized LPC coefficients
-    :param order: LPC order
     :param lp_quantization: quantization level
     :param warmup_samples: warmup samples (the first order samples from the original signal)
     :return: reconstructed signal as a numpy array
     """
+    order = qlp.shape[0]
     if order <= 0:
         return None
 
@@ -192,3 +192,17 @@ def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
         data[i] = residual[i - order] + (_sum >> lp_quantization)
 
     return data
+
+
+def restore_signal_cython(residual, qlp, lp_quantization, warmup_samples) -> np.array:
+    """
+    Restores the original signal given the residual with quantized LPC coefficients
+    Wrapper around Cython extension for signal restoration
+    :param residual: residual signal
+    :param qlp: quantized LPC coefficients
+    :param lp_quantization: quantization shift
+    :param warmup_samples: warmup samples (the first samples from the original signal)
+    :return: reconstructed signal as a numpy array
+    """
+    # TODO: make this a proper wrapper without the need for duplicated lines
+    return ext.restore_signal(residual, qlp, lp_quantization, warmup_samples)

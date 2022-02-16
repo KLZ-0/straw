@@ -47,3 +47,33 @@ def quantize_lpc(double[:] lpc_c, int precision) -> int:
         lpc_c[i] = q
 
     return shift
+
+###############
+# Restoration #
+###############
+
+
+def restore_signal(short[:] residual, int[:] qlp, int lp_quantization, short[:] warmup_samples) -> np.array:
+    """
+    Restores the original signal given the residual with quantized LPC coefficients
+    :param residual: residual signal
+    :param qlp: quantized LPC coefficients
+    :param lp_quantization: quantization shift
+    :param warmup_samples: warmup samples (the first samples from the original signal)
+    :return: reconstructed signal as a numpy array
+    """
+    cdef data_len = residual.shape[0]
+    cdef order = qlp.shape[0]
+    if order <= 0:
+        return None
+
+    data = np.pad(warmup_samples, (0, data_len))
+
+    cdef int _sum
+    for i in range(data_len):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * data[order + i - j - 1]
+        data[order + i] = residual[i] + (_sum >> lp_quantization)
+
+    return data
