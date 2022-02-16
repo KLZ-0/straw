@@ -110,9 +110,23 @@ def quantize_lpc(lpc_c, precision) -> (np.array, int):
 
 
 def quant_alt(lpc_c, precision):
+    # drop 1 bit for sign
+    precision -= 1
+
+    # set limits
+    qmax = 1 << precision
+    qmin = -qmax
+    qmax -= 1
+
+    # calculate qlp
     cmax = np.max(np.abs(lpc_c))
-    shift = precision - math.frexp(cmax)[1] - 1
-    return (lpc_c * 2 ** shift).round().astype(np.int32), shift
+    shift = precision - math.frexp(cmax)[1]
+    qlp = (lpc_c * (1 << shift)).round().astype(np.int32)
+
+    # Limit the quantized values
+    np.clip(qlp, qmin, qmax, out=qlp)
+
+    return qlp, shift
 
 
 ##############
