@@ -2,6 +2,10 @@
 # cython: language_level=3
 import numpy as np
 
+################
+# Quantization #
+################
+
 def quantize_lpc(double[:] lpc_c, int precision) -> int:
     """
     Quantizes LPC coefficients to a given precision
@@ -27,10 +31,10 @@ def quantize_lpc(double[:] lpc_c, int precision) -> int:
     # elif shift < min_shiftlimit:
     #     return None, 0
 
-    cdef int imax = lpc_c.shape[0]
+    cdef int order = lpc_c.shape[0]
     cdef double error = 0.0
     cdef double q
-    for i in range(imax):
+    for i in range(order):
         error += lpc_c[i] * (1 << shift)
         q = round(error)
 
