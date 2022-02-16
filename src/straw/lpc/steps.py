@@ -2,7 +2,11 @@ import math
 import sys
 
 import numpy as np
+import pyximport
 from scipy.linalg import solve_toeplitz
+
+pyximport.install()
+from . import ext
 
 
 ####################
@@ -126,7 +130,18 @@ def quant_alt(lpc_c, precision):
     # Limit the quantized values
     np.clip(qlp, qmin, qmax, out=qlp)
 
-    return qlp, shift
+    return qlp.astype(np.int32), shift
+
+
+def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
+    """
+    Wrapper around Cython extension for LPC coefficient quantization
+    :param lpc_c: numpy array of LPC coefficients to be quantized
+    :param precision: target precition in bits
+    :return: tuple(QLP, shift)
+    """
+    shift = ext.quantize_lpc(lpc_c, precision)
+    return lpc_c.astype(np.int32), shift
 
 
 ##############
