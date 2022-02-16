@@ -205,4 +205,6 @@ def restore_signal_cython(residual, qlp, lp_quantization, warmup_samples) -> np.
     :return: reconstructed signal as a numpy array
     """
     # TODO: make this a proper wrapper without the need for duplicated lines
-    return ext.restore_signal(residual, qlp, lp_quantization, warmup_samples)
+    data = np.pad(warmup_samples[:qlp.shape[0]], (0, residual.shape[0]))
+    ext.restore_signal(residual, qlp, lp_quantization, data)
+    return data
