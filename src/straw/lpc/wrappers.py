@@ -16,7 +16,7 @@ def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
     if lpc is None:
         return None, 0
 
-    return steps.quantize_lpc(lpc, qlp_coeff_precision)
+    return steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
 
 
 def compute_residual(data: pd.DataFrame) -> np.array:
