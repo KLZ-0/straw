@@ -2,7 +2,11 @@ import math
 import sys
 
 import numpy as np
+import pyximport
 from scipy.linalg import solve_toeplitz
+
+pyximport.install()
+from . import ext
 
 
 ####################
@@ -42,14 +46,13 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
 FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
 
 
-def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
+def quantize_lpc(lpc_c, precision) -> (np.array, int):
     """
     Implementation: https://github.com/xiph/flac/blob/master/src/libFLAC/lpc.c
     TODO: can be heavily optimized
     :param lpc_c:
-    :param order:
     :param precision:
-    :return:
+    :return: tuple(QLP, shift)
     """
     # reserve 1 bit for sign
     precision -= 1
@@ -59,7 +62,7 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     qmax -= 1
 
     cmax = 0.0
-    for i in range(order):
+    for i in range(len(lpc_c)):
         d = np.abs(lpc_c[i])
         if d > cmax:
             cmax = d
@@ -89,7 +92,7 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     error = 0.0
     q = 0
     qlp_c = np.zeros(len(lpc_c), dtype="i4")
-    for i in range(order):
+    for i in range(len(lpc_c)):
         error += lpc_c[i] * (1 << shift)
         q = round(error)
 
@@ -110,10 +113,35 @@ def quantize_lpc(lpc_c, order, precision) -> (np.array, int):
     return qlp_c, shift
 
 
-def quant_alt(lpc_c, order, precision):
+def quant_alt(lpc_c, precision):
+    # drop 1 bit for sign
+    precision -= 1
+
+    # set limits
+    qmax = 1 << precision
+    qmin = -qmax
+    qmax -= 1
+
+    # calculate qlp
     cmax = np.max(np.abs(lpc_c))
-    shift = precision - math.frexp(cmax)[1] - 1
-    return (lpc_c * 2 ** shift).round().astype(np.int32), shift
+    shift = precision - math.frexp(cmax)[1]
+    qlp = (lpc_c * (1 << shift)).round().astype(np.int32)
+
+    # Limit the quantized values
+    np.clip(qlp, qmin, qmax, out=qlp)
+
+    return qlp.astype(np.int32), shift
+
+
+def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
+    """
+    Wrapper around Cython extension for LPC coefficient quantization
+    :param lpc_c: numpy array of LPC coefficients to be quantized
+    :param precision: target precition in bits
+    :return: tuple(QLP, shift)
+    """
+    shift = ext.quantize_lpc(lpc_c, precision)
+    return lpc_c.astype(np.int32), shift
 
 
 ##############
@@ -141,16 +169,16 @@ def predict_signal(frame: np.array, qlp: np.array, shift: int):
 ###############
 
 
-def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
+def restore_signal(residual, qlp, lp_quantization, warmup_samples):
     """
     Restores the original signal given the residual with quantized LPC coefficients
     :param residual: residual signal
     :param qlp: quantized LPC coefficients
-    :param order: LPC order
     :param lp_quantization: quantization level
     :param warmup_samples: warmup samples (the first order samples from the original signal)
     :return: reconstructed signal as a numpy array
     """
+    order = qlp.shape[0]
     if order <= 0:
         return None
 
@@ -163,4 +191,20 @@ def restore_signal(residual, qlp, order, lp_quantization, warmup_samples):
             _sum += qlp[j] * data[i - j - 1]
         data[i] = residual[i - order] + (_sum >> lp_quantization)
 
+    return data
+
+
+def restore_signal_cython(residual, qlp, lp_quantization, warmup_samples) -> np.array:
+    """
+    Restores the original signal given the residual with quantized LPC coefficients
+    Wrapper around Cython extension for signal restoration
+    :param residual: residual signal
+    :param qlp: quantized LPC coefficients
+    :param lp_quantization: quantization shift
+    :param warmup_samples: warmup samples (the first samples from the original signal)
+    :return: reconstructed signal as a numpy array
+    """
+    # TODO: make this a proper wrapper without the need for duplicated lines
+    data = np.pad(warmup_samples[:qlp.shape[0]], (0, residual.shape[0]))
+    ext.restore_signal(residual, qlp, lp_quantization, data)
     return data

@@ -22,7 +22,7 @@ class LPCPlot:
     def print_lpc_and_qlp(self):
         frame = self._e.sample_frame()
         lpc = steps.compute_lpc(frame["frame"], 8)
-        qlp, shift = steps.quantize_lpc(lpc, 8, 12)
+        qlp, shift = steps.quantize_lpc(lpc, 12)
 
         df = pd.DataFrame({
             "LPC": lpc,

@@ -21,7 +21,7 @@ class LPCSignalIntegrity(unittest.TestCase):
         df["shift"] = [shift]
 
         residual = lpc.compute_residual(df.loc[0])
-        restored = lpc.steps.restore_signal(residual, qlp, self.lpc_order, shift, self.signal[:self.lpc_order])
+        restored = lpc.steps.restore_signal(residual, qlp, shift, self.signal[:self.lpc_order])
 
         self.assertEqual((self.signal - restored).any(), False)
 

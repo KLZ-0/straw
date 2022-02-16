@@ -101,6 +101,15 @@ class Encoder:
         self._data["stream_len"] = self._data["stream"].apply(len)
         # TODO: actually save bitstreams
 
+    def restore(self):
+        p = ParallelCompute(apply_kwargs={"axis": 1, "result_type": "reduce"})
+        self._data["restored"] = p.apply(self._data, lpc.compute_original)
+
+        if self._data.apply(lpc.compare_restored, axis=1).all():
+            print("Lossless :)")
+        else:
+            print("Not lossless :|")
+
     def print_stats(self, stream: TextIO = sys.stdout):
         print(f"Number of frames: {len(self._data)}", file=stream)
         print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
