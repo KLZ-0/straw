@@ -16,9 +16,9 @@ def _interleave(short x):
     else:
         return 0
 
-def append_n_bits(bits: bitarray, short number, short n):
+def _append_n_bits(bits: bitarray, short number, short n):
     """
-    Appends the n bits of number to the end of the current bitstream
+    Appends the last n bits of number to the end of the current bitstream
     :param bits: bitaray to which the bits will be appended
     :param number: number to append
     :param n: number of bits to append
@@ -36,7 +36,7 @@ def encode_frame(bits: bitarray, short[:] frame, short m, short k):
     :param k: rice k constant
     :return: None
     """
-    cdef short q, r, tmp, s
+    cdef short q, s
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
 
@@ -45,16 +45,9 @@ def encode_frame(bits: bitarray, short[:] frame, short m, short k):
 
         # Quotient code
         q = s / m
-        r = s % m
 
         for _ in range(q):
             bits.append(1)
         bits.append(0)
 
-        # Remainder code
-        tmp = (1 << k + 1) - m
-
-        if r < tmp:
-            append_n_bits(bits, r, k)
-        else:
-            append_n_bits(bits, r + tmp, k + 1)
+        _append_n_bits(bits, s, k)
