@@ -1,1 +1,1 @@
-from .rice import Ricer
+from .ricer import Ricer
