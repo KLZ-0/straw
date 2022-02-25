@@ -18,7 +18,6 @@ class ParallelCompute:
         """
         Initialize the compute class
         :param cpus: number of CPUs to use when parallel is True, None means use all
-        :param args: default function args
         """
         self.cpus = cpus
 

@@ -20,6 +20,10 @@ class Ricer:
         self.k = int(np.log2(self.m))
         self.parallel = ParallelCompute()
 
+    ############
+    # Encoding #
+    ############
+
     def frame_to_bitstream(self, frame: np.array) -> bitarray:
         """
         Encode a numpy frame to a bitsream
@@ -45,6 +49,10 @@ class Ricer:
             return frames.apply(self.frame_to_bitstream)
 
         return self.parallel.apply(frames, self.frame_to_bitstream)
+
+    ############
+    # Decoding #
+    ############
 
     def bitstream_to_frame(self, bitstream: bitarray, frame_size: int) -> np.array:
         """

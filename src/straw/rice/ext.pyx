@@ -2,6 +2,7 @@
 # cython: language_level=3
 import cython
 from bitarray import bitarray
+
 #########################
 # Signedness correction #
 #########################
@@ -9,8 +10,8 @@ from bitarray import bitarray
 cdef short _interleave(short x):
     """
     Implementation of the overlap and interleave scheme from https://en.wikipedia.org/wiki/Golomb_coding
-    :param x: number to be remapped
-    :return: positive integer which can be encoded
+    :param x: signed integer to be remaped
+    :return: positive interleaved integer
     """
     if x == 0:
         return 0
@@ -22,6 +23,11 @@ cdef short _interleave(short x):
 
 @cython.cdivision(True)
 cdef short _deinterleave(short x):
+    """
+    Reverse of _interleave(short x)
+    :param x: positive interleaved integer
+    :return: original signed integer
+    """
     if x == 0:
         return 0
 
@@ -47,7 +53,7 @@ def _append_n_bits(bits: bitarray, short number, short n):
 @cython.cdivision(True)
 def encode_frame(bits: bitarray, short[:] frame, short m, short k):
     """
-    Encodes a whole residual frame and appends it to the end of the current bitstream
+    Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
     :param frame: the frame to be encoded
     :param m: rice m constant
@@ -79,6 +85,14 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     return bits[bit_i[0] - 1]
 
 def decode_frame(short[:] frame, bits: bitarray, short m, short k):
+    """
+    Decodes a whole residual frame from the given bitstream
+    :param frame: numpy array where the decoded frame should be stored
+    :param bits: bitaray from which the frame should be restored
+    :param m: rice m constant
+    :param k: rice k constant
+    :return: None
+    """
     cdef short q, s, j
     cdef Py_ssize_t x_max, i
     cdef Py_ssize_t bit_i = 0
