@@ -60,3 +60,22 @@ class Ricer:
             ext.decode_frame(frame, bitstream, self.m, self.k)
 
         return frame
+
+    def _bitstream_to_frame_df_expander(self, df: pd.DataFrame) -> np.array:
+        return self.bitstream_to_frame(df["stream"], df["size"])
+
+    def bitstreams_to_frames(self, bitstreams: pd.Series, frame_sizes: pd.Series, parallel: bool = True) -> pd.Series:
+        """
+        Encode a series of bitstreams to a series of frames
+        :param bitstreams: series of bitstreams
+        :param frame_sizes: series of frame sizes
+        :param parallel: if True then use multithreading
+        :return: series of decoded frames
+        """
+
+        comp = pd.DataFrame({"stream": bitstreams, "size": frame_sizes})
+
+        if not parallel:
+            return comp.apply(self._df_expander, axis=1, result_type="reduce")
+
+        return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
