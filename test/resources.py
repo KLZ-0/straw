@@ -1,6 +1,20 @@
 import numpy as np
 
 
+def _interleave(x):
+    """
+    Implementation of the overlap and interleave scheme from https://en.wikipedia.org/wiki/Golomb_coding
+    :param x: number to be remapped
+    :return: positive integer which can be encoded
+    """
+    if x > 0:
+        return 2 * x
+    elif x < 0:
+        return -2 * x - 1
+    else:
+        return 0
+
+
 def rice_str(num, m):
     """
         Return the rice encoded number with golomb parameter m
@@ -11,6 +25,8 @@ def rice_str(num, m):
         :return: None
         """
     out = ""
+
+    num = _interleave(num)
 
     q = num // m
     r = num % m

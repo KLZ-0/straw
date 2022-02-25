@@ -84,26 +84,29 @@ class Encoder:
         pass
 
     def encode(self):
-        p = ParallelCompute(args=(self._lpc_order, self._lpc_precision),
-                            apply_kwargs={"axis": 1, "result_type": "reduce"})
-        tmp = p.apply(self._data[["frame"]], lpc.compute_qlp)
+        p = ParallelCompute()
+        tmp = p.apply(self._data[["frame"]], lpc.compute_qlp, args=(self._lpc_order, self._lpc_precision),
+                      axis=1, result_type="reduce")
 
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
         # Make sure shift is int
         self._data["shift"] = self._data["shift"].astype("i1")
 
-        p.args = None
-        self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
+        self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual, axis=1,
+                                         result_type="reduce")
 
     def save_file(self, filename):
-        self._data["stream"] = self._encoder.frames_to_bitstream(self._data["residual"])
+        self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"])
         self._data["stream_len"] = self._data["stream"].apply(len)
         # TODO: actually save bitstreams
 
     def restore(self):
-        p = ParallelCompute(apply_kwargs={"axis": 1, "result_type": "reduce"})
-        self._data["restored"] = p.apply(self._data, lpc.compute_original)
+        self._data["residual_len"] = self._data["residual"].apply(len)
+        self._data["residual"] = self._encoder.bitstreams_to_frames(self._data["stream"], self._data["residual_len"])
+
+        p = ParallelCompute()
+        self._data["restored"] = p.apply(self._data, lpc.compute_original, axis=1, result_type="reduce")
 
         if self._data.apply(lpc.compare_restored, axis=1).all():
             print("Lossless :)")
