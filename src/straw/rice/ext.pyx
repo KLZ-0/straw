@@ -74,23 +74,24 @@ def encode_frame(bits: bitarray, short[:] frame, short m, short k):
 # Decoding #
 ############
 
+cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
+    bit_i[0] += 1
+    return bits[bit_i[0] - 1]
+
 def decode_frame(short[:] frame, bits: bitarray, short m, short k):
-    cdef short q, s, j, tmp
+    cdef short q, s, j
     cdef Py_ssize_t x_max, i
     cdef Py_ssize_t bit_i = 0
     x_max = frame.shape[0]
 
     for i in range(x_max):
         q = 0
-        while bits[bit_i]:
-            bit_i += 1
+        while _get_bit(bits, &bit_i):
             q += 1
-        bit_i += 1
 
         s = m * q
 
         for j in range(k):
-            s |= bits[bit_i] << (k - j - 1)
-            bit_i += 1
+            s |= _get_bit(bits, &bit_i) << (k - j - 1)
 
         frame[i] = _deinterleave(s)
