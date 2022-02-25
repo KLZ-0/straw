@@ -6,7 +6,7 @@ from bitarray import bitarray
 from ..compute import ParallelCompute
 
 pyximport.install()
-from . import rice_encode
+from . import ext
 
 
 class Ricer:
@@ -22,20 +22,20 @@ class Ricer:
 
     def frame_to_bitstream(self, frame: np.array) -> bitarray:
         """
-        Rice encode a numpy frame to a bitsream
+        Encode a numpy frame to a bitsream
         :param frame: numpy array of samples to encode
         :return: encoded bitarray
         """
         data = bitarray()
 
         if frame is not None:
-            rice_encode.encode_frame(data, frame, self.m, self.k)
+            ext.encode_frame(data, frame, self.m, self.k)
 
         return data
 
     def frames_to_bitstream(self, frames: pd.Series, parallel: bool = True) -> pd.Series:
         """
-        Rice encode a series of frames to a bitsream
+        Encode a series of frames to a bitsream
         :param frames: series of frames
         :param parallel: if True then use multithreading
         :return: encoded bitarray
@@ -45,3 +45,18 @@ class Ricer:
             return frames.apply(self.frame_to_bitstream)
 
         return self.parallel.apply(frames, self.frame_to_bitstream)
+
+    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int) -> np.array:
+        """
+        Decode a single frame from a given bitstream
+        WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
+        :param bitstream: rice encoded stream
+        :param frame_size: frame size
+        :return: decoded frame
+        """
+        frame = np.zeros(frame_size, dtype=np.short)
+
+        if len(bitstream) > 0:
+            ext.decode_frame(frame, bitstream, self.m, self.k)
+
+        return frame

@@ -2,19 +2,37 @@
 # cython: language_level=3
 import cython
 from bitarray import bitarray
+#########################
+# Signedness correction #
+#########################
 
-def _interleave(short x):
+cdef short _interleave(short x):
     """
     Implementation of the overlap and interleave scheme from https://en.wikipedia.org/wiki/Golomb_coding
     :param x: number to be remapped
     :return: positive integer which can be encoded
     """
+    if x == 0:
+        return 0
+
     if x > 0:
         return 2 * x
-    elif x < 0:
-        return -2 * x - 1
     else:
+        return -2 * x - 1
+
+@cython.cdivision(True)
+cdef short _deinterleave(short x):
+    if x == 0:
         return 0
+
+    if x % 2 == 0:
+        return x / 2
+    else:
+        return (x + 1) / -2
+
+############
+# Encoding #
+############
 
 def _append_n_bits(bits: bitarray, short number, short n):
     """
@@ -51,3 +69,26 @@ def encode_frame(bits: bitarray, short[:] frame, short m, short k):
         bits.append(0)
 
         _append_n_bits(bits, s, k)
+
+############
+# Decoding #
+############
+
+cdef char _get_bit(bits: bitarray):
+    return bits.pop(0)
+
+def decode_frame(short[:] frame, bits: bitarray, short m, short k):
+    cdef short q, s
+    cdef Py_ssize_t x_max, i
+    x_max = frame.shape[0]
+
+    for i in range(x_max):
+        q = 0
+        while _get_bit(bits):
+            q += 1
+        s = m * q
+
+        for j in range(k):
+            s |= _get_bit(bits) << (k - j - 1)
+
+        frame[i] = _deinterleave(s)
