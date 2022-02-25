@@ -97,7 +97,7 @@ class Encoder:
         self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual)
 
     def save_file(self, filename):
-        self._data["stream"] = self._encoder.frames_to_bitstream(self._data["residual"])
+        self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"])
         self._data["stream_len"] = self._data["stream"].apply(len)
         # TODO: actually save bitstreams
 

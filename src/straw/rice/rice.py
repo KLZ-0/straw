@@ -33,12 +33,12 @@ class Ricer:
 
         return data
 
-    def frames_to_bitstream(self, frames: pd.Series, parallel: bool = True) -> pd.Series:
+    def frames_to_bitstreams(self, frames: pd.Series, parallel: bool = True) -> pd.Series:
         """
-        Encode a series of frames to a bitsream
+        Encode a series of frames to a series of bitsreams
         :param frames: series of frames
         :param parallel: if True then use multithreading
-        :return: encoded bitarray
+        :return: encoded bitarrays
         """
 
         if not parallel:
