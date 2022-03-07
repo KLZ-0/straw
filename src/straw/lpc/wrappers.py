@@ -40,7 +40,7 @@ def compute_residual(data: pd.DataFrame) -> np.array:
 def compute_original(data: pd.DataFrame) -> np.array:
     """
     Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
-    :param data: input dataframe with columns [residual, frame[:order], qlp, shift]
+    :param data: input dataframe with columns [frame, qlp, shift]
     :return: residual as a numpy array
     """
     return steps.restore_signal_cython(data["residual"], data["qlp"], data["shift"], data["frame"][:len(data["qlp"])])

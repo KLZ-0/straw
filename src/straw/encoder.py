@@ -97,7 +97,8 @@ class Encoder:
                                          result_type="reduce")
 
     def save_file(self, filename):
-        self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"])
+        self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
         # TODO: actually save bitstreams
 
