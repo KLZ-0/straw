@@ -34,7 +34,7 @@ class Ricer:
         data = bitarray()
 
         if frame is not None:
-            ext.encode_frame(data, frame, 1 << bps, bps)
+            ext.encode_frame(data, frame, bps)
 
         return data
 
@@ -61,36 +61,39 @@ class Ricer:
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int) -> np.array:
+    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int) -> np.array:
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
         :param bitstream: rice encoded stream
         :param frame_size: frame size
+        :param bps: expected bits per sample
         :return: decoded frame
         """
         frame = np.zeros(frame_size, dtype=np.short)
 
         if len(bitstream) > 0:
-            ext.decode_frame(frame, bitstream, self.m, self.k)
+            ext.decode_frame(frame, bitstream, bps)
 
         return frame
 
     def _bitstream_to_frame_df_expander(self, df: pd.DataFrame) -> np.array:
-        return self.bitstream_to_frame(df["stream"], df["size"])
+        return self.bitstream_to_frame(df["stream"], df["size"], df["bps"])
 
-    def bitstreams_to_frames(self, bitstreams: pd.Series, frame_sizes: pd.Series, parallel: bool = True) -> pd.Series:
+    def bitstreams_to_frames(self, bitstreams: pd.Series, frame_sizes: pd.Series, bps: pd.Series,
+                             parallel: bool = True) -> pd.Series:
         """
         Encode a series of bitstreams to a series of frames
         :param bitstreams: series of bitstreams
         :param frame_sizes: series of frame sizes
+        :param bps: expected bits per second for this frame
         :param parallel: if True then use multithreading
         :return: series of decoded frames
         """
 
-        comp = pd.DataFrame({"stream": bitstreams, "size": frame_sizes})
+        comp = pd.DataFrame({"stream": bitstreams, "size": frame_sizes, "bps": bps})
 
         if not parallel:
-            return comp.apply(self._df_expander, axis=1, result_type="reduce")
+            return comp.apply(self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
         return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
