@@ -13,7 +13,7 @@ from .rice import Ricer
 class Encoder:
     # Values which should be parametrized
     # TODO: find the best values for these
-    _lpc_order = 8
+    _lpc_order = 10
     _lpc_precision = 12  # bits
     _frame_size = 4096  # bytes
 
