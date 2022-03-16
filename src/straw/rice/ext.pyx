@@ -64,6 +64,8 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
     x_max = frame.shape[0]
     m = 1 << k
 
+    # cdef short last = 0
+
     for i in range(x_max):
         s = _interleave(frame[i])
 
@@ -75,6 +77,23 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
         bits.append(0)
 
         _append_n_bits(bits, s, k)
+
+        # Length of bitstream: 48877826 bits, bytes: 6109729 aligned (5.83 MiB)
+        # Length of bitstream: 48877826 bits, bytes: 6109729 aligned (5.83 MiB)
+
+        # TODO: feed-forward rice implementation
+        # for some reason gives exactly the same results as constant param
+        # Update rice param
+        # if last == 8:
+        #     last = 0
+        #     k += 1
+        #     m = 1 << k
+        #     continue
+        #
+        # if s >= m:
+        #     last = (last << 1) | 1
+        # else:
+        #     last = 0
 
 ############
 # Decoding #
