@@ -104,7 +104,8 @@ class Encoder:
 
     def restore(self):
         self._data["residual_len"] = self._data["residual"].apply(len)
-        self._data["residual"] = self._encoder.bitstreams_to_frames(self._data["stream"], self._data["residual_len"])
+        self._data["residual"] = self._encoder.bitstreams_to_frames(
+            self._data["stream"], self._data["residual_len"], self._data["bps"])
 
         p = ParallelCompute()
         self._data["restored"] = p.apply(self._data, lpc.compute_original, axis=1, result_type="reduce")
