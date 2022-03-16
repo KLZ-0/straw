@@ -20,6 +20,33 @@ class Ricer:
         self.m = 1 << k
         self.parallel = ParallelCompute()
 
+    ##########################
+    # Optimal order guessing #
+    ##########################
+
+    @staticmethod
+    def _compute_expected_bits_per_sample(lpc_error, residual_samples):
+        error_scale = 0.5 / residual_samples
+
+        if lpc_error > 0.0:
+            bps = 0.5 * np.log(error_scale * lpc_error) / np.log(2)
+            if bps >= 0.0:
+                return bps
+            else:
+                return 0.0
+        elif lpc_error < 0.0:
+            return 1e32
+        else:
+            return 0.0
+
+    @staticmethod
+    def guess_parameter(lpc_error, residual_samples):
+        # TODO: this gives a shitty output
+        lpc_residual_bits_per_sample = Ricer._compute_expected_bits_per_sample(lpc_error, residual_samples)
+        rice_parameter = int(lpc_residual_bits_per_sample + 0.5) if (lpc_residual_bits_per_sample > 0.0) else 0
+        rice_parameter += 1  # account for signed conversion
+        return rice_parameter
+
     ############
     # Encoding #
     ############
