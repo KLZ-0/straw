@@ -20,6 +20,9 @@ class LPCPlot:
         self.fig_show = getattr(self._args, "fig_show", False)
 
     def print_lpc_and_qlp(self):
+        """
+        Prints LPC and QLP coefficients
+        """
         frame = self._e.sample_frame()
         lpc = steps.compute_lpc(frame["frame"], 8)
         qlp, shift = steps.quantize_lpc(lpc, 12)
@@ -38,6 +41,9 @@ class LPCPlot:
         print("%%%%%%%% INSERT TABLE %%%%%%%%")
 
     def prediction_comparison(self):
+        """
+        Shows the original frame and a predicted frame
+        """
         frame = self._e.sample_frame()
         # FIXME: magic number order=8
         f = frame["frame"][8:160]
@@ -62,6 +68,10 @@ class LPCPlot:
             plt.show()
 
     def residual(self):
+        """
+        Shows a residual frame
+        :return:
+        """
         frame = self._e.sample_frame()
         # FIXME: magic number order=8
         f = frame["frame"][8:160]
@@ -80,6 +90,30 @@ class LPCPlot:
         s.tight_layout()
 
         plt.savefig(self.fig_dir / "residual.pdf")
+
+        if self.fig_show:
+            plt.show()
+
+    def common_lpc_autoc_averaging(self):
+        """
+        Shows the residuals after using common LPC coefficients across all channels
+        """
+        data = self._e.sample_frame_multichannel()
+        df = {"x": [], "value": [], "Channel": []}
+        for i, ds in enumerate(data["residual"]):
+            df["x"] += [i for i in range(len(ds))]
+            df["Channel"] += [i for _ in ds]
+            df["value"] += list(ds)
+        df = pd.DataFrame(df)
+
+        s = sns.relplot(data=df, kind="line", x="x", y="value", hue="Channel", height=2.5, aspect=3)
+
+        plt.title("Residuals with common LPC coefficients (averaged autoc)")
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
+        plt.savefig(self.fig_dir / "lpc_averaged.png")
 
         if self.fig_show:
             plt.show()

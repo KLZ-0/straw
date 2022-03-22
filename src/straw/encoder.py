@@ -120,6 +120,9 @@ class Encoder:
     def sample_frame(self):
         return self._data.loc[0]
 
+    def sample_frame_multichannel(self):
+        return self._data[self._data["seq"] == 0]
+
     def _clean(self):
         self._raw = None
         self._data = None
