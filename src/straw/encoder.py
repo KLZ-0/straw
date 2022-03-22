@@ -6,7 +6,6 @@ import pandas as pd
 import soundfile
 
 from . import lpc
-from .compute import ParallelCompute
 from .rice import Ricer
 
 
@@ -84,17 +83,10 @@ class Encoder:
         pass
 
     def encode(self):
-        p = ParallelCompute()
-        tmp = p.apply(self._data[["frame"]], lpc.compute_qlp, args=(self._lpc_order, self._lpc_precision),
-                      axis=1, result_type="reduce")
-
+        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
-        # Make sure shift is int
-        self._data["shift"] = self._data["shift"].astype("i1")
-
-        self._data["residual"] = p.apply(self._data[["frame", "qlp", "shift"]], lpc.compute_residual, axis=1,
-                                         result_type="reduce")
+        self._data = self._data.groupby("seq").apply(lpc.compute_residual)
 
     def save_file(self, filename):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
@@ -107,8 +99,7 @@ class Encoder:
         self._data["residual"] = self._encoder.bitstreams_to_frames(
             self._data["stream"], self._data["residual_len"], self._data["bps"])
 
-        p = ParallelCompute()
-        self._data["restored"] = p.apply(self._data, lpc.compute_original, axis=1, result_type="reduce")
+        self._data = self._data.groupby("seq").apply(lpc.compute_original)
 
         if self._data.apply(lpc.compare_restored, axis=1).all():
             print("Lossless :)")
