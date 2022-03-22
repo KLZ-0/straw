@@ -159,7 +159,7 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
 ##############
 
 
-def predict_signal(frame: np.array, qlp: np.array, shift: int):
+def predict_signal(frame: np.array, qlp: np.array, shift):
     """
     Executes LPC prediction
     The resulting predicted signal starts with the order-th sample
@@ -168,6 +168,7 @@ def predict_signal(frame: np.array, qlp: np.array, shift: int):
     :param shift: coefficient quantization shift
     :return: predicted frame with shape [order:]
     """
+    shift = int(shift)
     if qlp is None or len(qlp) == 0:
         return None
 
