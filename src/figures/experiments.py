@@ -42,6 +42,7 @@ class Experiments(BasePlot):
 
         df = {"x": [], "value": [], "Channel": []}
         for i, ds in enumerate(data["residual"]):
+            ds = ds[:60]
             df["x"] += [i for i in range(len(ds))]
             df["Channel"] += [i for _ in ds]
             df["value"] += list(ds)
