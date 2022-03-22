@@ -18,3 +18,4 @@ def plot_all(args=None):
     CorrectionsPlot(e, args).offset()
     CorrectionsPlot(e, args).all()
     LPCPlot(e, args).common_lpc_autoc_averaging()
+    LPCPlot(e, args).common_lpc_variances()

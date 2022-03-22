@@ -94,9 +94,39 @@ class LPCPlot(BasePlot):
 
         s = sns.relplot(data=df, kind="line", x="x", y="value", hue="Channel", height=2.5, aspect=3)
 
-        plt.title("Residuals with common LPC coefficients (averaged autoc)")
+        plt.title("Frame residuals with common LPC coefficients (averaged autoc)")
         s.set_xlabels("Sample")
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
         self.save("lpc_averaged.png")
+
+        # Also print variances...
+
+        print("Variances:")
+        table = pd.DataFrame({
+            "channel": data["channel"],
+            "variance": data["residual"].apply(np.var),
+        })
+        table = table.set_index("channel")
+
+        print(table.T.to_latex(caption="Variances",
+                               position="H", float_format="{:0.3f}".format, escape=False))
+        # print("\n".join([f"{f:.3f}" for f in data["residual"].apply(np.var)]))
+
+    def common_lpc_variances(self):
+        """
+        Show variances across all frames across for all channels
+        """
+        df = self._e.get_data()
+        df["variance"] = df["residual"].apply(np.var)
+
+        s = sns.relplot(data=df, kind="line", x="seq", y="variance", hue="channel", height=6, aspect=1.8)
+        s.set(ylim=(0, 7500))
+
+        plt.title("Residual variance with common LPC coefficients (averaged autoc)")
+        s.set_xlabels("Frame")
+        s.set_ylabels("Variance")
+        s.tight_layout()
+
+        self.save("lpc_averaged_variances.png")
