@@ -1,21 +1,11 @@
-from pathlib import Path
-
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
 
-import straw
+from figures.baseplot import BasePlot
 
 
-class CorrectionsPlot:
-    def __init__(self, e: straw.Encoder, args=None):
-        self._args = args
-        self._e = e
-        self.fig_dir = Path(getattr(self._args, "fig_dir", "outputs"))
-        self.fig_dir.mkdir(parents=True, exist_ok=True)
-        self.fig_show = getattr(self._args, "fig_show", False)
-
+class CorrectionsPlot(BasePlot):
     def shift(self):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
@@ -33,10 +23,7 @@ class CorrectionsPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "shift.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("shift.pdf")
 
     def gain(self):
         frame = self._e.sample_frame()
@@ -55,10 +42,7 @@ class CorrectionsPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "gain.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("gain.pdf")
 
     def offset(self):
         frame = self._e.sample_frame()
@@ -77,10 +61,7 @@ class CorrectionsPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "offset.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("offset.pdf")
 
     def all(self):
         frame = self._e.sample_frame()
@@ -99,7 +80,4 @@ class CorrectionsPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "all.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("all.pdf")

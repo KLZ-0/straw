@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,18 +6,11 @@ import pandas as pd
 import seaborn as sns
 
 # NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
-import straw
+from figures.baseplot import BasePlot
 from straw.lpc import steps
 
 
-class LPCPlot:
-    def __init__(self, e: straw.Encoder, args=None):
-        self._args = args
-        self._e = e
-        self.fig_dir = Path(getattr(self._args, "fig_dir", "outputs"))
-        self.fig_dir.mkdir(parents=True, exist_ok=True)
-        self.fig_show = getattr(self._args, "fig_show", False)
-
+class LPCPlot(BasePlot):
     def print_lpc_and_qlp(self):
         """
         Prints LPC and QLP coefficients
@@ -62,10 +54,7 @@ class LPCPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "prediction_comparison.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("prediction_comparison.pdf")
 
     def residual(self):
         """
@@ -89,10 +78,7 @@ class LPCPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "residual.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("residual.pdf")
 
     def common_lpc_autoc_averaging(self):
         """
@@ -113,7 +99,4 @@ class LPCPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "lpc_averaged.png")
-
-        if self.fig_show:
-            plt.show()
+        self.save("lpc_averaged.png")
