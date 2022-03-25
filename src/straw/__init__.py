@@ -18,6 +18,11 @@ def run(args):
     print(f"<TIME> create_frames: {stop - mid}", file=sys.stderr)
 
     mid = timeit.default_timer()
+    e.apply_corrections()
+    stop = timeit.default_timer()
+    print(f"<TIME> apply_corrections: {stop - mid}", file=sys.stderr)
+
+    mid = timeit.default_timer()
     e.encode()
     stop = timeit.default_timer()
     print(f"<TIME> encode: {stop - mid}", file=sys.stderr)
@@ -28,7 +33,7 @@ def run(args):
     print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
 
     mid = timeit.default_timer()
-    e.restore()
+    # e.restore()
     stop = timeit.default_timer()
     print(f"<TIME> restore: {stop - mid}", file=sys.stderr)
 
