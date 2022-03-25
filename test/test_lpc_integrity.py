@@ -20,8 +20,8 @@ class LPCSignalIntegrity(unittest.TestCase):
         df["qlp"] = [qlp]
         df["shift"] = [shift]
 
-        residual = lpc.compute_residual(df.loc[0])
-        restored = lpc.steps.restore_signal(residual, qlp, shift, self.signal[:self.lpc_order])
+        df = lpc.compute_residual(df.loc[0])
+        restored = lpc.steps.restore_signal(df["residual"], qlp, shift, self.signal[:self.lpc_order])
 
         self.assertEqual((self.signal - restored).any(), False)
 
@@ -36,8 +36,8 @@ class LPCSignalIntegrity(unittest.TestCase):
         df["qlp"] = [None]
         df["shift"] = [0]
 
-        residual = lpc.compute_residual(df.loc[0])
-        self.assertIsNone(residual)
+        df = lpc.compute_residual(df.loc[0])
+        self.assertIsNone(df["residual"])
 
 
 if __name__ == '__main__':

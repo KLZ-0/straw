@@ -10,7 +10,8 @@ class Rice(unittest.TestCase):
     """
     Rice parameter 4
     """
-    m = 4
+    k = 2
+    m = 1 << k
     r = rice.Ricer(m)
 
     def test_rice_ext_arange(self):
@@ -24,7 +25,7 @@ class Rice(unittest.TestCase):
         for i in frame:
             r_o += resources.rice_str(i, self.m)
 
-        bits = self.r.frame_to_bitstream(frame)
+        bits = self.r.frame_to_bitstream(frame, self.k)
 
         self.assertEqual(bits.to01(), r_o)
 
@@ -35,23 +36,23 @@ class Rice(unittest.TestCase):
         for i in frame:
             r_o += resources.rice_str(i, self.m)
 
-        bits = self.r.frame_to_bitstream(frame)
+        bits = self.r.frame_to_bitstream(frame, self.k)
 
         self.assertEqual(bits.to01(), r_o)
 
     def test_rice_ext_arange_decode(self):
         frame = np.arange(20, dtype=np.int16)
 
-        bits = self.r.frame_to_bitstream(frame)
-        decoded = self.r.bitstream_to_frame(bits, len(frame))
+        bits = self.r.frame_to_bitstream(frame, self.k)
+        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 
     def test_rice_ext_signal_decode(self):
         frame = resources.get_signal()[0]
 
-        bits = self.r.frame_to_bitstream(frame)
-        decoded = self.r.bitstream_to_frame(bits, len(frame))
+        bits = self.r.frame_to_bitstream(frame, self.k)
+        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 

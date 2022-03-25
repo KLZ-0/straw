@@ -29,10 +29,17 @@ def compute_residual(data: pd.DataFrame):
     :param data: input dataframe slice with columns [frame, qlp, shift]
     :return: the input dataframe slice with a [residual] column added
     """
-    qlp = data["qlp"][data["qlp"].first_valid_index()]
-    shift = int(data["shift"][data["shift"].first_valid_index()])
+    qlp_idx = data[["qlp"]].first_valid_index()
+    shift_idx = data[["shift"]].first_valid_index()
 
-    data["residual"] = data["frame"].apply(steps.predict_compute_residusal, qlp=qlp, shift=shift)
+    if qlp_idx is None or shift_idx is None:
+        data["residual"] = None
+    elif isinstance(data["frame"], np.ndarray):
+        data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
+    else:
+        data["residual"] = data["frame"].apply(steps.predict_compute_residusal,
+                                               qlp=data["qlp"][qlp_idx],
+                                               shift=int(data["shift"][shift_idx]))
 
     return data
 
