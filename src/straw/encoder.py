@@ -6,7 +6,6 @@ import pandas as pd
 import soundfile
 
 from . import lpc
-from .correctors import ShiftCorrector
 from .rice import Ricer
 
 
@@ -84,7 +83,9 @@ class Encoder:
         pass
 
     def apply_corrections(self):
-        self._data.groupby("seq").apply(ShiftCorrector().apply)
+        # self._data = self._data.groupby("seq").apply(GainCorrector().apply)
+        # self._data.groupby("seq").apply(ShiftCorrector().apply)
+        pass
 
     def encode(self):
         tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
