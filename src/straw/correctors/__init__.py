@@ -1,5 +1,6 @@
 import numpy as np
 
+from .gain import GainCorrector
 from .shift import ShiftCorrector
 
 
