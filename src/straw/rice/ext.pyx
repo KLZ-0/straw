@@ -51,18 +51,20 @@ def _append_n_bits(bits: bitarray, short number, short n):
     bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, short[:] frame, short m, short k):
+def encode_frame(bits: bitarray, short[:] frame, short k):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
     :param frame: the frame to be encoded
-    :param m: rice m constant
     :param k: rice k constant
     :return: None
     """
-    cdef short q, s
+    cdef short m, q, s
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
+    m = 1 << k
+
+    # cdef short last = 0
 
     for i in range(x_max):
         s = _interleave(frame[i])
@@ -76,6 +78,23 @@ def encode_frame(bits: bitarray, short[:] frame, short m, short k):
 
         _append_n_bits(bits, s, k)
 
+        # Length of bitstream: 48877826 bits, bytes: 6109729 aligned (5.83 MiB)
+        # Length of bitstream: 48877826 bits, bytes: 6109729 aligned (5.83 MiB)
+
+        # TODO: feed-forward rice implementation
+        # for some reason gives exactly the same results as constant param
+        # Update rice param
+        # if last == 8:
+        #     last = 0
+        #     k += 1
+        #     m = 1 << k
+        #     continue
+        #
+        # if s >= m:
+        #     last = (last << 1) | 1
+        # else:
+        #     last = 0
+
 ############
 # Decoding #
 ############
@@ -84,19 +103,19 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     bit_i[0] += 1
     return bits[bit_i[0] - 1]
 
-def decode_frame(short[:] frame, bits: bitarray, short m, short k):
+def decode_frame(short[:] frame, bits: bitarray, short k):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
     :param bits: bitaray from which the frame should be restored
-    :param m: rice m constant
     :param k: rice k constant
     :return: None
     """
-    cdef short q, s, j
+    cdef short m, q, s, j
     cdef Py_ssize_t x_max, i
     cdef Py_ssize_t bit_i = 0
     x_max = frame.shape[0]
+    m = 1 << k
 
     for i in range(x_max):
         q = 0

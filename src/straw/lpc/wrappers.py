@@ -23,27 +23,45 @@ def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
     return steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
 
 
-def compute_residual(data: pd.DataFrame) -> np.array:
+def compute_residual(data: pd.DataFrame):
     """
     Computes the residual from the given signal with quantized LPC coefficients
+    :param data: input dataframe slice with columns [frame, qlp, shift]
+    :return: the input dataframe slice with a [residual] column added
+    """
+    qlp_idx = data[["qlp"]].first_valid_index()
+    shift_idx = data[["shift"]].first_valid_index()
+
+    if qlp_idx is None or shift_idx is None:
+        data["residual"] = None
+    elif isinstance(data["frame"], np.ndarray):
+        data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
+    else:
+        data["residual"] = data["frame"].apply(steps.predict_compute_residusal,
+                                               qlp=data["qlp"][qlp_idx],
+                                               shift=int(data["shift"][shift_idx]))
+
+    return data
+
+
+def _compute_original_df_expander(data: pd.DataFrame, qlp, shift):
+    return steps.restore_signal_cython(data["residual"], qlp, shift, data["frame"][:len(qlp)])
+
+
+def compute_original(data: pd.DataFrame):
+    """
+    Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
     :param data: input dataframe with columns [frame, qlp, shift]
     :return: residual as a numpy array
     """
+    qlp = data["qlp"][data["qlp"].first_valid_index()]
+    shift = int(data["shift"][data["shift"].first_valid_index()])
 
-    predicted = steps.predict_signal(data["frame"], data["qlp"], data["shift"])
-    if predicted is None:
-        return None
+    data["restored"] = data.apply(_compute_original_df_expander,
+                                  qlp=qlp, shift=shift,
+                                  axis=1, result_type="reduce")
 
-    return (data["frame"][len(data["qlp"]):] - predicted).astype(np.int16)
-
-
-def compute_original(data: pd.DataFrame) -> np.array:
-    """
-    Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
-    :param data: input dataframe with columns [residual, frame[:order], qlp, shift]
-    :return: residual as a numpy array
-    """
-    return steps.restore_signal_cython(data["residual"], data["qlp"], data["shift"], data["frame"][:len(data["qlp"])])
+    return data
 
 
 def compare_restored(data: pd.DataFrame) -> bool:

@@ -1,5 +1,6 @@
 import straw
 from .corrections import CorrectionsPlot
+from .experiments import Experiments
 from .lpc import LPCPlot
 
 
@@ -16,3 +17,5 @@ def plot_all(args=None):
     CorrectionsPlot(e, args).gain()
     CorrectionsPlot(e, args).offset()
     CorrectionsPlot(e, args).all()
+    LPCPlot(e, args).common_lpc_autoc_averaging()
+    LPCPlot(e, args).common_lpc_variances()

@@ -2,6 +2,7 @@ import math
 import sys
 
 import numpy as np
+import pandas as pd
 import pyximport
 from scipy.linalg import solve_toeplitz
 
@@ -28,13 +29,22 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
     :return: array of length p containing LPC coefficients
     """
 
-    # Extend to 64 bits to prevent overflows
-    signal = signal.astype("i8")
+    if isinstance(signal, pd.Series):
+        # we are dealing with a multichannel LPC
+        # Extend to 64 bits to prevent overflows
+        if not signal.apply(np.any).all():
+            return None
 
-    if not signal.any():
-        return None
+        r = np.asarray([_autocorr(s.astype("i8"), p + 1) for s in signal])
+        r = np.mean(r, axis=0)
+    else:
+        # Extend to 64 bits to prevent overflows
+        signal = signal.astype("i8")
 
-    r = _autocorr(signal, p + 1)
+        if not signal.any():
+            return None
+
+        r = _autocorr(signal, p + 1)
 
     return solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
@@ -149,7 +159,7 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
 ##############
 
 
-def predict_signal(frame: np.array, qlp: np.array, shift: int):
+def predict_signal(frame: np.array, qlp: np.array, shift):
     """
     Executes LPC prediction
     The resulting predicted signal starts with the order-th sample
@@ -158,10 +168,23 @@ def predict_signal(frame: np.array, qlp: np.array, shift: int):
     :param shift: coefficient quantization shift
     :return: predicted frame with shape [order:]
     """
+    shift = int(shift)
     if qlp is None or len(qlp) == 0:
         return None
 
     return np.convolve(frame, qlp, mode="full")[len(qlp) - 1:-len(qlp)] >> shift
+
+
+def predict_compute_residusal(frame: np.array, qlp: np.array, shift: int):
+    """
+    Executes LPC prediction and returns the residual by subtracting the original frame from the predicted signal
+    :param frame: signal frame
+    :param qlp: quantized LPC coefficients
+    :param shift: coefficient quantization shift
+    :return: frame residual with shape [order:]
+    """
+    predicted = predict_signal(frame, qlp, shift)
+    return (frame[len(qlp):] - predicted).astype(np.int16)
 
 
 ###############

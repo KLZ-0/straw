@@ -2,6 +2,36 @@
 # cython: language_level=3
 import numpy as np
 
+####################
+# LPC coefficients #
+####################
+
+# @cython.cdivision(True)
+# def compute_lp_coefficients(long[:] autoc, int order, double[:] lpc):
+#     cdef int j
+#     cdef double r, err
+#     cdef double tmp
+#
+#     err = autoc[0]
+#
+#     r = -autoc[order + 1]
+#     for j in range(order):
+#         r -= lpc[j] * autoc[order - j]
+#     r /= err
+#
+#     lpc[order] = r
+#     for j in range(order >> 1):
+#         tmp = lpc[j]
+#         lpc[j] += r * lpc[order - 1 - j]
+#         lpc[order - 1 - j] += r * tmp
+#
+#     if order & 1:
+#         lpc[j] += lpc[j] * r
+#
+#     err *= (1.0 - r * r)
+#     return err
+
+
 ################
 # Quantization #
 ################

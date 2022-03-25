@@ -15,75 +15,112 @@ class Ricer:
     Currently only supports memory for for memory efficiency comparisons and benchmarks
     """
 
-    def __init__(self, m):
-        self.m = m
-        self.k = int(np.log2(self.m))
+    def __init__(self, k):
+        self.k = k
+        self.m = 1 << k
         self.parallel = ParallelCompute()
+
+    ##########################
+    # Optimal order guessing #
+    ##########################
+
+    @staticmethod
+    def _compute_expected_bits_per_sample(lpc_error, residual_samples):
+        error_scale = 0.5 / residual_samples
+
+        if lpc_error > 0.0:
+            bps = 0.5 * np.log(error_scale * lpc_error) / np.log(2)
+            if bps >= 0.0:
+                return bps
+            else:
+                return 0.0
+        elif lpc_error < 0.0:
+            return 1e32
+        else:
+            return 0.0
+
+    @staticmethod
+    def guess_parameter(lpc_error, residual_samples):
+        # TODO: this gives a shitty output
+        lpc_residual_bits_per_sample = Ricer._compute_expected_bits_per_sample(lpc_error, residual_samples)
+        rice_parameter = int(lpc_residual_bits_per_sample + 0.5) if (lpc_residual_bits_per_sample > 0.0) else 0
+        rice_parameter += 1  # account for signed conversion
+        return rice_parameter
 
     ############
     # Encoding #
     ############
 
-    def frame_to_bitstream(self, frame: np.array) -> bitarray:
+    def frame_to_bitstream(self, frame: np.array, bps: int) -> bitarray:
         """
         Encode a numpy frame to a bitsream
         :param frame: numpy array of samples to encode
+        :param bps: expected bits per sample
         :return: encoded bitarray
         """
         data = bitarray()
 
         if frame is not None:
-            ext.encode_frame(data, frame, self.m, self.k)
+            ext.encode_frame(data, frame, bps)
 
         return data
 
-    def frames_to_bitstreams(self, frames: pd.Series, parallel: bool = True) -> pd.Series:
+    def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
+        return self.frame_to_bitstream(df["frame"], df["bps"])
+
+    def frames_to_bitstreams(self, frames: pd.Series, bps: pd.Series, parallel: bool = True) -> pd.Series:
         """
         Encode a series of frames to a series of bitsreams
         :param frames: series of frames
+        :param bps: expected bits per second for this frame
         :param parallel: if True then use multithreading
         :return: encoded bitarrays
         """
 
-        if not parallel:
-            return frames.apply(self.frame_to_bitstream)
+        comp = pd.DataFrame({"frame": frames, "bps": bps})
 
-        return self.parallel.apply(frames, self.frame_to_bitstream)
+        if not parallel:
+            return comp.apply(self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
+
+        return self.parallel.apply(comp, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
     ############
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int) -> np.array:
+    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int) -> np.array:
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
         :param bitstream: rice encoded stream
         :param frame_size: frame size
+        :param bps: expected bits per sample
         :return: decoded frame
         """
         frame = np.zeros(frame_size, dtype=np.short)
 
         if len(bitstream) > 0:
-            ext.decode_frame(frame, bitstream, self.m, self.k)
+            ext.decode_frame(frame, bitstream, bps)
 
         return frame
 
     def _bitstream_to_frame_df_expander(self, df: pd.DataFrame) -> np.array:
-        return self.bitstream_to_frame(df["stream"], df["size"])
+        return self.bitstream_to_frame(df["stream"], df["size"], df["bps"])
 
-    def bitstreams_to_frames(self, bitstreams: pd.Series, frame_sizes: pd.Series, parallel: bool = True) -> pd.Series:
+    def bitstreams_to_frames(self, bitstreams: pd.Series, frame_sizes: pd.Series, bps: pd.Series,
+                             parallel: bool = True) -> pd.Series:
         """
         Encode a series of bitstreams to a series of frames
         :param bitstreams: series of bitstreams
         :param frame_sizes: series of frame sizes
+        :param bps: expected bits per second for this frame
         :param parallel: if True then use multithreading
         :return: series of decoded frames
         """
 
-        comp = pd.DataFrame({"stream": bitstreams, "size": frame_sizes})
+        comp = pd.DataFrame({"stream": bitstreams, "size": frame_sizes, "bps": bps})
 
         if not parallel:
-            return comp.apply(self._df_expander, axis=1, result_type="reduce")
+            return comp.apply(self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
         return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")

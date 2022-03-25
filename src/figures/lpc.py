@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,19 +6,15 @@ import pandas as pd
 import seaborn as sns
 
 # NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
-import straw
+from figures.baseplot import BasePlot
 from straw.lpc import steps
 
 
-class LPCPlot:
-    def __init__(self, e: straw.Encoder, args=None):
-        self._args = args
-        self._e = e
-        self.fig_dir = Path(getattr(self._args, "fig_dir", "outputs"))
-        self.fig_dir.mkdir(parents=True, exist_ok=True)
-        self.fig_show = getattr(self._args, "fig_show", False)
-
+class LPCPlot(BasePlot):
     def print_lpc_and_qlp(self):
+        """
+        Prints LPC and QLP coefficients
+        """
         frame = self._e.sample_frame()
         lpc = steps.compute_lpc(frame["frame"], 8)
         qlp, shift = steps.quantize_lpc(lpc, 12)
@@ -38,6 +33,9 @@ class LPCPlot:
         print("%%%%%%%% INSERT TABLE %%%%%%%%")
 
     def prediction_comparison(self):
+        """
+        Shows the original frame and a predicted frame
+        """
         frame = self._e.sample_frame()
         # FIXME: magic number order=8
         f = frame["frame"][8:160]
@@ -56,12 +54,13 @@ class LPCPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "prediction_comparison.pdf")
-
-        if self.fig_show:
-            plt.show()
+        self.save("prediction_comparison.pdf")
 
     def residual(self):
+        """
+        Shows a residual frame
+        :return:
+        """
         frame = self._e.sample_frame()
         # FIXME: magic number order=8
         f = frame["frame"][8:160]
@@ -79,7 +78,55 @@ class LPCPlot:
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        plt.savefig(self.fig_dir / "residual.pdf")
+        self.save("residual.pdf")
 
-        if self.fig_show:
-            plt.show()
+    def common_lpc_autoc_averaging(self):
+        """
+        Shows the residuals after using common LPC coefficients across all channels
+        """
+        data = self._e.sample_frame_multichannel()
+        df = {"x": [], "value": [], "Channel": []}
+        for i, ds in enumerate(data["residual"]):
+            df["x"] += [i for i in range(len(ds))]
+            df["Channel"] += [i for _ in ds]
+            df["value"] += list(ds)
+        df = pd.DataFrame(df)
+
+        s = sns.relplot(data=df, kind="line", x="x", y="value", hue="Channel", height=2.5, aspect=3)
+
+        plt.title("Frame residuals with common LPC coefficients (averaged autoc)")
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
+        self.save("lpc_averaged.png")
+
+        # Also print variances...
+
+        print("Variances:")
+        table = pd.DataFrame({
+            "channel": data["channel"],
+            "variance": data["residual"].apply(np.var),
+        })
+        table = table.set_index("channel")
+
+        print(table.T.to_latex(caption="Variances",
+                               position="H", float_format="{:0.3f}".format, escape=False))
+        # print("\n".join([f"{f:.3f}" for f in data["residual"].apply(np.var)]))
+
+    def common_lpc_variances(self):
+        """
+        Show variances across all frames across for all channels
+        """
+        df = self._e.get_data()
+        df["variance"] = df["residual"].apply(np.var)
+
+        s = sns.relplot(data=df, kind="line", x="seq", y="variance", hue="channel", height=6, aspect=1.8)
+        s.set(ylim=(0, 7500))
+
+        plt.title("Residual variance with common LPC coefficients (averaged autoc)")
+        s.set_xlabels("Frame")
+        s.set_ylabels("Variance")
+        s.tight_layout()
+
+        self.save("lpc_averaged_variances.png")
