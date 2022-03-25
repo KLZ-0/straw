@@ -1,11 +1,12 @@
-from .corrections import CorrectionsPlot
-from .experiments import Experiments
-from .lpc import LPCPlot
 from .static import show_frame
 
 
 def plot_all(args=None):
     from straw import Encoder
+    from .corrections import CorrectionsPlot
+    from .experiments import Experiments
+    from .lpc import LPCPlot
+
     e = Encoder(args)
     e.load_files(args.input_files)
     e.create_frames()

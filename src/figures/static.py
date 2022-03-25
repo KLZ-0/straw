@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import pandas as pd
-import seaborn as sns
 from matplotlib import pyplot as plt
 
 
 def show_frame(data: pd.DataFrame, file_name="tmp.png", file_dir="outputs", show=True, limit=None):
+    import seaborn as sns
     fig_dir = Path(file_dir)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
