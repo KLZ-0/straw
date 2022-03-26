@@ -5,19 +5,23 @@ import pandas as pd
 
 
 class GainCorrector:
-    def apply(self, df: pd.DataFrame):
+    def apply(self, df: pd.DataFrame, col_name: str = "frame"):
         """
         Takes dataframe with 1-n channels
         TODO: deal with 1 channel
+        :param col_name:
         :param df:
         :return:
         """
 
-        ref_idx = self.choose_idx(df["frame"])
+        if col_name not in df.columns:
+            raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        ref_idx = self.choose_idx(df[col_name])
         for i, row in df.iterrows():
             if i == ref_idx:
                 continue
-            df["frame"][i], factor = self.equalize(row["frame"], df["frame"][ref_idx])
+            df[col_name][i], factor = self.equalize(row[col_name], df[col_name][ref_idx])
 
         return df
 
