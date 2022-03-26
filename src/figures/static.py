@@ -4,7 +4,13 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 
-def show_frame(data: pd.DataFrame, file_name="tmp.png", file_dir="outputs", show=True, limit=None, col_name="frame"):
+def show_frame(data: pd.DataFrame,
+               file_name="tmp.png",
+               file_dir="outputs",
+               show=True,
+               limit=None,
+               col_name="frame",
+               terminate=True):
     import seaborn as sns
     fig_dir = Path(file_dir)
     fig_dir.mkdir(parents=True, exist_ok=True)
@@ -29,3 +35,6 @@ def show_frame(data: pd.DataFrame, file_name="tmp.png", file_dir="outputs", show
     plt.savefig(fig_dir / file_name)
     if show:
         plt.show()
+
+    if terminate:
+        exit(0)
