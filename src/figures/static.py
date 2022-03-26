@@ -18,8 +18,10 @@ def show_frame(data: pd.DataFrame,
     df = {"x": [], "value": [], "Channel": []}
     for i, row in data.iterrows():
         ds = row[col_name]
-        if limit:
+        if isinstance(limit, int):
             ds = ds[:limit]
+        elif isinstance(limit, tuple):
+            ds = ds[limit[0]:limit[1]]
         df["x"] += [u for u in range(len(ds))]
         df["Channel"] += [row["channel"] for _ in ds]
         df["value"] += list(ds)
