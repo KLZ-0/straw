@@ -27,7 +27,7 @@ class GainCorrector(BaseCorrector):
 
     @staticmethod
     def energy(frame: np.ndarray):
-        return frame.var()
+        return np.sqrt(frame.var())
 
     @staticmethod
     def equalize(frame: np.ndarray, reference: np.ndarray):
