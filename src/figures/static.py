@@ -11,7 +11,6 @@ def show_frame(data: pd.DataFrame,
                limit=None,
                col_name="frame",
                terminate=True):
-    import seaborn as sns
     fig_dir = Path(file_dir)
     fig_dir.mkdir(parents=True, exist_ok=True)
 
@@ -27,6 +26,7 @@ def show_frame(data: pd.DataFrame,
         df["value"] += list(ds)
     df = pd.DataFrame(df)
 
+    import seaborn as sns
     s = sns.relplot(data=df, kind="line", x="x", y="value", hue="Channel", height=2.5, aspect=3)
 
     plt.title("Frame")
