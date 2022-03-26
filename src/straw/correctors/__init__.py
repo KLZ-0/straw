@@ -1,5 +1,6 @@
 import numpy as np
 
+from .bias import BiasCorrector
 from .gain import GainCorrector
 from .shift import ShiftCorrector
 
