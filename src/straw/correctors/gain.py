@@ -3,8 +3,10 @@ from fractions import Fraction
 import numpy as np
 import pandas as pd
 
+from straw.correctors.base import BaseCorrector
 
-class GainCorrector:
+
+class GainCorrector(BaseCorrector):
     def apply(self, df: pd.DataFrame, col_name: str = "frame"):
         """
         Takes dataframe with 1-n channels
@@ -13,9 +15,7 @@ class GainCorrector:
         :param df:
         :return:
         """
-
-        if col_name not in df.columns:
-            raise ValueError(f"Column '{col_name}' not in dataframe")
+        super().apply(df, col_name)
 
         ref_idx = self.choose_idx(df[col_name])
         for i, row in df.iterrows():
