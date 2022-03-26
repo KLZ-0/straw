@@ -5,6 +5,22 @@ import pandas as pd
 
 
 class GainCorrector:
+    def apply(self, df: pd.DataFrame):
+        """
+        Takes dataframe with 1-n channels
+        TODO: deal with 1 channel
+        :param df:
+        :return:
+        """
+
+        ref_idx = self.choose_idx(df["frame"])
+        for i, row in df.iterrows():
+            if i == ref_idx:
+                continue
+            df["frame"][i], factor = self.equalize(row["frame"], df["frame"][ref_idx])
+
+        return df
+
     @staticmethod
     def energy(frame: np.ndarray):
         return frame.var()
@@ -40,19 +56,3 @@ class GainCorrector:
         # mid = variances.mean()
         mid = variances.min()
         return np.abs(variances - mid).idxmin()
-
-    def apply(self, df: pd.DataFrame):
-        """
-        Takes dataframe with 1-n channels
-        TODO: deal with 1 channel
-        :param df:
-        :return:
-        """
-
-        ref_idx = self.choose_idx(df["frame"])
-        for i, row in df.iterrows():
-            if i == ref_idx:
-                continue
-            df["frame"][i], factor = self.equalize(row["frame"], df["frame"][ref_idx])
-
-        return df
