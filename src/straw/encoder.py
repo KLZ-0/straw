@@ -87,8 +87,8 @@ class Encoder:
         # Without:
         # Length of bitstream: 48952282 bits, bytes: 6119036 aligned (5.84 MiB)
         self._data = self._data.groupby("seq").apply(GainCorrector().apply)
-        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
         self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
+        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
         pass
 
     def encode(self):

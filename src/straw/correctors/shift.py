@@ -16,9 +16,7 @@ class ShiftCorrector(BaseCorrector):
         """
         super().apply(df, col_name)
 
-        ref_idx = self.choose_idx(df[col_name])
-
-        lags = df[col_name].apply(self._corr, reference=df[col_name][ref_idx], end=10)
+        lags, ref_idx = self.get_lags(df[col_name])
         max_lag = np.max(lags)
 
         # show_frame(df, limit=60)
@@ -33,14 +31,25 @@ class ShiftCorrector(BaseCorrector):
         # exit()
         return df
 
-    @staticmethod
-    def _tmp(s1: np.array, s2: np.array, start: int, end: int) -> np.array:
-        return np.asarray([s1[:len(s1) - i].dot(s2[i:]) for i in range(start, end)])
+    def get_lags(self, frames, limit=10):
+        """
+        Return lags compared to the leading channel, and the index of the leading channel
+        :param limit:
+        :param frames:
+        :return:
+        """
+        lags = frames.apply(self._double_sided_corr, reference=frames[frames.index.min()].astype(np.int64), limit=limit)
+        idx_min = lags.idxmin()
+        return frames.apply(self._corr, reference=frames[idx_min].astype(np.int64), end=limit - 1), idx_min
+
+    def _double_sided_corr(self, frame: np.array, reference: np.array, limit):
+        lag_pos = self._corr(frame, reference, limit // 2 - 1)
+        lag_neg = self._corr(reference, frame, limit // 2)
+        return lag_pos if lag_pos >= lag_neg else -lag_neg
 
     @staticmethod
     def _corr(frame: np.array, reference: np.array, end: int, start: int = 0) -> np.array:
         frame = frame.astype(np.int64)
-        reference = reference.astype(np.int64)
         return start + np.argmax([reference[:len(reference) - i].dot(frame[i:]) for i in range(start, end)])
 
     @staticmethod
@@ -49,26 +58,3 @@ class ShiftCorrector(BaseCorrector):
         # mid = variances.mean()
         mid = variances.min()
         return np.abs(variances - mid).idxmin()
-
-    def align_frames(self, df: pd.DataFrame):
-        pass
-
-        # for i, row in df.iterrows():
-        #     lag = self._tmp(row["frame"], df["frame"][mid_idx], 0, 30)
-        #     print(self._corr(row["frame"], df["frame"][mid_idx], 0, 30), lag)
-        #     self.show_frame(df.loc[[0, mid_idx]])
-        #     df["frame"][i] = df["frame"][i][lag:]
-        #     exit()
-
-        # f1 = df["frame"][0]
-        # f2 = df["frame"][235]
-        # lag = self._corr(f1, f2, 0, 30)
-        # print(self._tmp(f1, f2, 0, 30), lag)
-        # # self.show_frame(df.loc[[235, 0]], "tmp1.png")
-        # df["frame"][0] = f1[:len(f1) - lag]
-        # df["frame"][235] = f2[lag:]
-        # # self.show_frame(df.loc[[235, 0]], "tmp2.png")
-        # f1 = df["frame"][0]
-        # f2 = df["frame"][235]
-        # lag = self._corr(f1, f2, 0, 30)
-        # print(self._tmp(f1, f2, 0, 30), lag)
