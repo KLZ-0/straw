@@ -39,6 +39,8 @@ class ShiftCorrector(BaseCorrector):
 
     @staticmethod
     def _corr(frame: np.array, reference: np.array, end: int, start: int = 0) -> np.array:
+        frame = frame.astype(np.int64)
+        reference = reference.astype(np.int64)
         return start + np.argmax([reference[:len(reference) - i].dot(frame[i:]) for i in range(start, end)])
 
     @staticmethod
