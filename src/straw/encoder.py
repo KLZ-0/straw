@@ -6,6 +6,7 @@ import pandas as pd
 import soundfile
 
 from . import lpc
+from .correctors import BiasCorrector, ShiftCorrector, GainCorrector, deconvolve
 from .rice import Ricer
 
 
@@ -83,8 +84,11 @@ class Encoder:
         pass
 
     def apply_corrections(self):
-        # self._data = self._data.groupby("seq").apply(GainCorrector().apply)
-        # self._data.groupby("seq").apply(ShiftCorrector().apply)
+        # Without:
+        # Length of bitstream: 48952282 bits, bytes: 6119036 aligned (5.84 MiB)
+        self._data = self._data.groupby("seq").apply(GainCorrector().apply)
+        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
+        self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
         pass
 
     def encode(self):
@@ -92,7 +96,7 @@ class Encoder:
         self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
 
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
-        # self._data = self._data.groupby("seq").apply(deconvolve)
+        self._data = self._data.groupby("seq").apply(deconvolve)
 
     def save_file(self, filename):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
