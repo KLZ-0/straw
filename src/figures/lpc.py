@@ -84,7 +84,7 @@ class LPCPlot(BasePlot):
         """
         Shows the residuals after using common LPC coefficients across all channels
         """
-        data = self._e.sample_frame_multichannel()
+        data = self._e.sample_frame_multichannel(1)
         df = {"x": [], "value": [], "Channel": []}
         for i, ds in enumerate(data["residual"]):
             df["x"] += [i for i in range(len(ds))]

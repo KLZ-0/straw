@@ -58,5 +58,6 @@ class GainCorrector(BaseCorrector):
     def choose_idx(frames: pd.Series):
         variances = frames.apply(np.var)
         # mid = variances.mean()
-        mid = variances.min()
+        # mid = variances.min()
+        mid = variances.max()
         return np.abs(variances - mid).idxmin()

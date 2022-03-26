@@ -6,6 +6,7 @@ import pandas as pd
 import soundfile
 
 from . import lpc
+from .correctors import GainCorrector, ShiftCorrector, BiasCorrector
 from .rice import Ricer
 
 
@@ -85,9 +86,9 @@ class Encoder:
     def apply_corrections(self):
         # Without:
         # Length of bitstream: 48952282 bits, bytes: 6119036 aligned (5.84 MiB)
-        # self._data = self._data.groupby("seq").apply(GainCorrector().apply)
-        # self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
-        # self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
+        self._data = self._data.groupby("seq").apply(GainCorrector().apply)
+        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
+        self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
         pass
 
     def encode(self):
@@ -97,8 +98,11 @@ class Encoder:
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         # self._data = self._data.groupby("seq").apply(deconvolve)
         # show_frame(self._data[self._data["seq"] == 0], col_name="residual", limit=60)
+        # self._data["var"] = self._data["residual"].apply(np.var)
 
     def save_file(self, filename):
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1740, 1800), file_name="gain_shift_correction_after.png")
+        # show_frame(self._data[self._data["seq"] == 4], col_name="residual", limit=(1740, 1800))
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
@@ -130,8 +134,8 @@ class Encoder:
     def sample_frame(self) -> pd.Series:
         return self._data.loc[0]
 
-    def sample_frame_multichannel(self) -> pd.DataFrame:
-        return self._data[self._data["seq"] == 0]
+    def sample_frame_multichannel(self, seq=0) -> pd.DataFrame:
+        return self._data[self._data["seq"] == seq]
 
     def get_data(self) -> pd.DataFrame:
         return self._data
