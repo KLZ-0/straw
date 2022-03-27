@@ -21,7 +21,11 @@ Length of bitstream: 46509830 bits, bytes: 5813729 aligned (5.54 MiB)
 **FF Rice:**
 Length of bitstream: 45480438 bits, bytes: 5685055 aligned (5.42 MiB)
 
-Ratio = 0.370 FLAC = 0.372
+**Ratios:**
+
+- Ratio = 0.370
+- With LPC coeffs = 0.372
+- FLAC = 0.372
 
 ### Corrections (#23)
 
