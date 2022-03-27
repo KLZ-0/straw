@@ -64,8 +64,7 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
     x_max = frame.shape[0]
     m = 1 << k
 
-    # cdef short last = 0
-    # cdef short last2 = 0
+    cdef short scale = 0
 
     for i in range(x_max):
         s = _interleave(frame[i])
@@ -81,24 +80,23 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
 
         # TODO: feed-forward rice implementation
         # Update rice param
-        # if last >= 3:
-        #     last = 0
-        #     k += 1
-        #     m = 1 << k
-        #     continue
-        # if last2 >= 3:
-        #     last2 = 0
-        #     k -= 1
-        #     m = 1 << k
-        #     continue
-        #
-        # if s > m:
-        #     last += 1
-        # elif s < m / 2:
-        #     last2 += 1
-        # else:
-        #     last = 0
-        #     last2 = 0
+        if scale > 2:
+            scale = 0
+            k += 1
+            m = 1 << k
+            continue
+        if scale < -2:
+            scale = 0
+            k -= 1
+            m = 1 << k
+            continue
+
+        if s > m:
+            scale += 1
+        elif s < m / 2:
+            scale -= 1
+        else:
+            scale = 0
 
 ############
 # Decoding #
