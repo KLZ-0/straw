@@ -84,11 +84,13 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
             scale = 0
             k += 1
             m = 1 << k
+            # print("e switched up:\t\t ", i, s, m)
             continue
         if scale < -2:
             scale = 0
             k -= 1
             m = 1 << k
+            # print("e switched down:\t ", i, s, m)
             continue
 
         if s > m:
@@ -106,6 +108,7 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     bit_i[0] += 1
     return bits[bit_i[0] - 1]
 
+@cython.cdivision(True)
 def decode_frame(short[:] frame, bits: bitarray, short k):
     """
     Decodes a whole residual frame from the given bitstream
@@ -120,6 +123,8 @@ def decode_frame(short[:] frame, bits: bitarray, short k):
     x_max = frame.shape[0]
     m = 1 << k
 
+    cdef short scale = 0
+
     for i in range(x_max):
         q = 0
         while _get_bit(bits, &bit_i):
@@ -131,3 +136,23 @@ def decode_frame(short[:] frame, bits: bitarray, short k):
             s |= _get_bit(bits, &bit_i) << (k - j - 1)
 
         frame[i] = _deinterleave(s)
+
+        if scale > 2:
+            scale = 0
+            k += 1
+            m = 1 << k
+            # print("dec switched up:\t ", i, s, m)
+            continue
+        if scale < -2:
+            scale = 0
+            k -= 1
+            m = 1 << k
+            # print("dec switched down:\t ", i, s, m)
+            continue
+
+        if s > m:
+            scale += 1
+        elif s < m / 2:
+            scale -= 1
+        else:
+            scale = 0
