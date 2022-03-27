@@ -51,12 +51,13 @@ def _append_n_bits(bits: bitarray, short number, short n):
     bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, short[:] frame, short k):
+def encode_frame(bits: bitarray, short[:] frame, short k, short resp):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
     :param frame: the frame to be encoded
-    :param k: rice k constant
+    :param k: starting rice parameter
+    :param resp: rice parameter responsiveness
     :return: None
     """
     cdef short m, q, s
@@ -80,13 +81,13 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
 
         # TODO: feed-forward rice implementation
         # Update rice param
-        if scale > 2:
+        if scale > resp:
             scale = 0
             k += 1
             m = 1 << k
             # print("e switched up:\t\t ", i, s, m)
             continue
-        if scale < -2:
+        if scale < -resp:
             scale = 0
             k -= 1
             m = 1 << k
@@ -109,12 +110,13 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     return bits[bit_i[0] - 1]
 
 @cython.cdivision(True)
-def decode_frame(short[:] frame, bits: bitarray, short k):
+def decode_frame(short[:] frame, bits: bitarray, short k, short resp):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
     :param bits: bitaray from which the frame should be restored
-    :param k: rice k constant
+    :param k: starting rice parameter
+    :param resp: rice parameter responsiveness
     :return: None
     """
     cdef short m, q, s, j
@@ -137,13 +139,13 @@ def decode_frame(short[:] frame, bits: bitarray, short k):
 
         frame[i] = _deinterleave(s)
 
-        if scale > 2:
+        if scale > resp:
             scale = 0
             k += 1
             m = 1 << k
             # print("dec switched up:\t ", i, s, m)
             continue
-        if scale < -2:
+        if scale < -resp:
             scale = 0
             k -= 1
             m = 1 << k
