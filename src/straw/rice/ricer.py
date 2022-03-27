@@ -15,7 +15,7 @@ class Ricer:
     Currently only supports memory for for memory efficiency comparisons and benchmarks
     """
 
-    def __init__(self, k, responsiveness: int = 5):
+    def __init__(self, k, responsiveness: int = 6):
         self.k = k
         self.m = 1 << k
         self.parallel = ParallelCompute()
