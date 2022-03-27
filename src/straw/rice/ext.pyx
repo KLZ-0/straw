@@ -96,7 +96,7 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp):
 
         if s > m:
             scale += 1
-        elif s < m / 2:
+        elif s < m:
             scale -= 1
         else:
             scale = 0
@@ -154,7 +154,7 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp):
 
         if s > m:
             scale += 1
-        elif s < m / 2:
+        elif s < m:
             scale -= 1
         else:
             scale = 0

@@ -15,10 +15,13 @@ Length of bitstream: 46704242 bits, bytes: 5838031 aligned (5.57 MiB)
 **FF Rice (aae63488):**
 Length of bitstream: 46561204 bits, bytes: 5820151 aligned (5.55 MiB)
 
-**FF Rice:**
+**FF Rice (12cb01ee):**
 Length of bitstream: 46509830 bits, bytes: 5813729 aligned (5.54 MiB)
 
-Ratio = 0.378
+**FF Rice:**
+Length of bitstream: 45480438 bits, bytes: 5685055 aligned (5.42 MiB)
+
+Ratio = 0.370 FLAC = 0.372
 
 ### Corrections (#23)
 
