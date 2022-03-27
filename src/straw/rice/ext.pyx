@@ -79,12 +79,6 @@ def encode_frame(bits: bitarray, short[:] frame, short k):
 
         _append_n_bits(bits, s, k)
 
-        # Length of bitstream: 48877826 bits, bytes: 6109729 aligned (5.83 MiB)
-        # Length of bitstream: 46704242 bits, bytes: 5838031 aligned (5.57 MiB)
-
-        # Length of bitstream: 53031392 bits, bytes: 6628924 aligned (6.32 MiB)
-        # Length of bitstream: 49836320 bits, bytes: 6229540 aligned (5.94 MiB)
-
         # TODO: feed-forward rice implementation
         # Update rice param
         # if last >= 3:
