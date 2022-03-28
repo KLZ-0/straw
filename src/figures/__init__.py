@@ -6,6 +6,7 @@ def plot_all(args=None):
     from .corrections import CorrectionsPlot
     from .experiments import Experiments
     from .lpc import LPCPlot
+    from .rice import RicePlot
 
     e = Encoder(args)
     e.load_files(args.input_files)
@@ -21,3 +22,7 @@ def plot_all(args=None):
     CorrectionsPlot(e, args).all()
     LPCPlot(e, args).common_lpc_autoc_averaging()
     LPCPlot(e, args).common_lpc_variances()
+    RicePlot(e, args).interleave()
+    RicePlot(e, args).static_m()
+    RicePlot(e, args).dynamic_m()
+    RicePlot(e, args).k_diff()

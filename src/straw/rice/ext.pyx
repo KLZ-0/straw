@@ -158,3 +158,51 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp):
             scale -= 1
         else:
             scale = 0
+
+###########
+# Utility #
+###########
+
+@cython.cdivision(True)
+def kparams(short[:] frame, short k, short resp):
+    """
+    Encodes a whole residual frame and appends it to the end of the given bitstream
+    :param frame: the frame to be encoded
+    :param k: starting rice parameter
+    :param resp: rice parameter responsiveness
+    :return: None
+    """
+    cdef short s
+    cdef Py_ssize_t x_max, i
+    x_max = frame.shape[0]
+    m = 1 << k
+
+    cdef short scale = 0
+
+    for i in range(x_max):
+        s = _interleave(frame[i])
+        frame[i] = k
+
+        if scale > resp:
+            scale = 0
+            k += 1
+            m = 1 << k
+            continue
+        if scale < -resp:
+            scale = 0
+            k -= 1
+            m = 1 << k
+            continue
+
+        if s > m:
+            scale += 1
+        elif s < m:
+            scale -= 1
+        else:
+            scale = 0
+
+def interleave_frame(short[:] frame):
+    cdef Py_ssize_t x_max, i
+    x_max = frame.shape[0]
+    for i in range(x_max):
+        frame[i] = _interleave(frame[i])

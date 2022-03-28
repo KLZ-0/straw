@@ -126,3 +126,19 @@ class Ricer:
             return comp.apply(self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
         return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
+
+    ###########
+    # Utility #
+    ###########
+
+    @staticmethod
+    def frame_to_kparams(frame: np.ndarray, k: int, responsiveness: int):
+        frame = np.copy(frame)
+        ext.kparams(frame, k, responsiveness)
+        return frame
+
+    @staticmethod
+    def frame_to_interleaved(frame: np.ndarray):
+        frame = np.copy(frame)
+        ext.interleave_frame(frame)
+        return frame
