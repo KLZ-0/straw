@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 # NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
-from figures.baseplot import BasePlot
+from figures.base import BasePlot
 from straw.lpc import steps
 
 
