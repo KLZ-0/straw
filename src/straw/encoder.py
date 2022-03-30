@@ -7,7 +7,7 @@ import pandas as pd
 import soundfile
 
 from . import lpc
-from .io import FormatFLAC
+from .io import Formatter
 from .rice import Ricer
 
 
@@ -90,11 +90,11 @@ class Encoder:
 
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
 
-    def save_file(self, strawfile: Path):
+    def save_file(self, output_file: Path):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
-        FormatFLAC(self._data).save(strawfile)
+        Formatter(self._data).save(output_file)
         # TODO: actually save bitstreams
 
     def restore(self):

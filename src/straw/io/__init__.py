@@ -1,1 +1,1 @@
-from .flac import FormatFLAC
+from .formater import Formatter

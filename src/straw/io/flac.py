@@ -3,23 +3,14 @@ from pathlib import Path
 import pandas as pd
 
 
-class FormatFLAC:
+class FLACFormat:
     def __init__(self, data: pd.DataFrame):
         self.data = data
 
-    def validate_dataframe(self):
+    def save(self, output_file: Path):
         """
-        Validate the contents of the dataframe before opening the file stream
-        Raise an error on invalid data
+        Saves the dataframe into a FLAC formatted binary file
+        :param output_file: target file
         :return: None
         """
-        if len(self.data) == 0:
-            raise ValueError("Empty dataframe")
-
-    def save(self, strawfile: Path):
-        """
-        Saves the dataframe into a straw formatted binary file
-        :param strawfile: target file
-        :return: None
-        """
-        self.validate_dataframe()
+        pass
