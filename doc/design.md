@@ -1,5 +1,7 @@
 # Design
 
+[IETF](https://www.ietf.org/id/draft-ietf-cellar-flac-02.html)
+
 The base design of Straw is based on [FLAC](https://xiph.org/flac).
 
 Linear prediction (LPC) is used to generate and predict a signal which substracted from the original signal results in a
