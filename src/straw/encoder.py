@@ -1,4 +1,5 @@
 import sys
+from hashlib import md5
 from pathlib import Path
 from typing import TextIO
 
@@ -17,6 +18,9 @@ class Encoder:
     _lpc_order = 10
     _lpc_precision = 12  # bits
     _frame_size = 4096  # bytes
+
+    _bits_per_sample = 16
+    _md5: md5
 
     # Data from source
     _source_size = 0
@@ -49,7 +53,8 @@ class Encoder:
 
         # TODO: verify if the files are from the same recording
         for filename in filenames:
-            data, sr = soundfile.read(filename, dtype="int16")
+            data, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
+            self._md5 = md5(data)
             self._source_size += data.nbytes
             if self._samplerate is None:
                 self._samplerate = sr
@@ -94,6 +99,10 @@ class Encoder:
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
+        self._data.block_size = self._frame_size
+        self._data.sample_rate = self._samplerate
+        self._data.bits_per_sample = self._bits_per_sample
+        self._data.md5 = self._md5
         Formatter(self._data).save(output_file)
         # TODO: actually save bitstreams
 
