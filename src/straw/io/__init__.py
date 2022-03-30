@@ -1,0 +1,1 @@
+from .flac import FormatFLAC
