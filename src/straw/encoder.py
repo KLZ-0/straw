@@ -118,7 +118,7 @@ class Encoder:
         else:
             print("Not lossless :|")
 
-    def print_stats(self, stream: TextIO = sys.stdout):
+    def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         print(f"Number of frames: {len(self._data)}", file=stream)
         print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
@@ -126,8 +126,10 @@ class Encoder:
               f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)", file=stream)
         lpc_bytes = np.ceil(len(self._data) * self._lpc_precision * self._lpc_order * 1 / 8)
         print(f"Bytes needed for coefficients: {lpc_bytes:.0f} B", file=stream)
+        print(f"Output file size: {output_file.stat().st_size}", file=stream)
         print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}", file=stream)
         print(f"Ratio with LPC coeffs = {(np.ceil(size / 8) + lpc_bytes) / self._source_size:.3f}", file=stream)
+        print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)

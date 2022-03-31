@@ -32,6 +32,6 @@ def run(args):
     stop = timeit.default_timer()
     print(f"<TIME> restore: {stop - mid}", file=sys.stderr)
 
-    e.print_stats()
+    e.print_stats(args.output_file)
 
     print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
