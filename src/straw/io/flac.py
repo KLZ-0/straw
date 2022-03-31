@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 from bitarray import bitarray
 from bitarray.util import int2ba
-from crc8 import crc8
 
 from straw.io.base import BaseFormat
 
@@ -45,7 +44,22 @@ class FLACFormat(BaseFormat):
         return sec
 
     def _frame(self, df: pd.DataFrame):
+        # Header
         sec = self._frame_header(df)
+
+        # Process subframes
+        # sec.tobytes().hex(" ")
+        qlp = df["qlp"][df["qlp"].first_valid_index()]
+        qlp_precision = int(df["qlp_precision"][df["qlp_precision"].first_valid_index()])
+        shift = int(df["shift"][df["shift"].first_valid_index()])
+        tmp = df.apply(self._subframe, axis=1, qlp=qlp, qlp_precision=qlp_precision, shift=shift)
+        origsec = sec.copy()
+        for subframe_bitstream in tmp:
+            sec += subframe_bitstream
+        sec.fill()  # zero-padding to byte alignment
+
+        # Footer
+        sec += int2ba(self.Crc.crc16(sec.tobytes()), length=16)
         sec.tofile(self._f)
 
     def _frame_header(self, df: pd.DataFrame) -> bitarray:
@@ -78,5 +92,37 @@ class FLACFormat(BaseFormat):
         sec.frombytes(chr(df.index.min()).encode("utf-8"))
         if tmp:
             sec += int2ba(blocksize - 1, length=tmp)
-        sec.frombytes(crc8(sec.tobytes()).digest())
+        sec += int2ba(self.Crc.crc8(sec.tobytes()), length=8)
+        return sec
+
+    def _subframe(self, df: pd.Series, qlp: np.array, qlp_precision: int, shift: int) -> bitarray:
+        sec = self._subframe_header(df, qlp, qlp_precision, shift)
+        sec += self._subframe_lpc(df, qlp, qlp_precision, shift)
+        return sec
+
+    def _subframe_header(self, df: pd.Series, qlp: np.array, qlp_precision: int, shift: int) -> bitarray:
+        sec = bitarray()
+        sec.append(0)  # zero bit padding, to prevent sync-fooling string of 1s
+        sec.append(1)  # subframe type: 1xxxxx : SUBFRAME_LPC
+        sec += int2ba(len(qlp) - 1, length=5)  # xxxxx=order-1
+        sec.append(0)
+        return sec
+
+    def _subframe_lpc(self, df: pd.Series, qlp: np.array, qlp_precision: int, shift: int) -> bitarray:
+        sec = bitarray()
+        for warmup_sample in df["frame"][:len(qlp)]:
+            sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
+        sec += int2ba(qlp_precision - 1, length=4)
+        sec += int2ba(shift, length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
+        for coeff in qlp:
+            sec += int2ba(int(coeff), length=qlp_precision, signed=True)
+        sec += self._residual(df)
+        return sec
+
+    def _residual(self, df: pd.Series) -> bitarray:
+        sec = bitarray()
+        sec += int2ba(0, length=2)  # partitioned Rice coding with 4-bit Rice parameter
+        sec += int2ba(0, length=4)  # 2^0 partitions
+        sec += int2ba(int(df["bps"]), length=4)
+        sec += df["stream"]
         return sec

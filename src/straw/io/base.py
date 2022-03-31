@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+from crcmod import mkCrcFun
 
 from straw.io.params import StreamParams
 
@@ -8,6 +9,10 @@ from straw.io.params import StreamParams
 class BaseFormat:
     _f = None
     _params: StreamParams
+
+    class Crc:
+        crc8 = mkCrcFun(0x107, initCrc=0, rev=False)
+        crc16 = mkCrcFun(0x18005, initCrc=0, rev=False)
 
     def __init__(self, data: pd.DataFrame, params: StreamParams):
         self._data = data

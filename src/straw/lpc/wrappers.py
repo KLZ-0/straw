@@ -18,7 +18,7 @@ def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
     """
     lpc = steps.compute_lpc(frame["frame"], order)
     if lpc is None:
-        return None, 0
+        return None, 0, 0
 
     return steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
 

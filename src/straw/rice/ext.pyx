@@ -51,13 +51,14 @@ def _append_n_bits(bits: bitarray, short number, short n):
     bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, short[:] frame, short k, short resp):
+def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adaptive):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
     :param frame: the frame to be encoded
     :param k: starting rice parameter
     :param resp: rice parameter responsiveness
+    :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
     cdef short m, q, s
@@ -80,6 +81,9 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp):
         _append_n_bits(bits, s, k)
 
         # TODO: feed-forward rice implementation
+        if not adaptive:
+            continue
+
         # Update rice param
         if scale > resp:
             scale = 0
@@ -110,13 +114,14 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     return bits[bit_i[0] - 1]
 
 @cython.cdivision(True)
-def decode_frame(short[:] frame, bits: bitarray, short k, short resp):
+def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adaptive):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
     :param bits: bitaray from which the frame should be restored
     :param k: starting rice parameter
     :param resp: rice parameter responsiveness
+    :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
     cdef short m, q, s, j
@@ -138,6 +143,9 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp):
             s |= _get_bit(bits, &bit_i) << (k - j - 1)
 
         frame[i] = _deinterleave(s)
+
+        if not adaptive:
+            continue
 
         if scale > resp:
             scale = 0

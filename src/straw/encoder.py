@@ -91,7 +91,7 @@ class Encoder:
 
     def encode(self):
         tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
-        self._data[["qlp", "shift"]] = pd.DataFrame(tmp.to_list())
+        self._data[["qlp", "qlp_precision", "shift"]] = pd.DataFrame(tmp.to_list())
 
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
 

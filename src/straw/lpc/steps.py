@@ -151,7 +151,7 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
     :return: tuple(QLP, shift)
     """
     shift = ext.quantize_lpc(lpc_c, precision)
-    return lpc_c.astype(np.int32), shift
+    return lpc_c.astype(np.int32), precision, shift
 
 
 ##############
