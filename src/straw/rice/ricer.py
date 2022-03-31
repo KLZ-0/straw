@@ -64,8 +64,6 @@ class Ricer:
         if frame is not None:
             # k = frexp(intrl(frame[0]))[1]
             ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=False)
-            # TODO stored inverted because of FLAC...
-            data.invert()
 
         return data
 
@@ -104,8 +102,6 @@ class Ricer:
         frame = np.zeros(frame_size, dtype=np.short)
 
         if len(bitstream) > 0:
-            # TODO stored inverted because of FLAC...
-            bitstream.invert()
             ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=False)
 
         return frame

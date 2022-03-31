@@ -75,8 +75,8 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
         q = s / m
 
         for _ in range(q):
-            bits.append(1)
-        bits.append(0)
+            bits.append(0)
+        bits.append(1)
 
         _append_n_bits(bits, s, k)
 
@@ -134,7 +134,7 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
 
     for i in range(x_max):
         q = 0
-        while _get_bit(bits, &bit_i):
+        while not _get_bit(bits, &bit_i):
             q += 1
 
         s = m * q
