@@ -8,42 +8,19 @@ import pandas as pd
 import soundfile
 
 from straw import lpc
+from straw.codec.base import BaseCoder
 from straw.io import Formatter
-from straw.rice import Ricer
 
 
-class Encoder:
+class Encoder(BaseCoder):
     # Values which should be parametrized
     # TODO: find the best values for these
-    _lpc_order = 10
-    _lpc_precision = 12  # bits
-    _frame_size = 4096  # bytes
+    _lpc_order = 10  # can be sourced from len(df["qlp"]) once per group
+    _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
+    _frame_size = 4096  # bytes, can be sourced from len(df["frame"]) once per group
 
-    _bits_per_sample = 16
-    _md5: md5
-
-    # Data from source
-    _source_size = 0
-    _samplerate = None
-
-    # Member utils
-    _flac_mode: bool
-    _encoder: Ricer
-
-    # Member variables
-    _raw = None
-    _data = None
-
-    def __init__(self, flac_mode=False):
-        self._flac_mode = flac_mode
-        self._encoder = Ricer(adaptive=True if not flac_mode else False)
-
-    def usage_mib(self):
-        """
-        Returns the deep memory usage of the given dataframe in mebibytes
-        :return: deep memory usage of the given dataframe in mebibytes
-        """
-        return self._data.memory_usage(index=True, deep=True).sum() / (2 ** 20)
+    # TODO: make the coders accept other sizes
+    _bits_per_sample = 16  # stored in StreamParams once per group
 
     def load_files(self, filenames: list):
         """
@@ -54,16 +31,13 @@ class Encoder:
         self._raw = []
 
         # TODO: verify if the files are from the same recording
+        self._source_size = 0
+        self._samplerate = 0
         for filename in filenames:
             data, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
             self._md5 = md5(data)
             self._source_size += data.nbytes
-            if self._samplerate is None:
-                self._samplerate = sr
-
-            if self._samplerate != sr:
-                self._clean()
-                return False
+            self._samplerate = sr  # TODO: should be stored for each stream
 
             if len(data.shape) > 1:
                 self._source_size = data.nbytes
@@ -85,7 +59,7 @@ class Encoder:
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
 
-        self._raw = None  # free this reference, we don't need it anymore
+        self._raw = []  # free this reference, we don't need it anymore
         self._data = pd.DataFrame(ds)
 
     def load_stream(self, stream, samplerate):
@@ -99,7 +73,7 @@ class Encoder:
 
     def save_file(self, output_file: Path):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        self._data["stream"] = self._encoder.frames_to_bitstreams(self._data["residual"], self._data["bps"])
+        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._data.block_size = self._frame_size
         self._data.sample_rate = self._samplerate
@@ -110,7 +84,7 @@ class Encoder:
 
     def restore(self):
         self._data["residual_len"] = self._data["residual"].apply(len)
-        self._data["residual"] = self._encoder.bitstreams_to_frames(
+        self._data["residual"] = self._ricer.bitstreams_to_frames(
             self._data["stream"], self._data["residual_len"], self._data["bps"])
 
         self._data = self._data.groupby("seq").apply(lpc.compute_original)
@@ -139,17 +113,3 @@ class Encoder:
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
 
-    def sample_frame(self) -> pd.Series:
-        return self._data.loc[0]
-
-    def sample_frame_multichannel(self) -> pd.DataFrame:
-        return self._data[self._data["seq"] == 0]
-
-    def get_data(self) -> pd.DataFrame:
-        return self._data
-
-    def _clean(self):
-        self._raw = None
-        self._data = None
-        self._samplerate = None
-        self._frame_size = None

@@ -1,9 +1,9 @@
 from .codec import Encoder, Decoder
 
 
-def run(args):
-    import timeit, sys
-    print(args)
+def encode(args):
+    import timeit
+    import sys
 
     e = Encoder(args.flac_mode)
 
@@ -35,3 +35,15 @@ def run(args):
     e.print_stats(args.output_file)
 
     print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
+
+
+def decode(args):
+    d = Decoder(args.flac_mode)
+
+
+def run(args):
+    print(args)
+    if not args.decode:
+        encode(args)
+    else:
+        decode(args)
