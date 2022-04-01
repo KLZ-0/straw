@@ -11,6 +11,8 @@ if __name__ == '__main__':
                         help="Output file")
     parser.add_argument("-d", "--decode", dest="decode", action="store_true",
                         help="Decode")
+    parser.add_argument("-f", "--flac", dest="flac_mode", action="store_true",
+                        help="FLAC mode")
 
     # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",

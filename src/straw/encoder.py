@@ -27,14 +27,16 @@ class Encoder:
     _samplerate = None
 
     # Member utils
-    _encoder = Ricer(4)
+    _flac_mode: bool
+    _encoder: Ricer
 
     # Member variables
     _raw = None
     _data = None
 
-    def __init__(self, args=None):
-        self._args = args
+    def __init__(self, flac_mode=False):
+        self._flac_mode = flac_mode
+        self._encoder = Ricer(adaptive=True if not flac_mode else False)
 
     def usage_mib(self):
         """
@@ -132,7 +134,7 @@ class Encoder:
         lpc_saved = lpc_bytes * (len(np.unique(self._data["channel"])) - 1)
         print(f"Grand Ratio with common LPC = {(output_file.stat().st_size - lpc_saved) / self._source_size:.3f}",
               file=stream)
-        print(f"Curent grand Ratio = {(output_file.stat().st_size - lpc_saved) / self._source_size:.3f}", file=stream)
+        print(f"Curent grand Ratio = {(output_file.stat().st_size) / self._source_size:.3f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)

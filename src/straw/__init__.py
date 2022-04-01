@@ -5,7 +5,7 @@ def run(args):
     import timeit, sys
     print(args)
 
-    e = Encoder(args)
+    e = Encoder(args.flac_mode)
 
     start = timeit.default_timer()
     e.load_files(args.input_files)

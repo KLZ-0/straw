@@ -15,9 +15,8 @@ class Ricer:
     Currently only supports memory for for memory efficiency comparisons and benchmarks
     """
 
-    def __init__(self, k, responsiveness: int = 6):
-        self.k = k
-        self.m = 1 << k
+    def __init__(self, adaptive=False, responsiveness: int = 6):
+        self.adaptive = adaptive
         self.parallel = ParallelCompute()
         self.responsiveness = responsiveness
 
@@ -63,7 +62,7 @@ class Ricer:
 
         if frame is not None:
             # k = frexp(intrl(frame[0]))[1]
-            ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=False)
+            ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
 
         return data
 
@@ -102,7 +101,7 @@ class Ricer:
         frame = np.zeros(frame_size, dtype=np.short)
 
         if len(bitstream) > 0:
-            ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=False)
+            ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
 
         return frame
 
