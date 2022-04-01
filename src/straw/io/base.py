@@ -6,7 +6,7 @@ from crcmod import mkCrcFun
 from straw.io.params import StreamParams
 
 
-class BaseFormat:
+class BaseWriter:
     _f = None
     _params: StreamParams
 

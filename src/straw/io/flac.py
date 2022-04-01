@@ -3,10 +3,10 @@ import pandas as pd
 from bitarray import bitarray
 from bitarray.util import int2ba
 
-from straw.io.base import BaseFormat
+from straw.io.base import BaseWriter
 
 
-class FLACFormat(BaseFormat):
+class FLACFormatWriter(BaseWriter):
     def _format_specific_checks(self):
         if len(np.unique(self._data["channel"])) > 8:
             raise ValueError("The FLAC format only supports up to 8 channels")

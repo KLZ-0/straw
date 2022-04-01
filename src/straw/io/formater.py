@@ -3,7 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from straw.io.flac import FLACFormat
+from straw.io.flac import FLACFormatWriter
 from straw.io.params import StreamParams
 
 
@@ -12,8 +12,8 @@ class Formatter:
     Base formatter class
     """
     formats = {
-        ".flac": FLACFormat,
-        ".straw": FLACFormat
+        ".flac": FLACFormatWriter,
+        ".straw": FLACFormatWriter
     }
 
     def __init__(self, data: pd.DataFrame):
