@@ -6,14 +6,31 @@ from crcmod import mkCrcFun
 from straw.io.params import StreamParams
 
 
-class BaseWriter:
-    _f = None
+class BaseIO:
+    _data: pd.DataFrame
     _params: StreamParams
+    _f = None
 
     class Crc:
         crc8 = mkCrcFun(0x107, initCrc=0, rev=False)
         crc16 = mkCrcFun(0x18005, initCrc=0, rev=False)
 
+    def _format_specific_checks(self):
+        """
+        This should be overridden
+        :return: None
+        """
+        pass
+
+    def _stream(self):
+        """
+        This should be overridden
+        :return: None
+        """
+        pass
+
+
+class BaseWriter(BaseIO):
     def __init__(self, data: pd.DataFrame, params: StreamParams):
         self._data = data
         self._params = params
@@ -29,16 +46,16 @@ class BaseWriter:
             self._f = f
             self._stream()
 
-    def _format_specific_checks(self):
-        """
-        This should be overridden
-        :return: None
-        """
-        pass
 
-    def _stream(self):
+class BaseReader(BaseIO):
+    def open(self, input_file: Path) -> (pd.DataFrame, StreamParams):
         """
-        This should be overridden
-        :return: None
+        Saves the dataframe into a FLAC formatted binary file
+        :param input_file: source file
+        :return: dataframe and params
         """
-        pass
+        with input_file.open("rb") as f:
+            self._f = f
+            self._stream()
+        self._format_specific_checks()
+        return self._data, self._params
