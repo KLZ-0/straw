@@ -3,7 +3,7 @@ import pandas as pd
 from bitarray import bitarray
 from bitarray.util import int2ba
 
-from straw.io.base import BaseWriter
+from straw.io.base import BaseWriter, BaseReader
 
 
 class FLACFormatWriter(BaseWriter):
@@ -126,3 +126,12 @@ class FLACFormatWriter(BaseWriter):
         sec += int2ba(int(df["bps"]), length=4)
         sec += df["stream"]
         return sec
+
+
+class FLACFormatReader(BaseReader):
+    def _stream(self):
+        marker = self._f.read(4)
+        if marker.decode("utf-8") != "fLaC":
+            raise ValueError("Not a valid FLAC file!")
+        # self._metadata_block()
+        # self._data.groupby("seq").apply(self._frame)

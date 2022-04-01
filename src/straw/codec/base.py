@@ -24,7 +24,6 @@ class BaseCoder:
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
-        self._params = StreamParams()
 
     def usage_mib(self):
         """

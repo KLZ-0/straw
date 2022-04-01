@@ -10,6 +10,7 @@ import soundfile
 from straw import lpc
 from straw.codec.base import BaseCoder
 from straw.io import Formatter
+from straw.io.params import StreamParams
 
 
 class Encoder(BaseCoder):
@@ -18,6 +19,7 @@ class Encoder(BaseCoder):
     _lpc_order = 10  # can be sourced from len(df["qlp"]) once per group
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
     _frame_size = 4096  # bytes, can be sourced from len(df["frame"]) once per group
+    _params = StreamParams()
 
     # TODO: make the coders accept other sizes
     _bits_per_sample = 16  # stored in StreamParams once per group
@@ -79,7 +81,7 @@ class Encoder(BaseCoder):
         self._data.sample_rate = self._samplerate
         self._data.bits_per_sample = self._bits_per_sample
         self._data.md5 = self._md5
-        Formatter(self._data).save(output_file)
+        Formatter().save(self._data, output_file, self._flac_mode)
         # TODO: actually save bitstreams
 
     def restore(self):

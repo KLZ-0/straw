@@ -48,7 +48,13 @@ class BaseWriter(BaseIO):
 
 
 class BaseReader(BaseIO):
-    def open(self, input_file: Path) -> (pd.DataFrame, StreamParams):
+    _raw: dict
+
+    def __init__(self):
+        self._params = StreamParams()
+        self._raw = {}
+
+    def load(self, input_file: Path) -> (pd.DataFrame, StreamParams):
         """
         Saves the dataframe into a FLAC formatted binary file
         :param input_file: source file
@@ -58,4 +64,5 @@ class BaseReader(BaseIO):
             self._f = f
             self._stream()
         self._format_specific_checks()
+        self._data = pd.DataFrame(self._raw)
         return self._data, self._params

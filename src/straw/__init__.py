@@ -38,7 +38,16 @@ def encode(args):
 
 
 def decode(args):
+    import timeit
+    import sys
+    from pathlib import Path
+
     d = Decoder(args.flac_mode)
+
+    start = timeit.default_timer()
+    d.load_file(Path(args.input_files[0]))
+    stop = timeit.default_timer()
+    print(f"<TIME> load_files: {stop - start}", file=sys.stderr)
 
 
 def run(args):
