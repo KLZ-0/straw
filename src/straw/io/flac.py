@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from bitarray import bitarray
-from bitarray.util import int2ba
+from bitarray.util import int2ba, ba2int
 
 from straw.io.base import BaseWriter, BaseReader
 
@@ -128,10 +128,53 @@ class FLACFormatWriter(BaseWriter):
         return sec
 
 
+class SlicedBitarray(bitarray):
+    _current_ptr: int = 0
+
+    def get_int(self, length: int = 1, signed=False) -> int:
+        part = self[self._current_ptr:self._current_ptr + length]
+        if len(part) == 0:
+            raise ValueError("Unexpected EOF")
+        self._current_ptr += length
+        return ba2int(part, signed=signed)
+
+    def get_bytes(self, length: int = 8) -> bytes:
+        part = self[self._current_ptr:self._current_ptr + length]
+        if len(part) == 0:
+            raise ValueError("Unexpected EOF")
+        self._current_ptr += length
+        return part.tobytes()
+
+
 class FLACFormatReader(BaseReader):
+    # TODO: make an enum of sizes to not use magic numbers
+    _sec = SlicedBitarray()
+
     def _stream(self):
         marker = self._f.read(4)
         if marker.decode("utf-8") != "fLaC":
             raise ValueError("Not a valid FLAC file!")
-        # self._metadata_block()
+        self._sec.fromfile(self._f)
+        self._metadata_block()
         # self._data.groupby("seq").apply(self._frame)
+
+    def _metadata_block(self):
+        data_len = self._metadata_block_header()
+        self._metadata_block_data(data_len)
+
+    def _metadata_block_header(self) -> int:
+        last_metadata_block = self._sec.get_int()  # this block is the last metadata block before the audio blocks
+        block_type = self._sec.get_int(length=7)  # BLOCK_TYPE: STREAMINFO
+        data_len = self._sec.get_int(length=24)
+        return data_len
+
+    def _metadata_block_data(self, data_len: int):
+        self._params.min_block_size = self._sec.get_int(length=16)
+        self._params.max_block_size = self._sec.get_int(length=16)
+        self._params.min_frame_size = self._sec.get_int(length=24)
+        self._params.max_frame_size = self._sec.get_int(length=24)
+        self._params.sample_rate = self._sec.get_int(length=20)
+        self._params.channels = self._sec.get_int(length=3) + 1
+        self._params.bits_per_sample = self._sec.get_int(length=5) + 1
+        self._params.total_samples = self._sec.get_int(length=36)
+        self._params.md5 = self._sec.get_bytes(length=128)

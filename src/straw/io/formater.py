@@ -11,7 +11,6 @@ class Formatter:
     """
     Base formatter class
     """
-
     @staticmethod
     def validate_dataframe(df: pd.DataFrame, params: StreamParams):
         """
