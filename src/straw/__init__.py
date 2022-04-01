@@ -1,4 +1,4 @@
-from .encoder import Encoder
+from .codec import Encoder, Decoder
 
 
 def run(args):

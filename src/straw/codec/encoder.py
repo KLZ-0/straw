@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from . import lpc
-from .io import Formatter
-from .rice import Ricer
+from straw import lpc
+from straw.io import Formatter
+from straw.rice import Ricer
 
 
 class Encoder:
@@ -134,7 +134,7 @@ class Encoder:
         lpc_saved = lpc_bytes * (len(np.unique(self._data["channel"])) - 1)
         print(f"Grand Ratio with common LPC = {(output_file.stat().st_size - lpc_saved) / self._source_size:.3f}",
               file=stream)
-        print(f"Curent grand Ratio = {(output_file.stat().st_size) / self._source_size:.3f}", file=stream)
+        print(f"Curent grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
