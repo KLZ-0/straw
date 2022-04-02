@@ -4,6 +4,7 @@ import pandas as pd
 from crcmod import mkCrcFun
 
 from straw.io.params import StreamParams
+from straw.rice import Ricer
 
 
 class BaseIO:
@@ -49,6 +50,7 @@ class BaseWriter(BaseIO):
 
 class BaseReader(BaseIO):
     _raw: dict
+    _ricer: Ricer()
 
     def __init__(self):
         self._params = StreamParams()

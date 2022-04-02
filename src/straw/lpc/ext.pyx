@@ -92,6 +92,7 @@ def restore_signal(short[:] residual, int[:] qlp, int lp_quantization, short[:] 
     :param lp_quantization: quantization shift
     :param data: the resulting signal array initialized with the first samples from the original signal (warmup samples)
     :return: reconstructed signal as a numpy array
+    # TODO: make this function take an array of blocksize where first order samples are warmup samples and the rest is residual
     """
     cdef int data_len = residual.shape[0]
     cdef int order = qlp.shape[0]

@@ -4,6 +4,7 @@ from bitarray import bitarray
 from bitarray.util import int2ba, ba2int
 
 from straw.io.base import BaseWriter, BaseReader
+from straw.rice import Ricer
 
 
 class FLACFormatWriter(BaseWriter):
@@ -53,7 +54,6 @@ class FLACFormatWriter(BaseWriter):
         qlp_precision = int(df["qlp_precision"][df["qlp_precision"].first_valid_index()])
         shift = int(df["shift"][df["shift"].first_valid_index()])
         tmp = df.apply(self._subframe, axis=1, qlp=qlp, qlp_precision=qlp_precision, shift=shift)
-        origsec = sec.copy()
         for subframe_bitstream in tmp:
             sec += subframe_bitstream
         sec.fill()  # zero-padding to byte alignment
@@ -63,6 +63,7 @@ class FLACFormatWriter(BaseWriter):
         sec.tofile(self._f)
 
     def _frame_header(self, df: pd.DataFrame) -> bitarray:
+        # TODO: in straw this should contain the size of the whole frame so we can partition and parallelize it
         sec = bitarray()
         sec += int2ba(0b11111111111110, length=14)  # sync code
         sec.append(0)  # mandatory value
@@ -105,7 +106,7 @@ class FLACFormatWriter(BaseWriter):
         sec.append(0)  # zero bit padding, to prevent sync-fooling string of 1s
         sec.append(1)  # subframe type: 1xxxxx : SUBFRAME_LPC
         sec += int2ba(len(qlp) - 1, length=5)  # xxxxx=order-1
-        sec.append(0)
+        sec.append(0)  # no wasted bits-per-sample in source subblock, k=0
         return sec
 
     def _subframe_lpc(self, df: pd.Series, qlp: np.array, qlp_precision: int, shift: int) -> bitarray:
@@ -145,10 +146,35 @@ class SlicedBitarray(bitarray):
         self._current_ptr += length
         return part.tobytes()
 
+    def get_int_utf8(self) -> int:
+        c = self.get_bytes()
+        while True:
+            try:
+                return ord(c.decode("utf-8"))
+            except UnicodeDecodeError:
+                c += self.get_bytes()
+
+    def get_from(self, start: int) -> bitarray:
+        return self[start:self._current_ptr]
+
+    def get_pos(self) -> int:
+        return self._current_ptr
+
+    def advance(self, length: int = 8):
+        self._current_ptr += length
+
+    def skip_padding(self):
+        if self._current_ptr % 8 != 0:
+            self._current_ptr = ((self._current_ptr // 8) + 1) * 8
+
+    def is_eof(self) -> bool:
+        return len(self[self._current_ptr:self._current_ptr + 1]) == 0
+
 
 class FLACFormatReader(BaseReader):
     # TODO: make an enum of sizes to not use magic numbers
     _sec = SlicedBitarray()
+    _ricer = Ricer(adaptive=False)
 
     def _stream(self):
         marker = self._f.read(4)
@@ -156,7 +182,8 @@ class FLACFormatReader(BaseReader):
             raise ValueError("Not a valid FLAC file!")
         self._sec.fromfile(self._f)
         self._metadata_block()
-        # self._data.groupby("seq").apply(self._frame)
+        while not self._sec.is_eof():
+            self._frame()
 
     def _metadata_block(self):
         data_len = self._metadata_block_header()
@@ -178,3 +205,79 @@ class FLACFormatReader(BaseReader):
         self._params.bits_per_sample = self._sec.get_int(length=5) + 1
         self._params.total_samples = self._sec.get_int(length=36)
         self._params.md5 = self._sec.get_bytes(length=128)
+
+    def _frame(self):
+        start = self._sec.get_pos()
+        frame_num, blocksize = self._frame_header()
+        for i in range(self._params.channels):
+            self._subframe(frame_num, blocksize)
+        self._sec.skip_padding()
+
+        # Footer
+        expected_crc = self.Crc.crc16(self._sec.get_from(start).tobytes())
+        checksum = self._sec.get_int(length=16)
+        if expected_crc != checksum:
+            raise RuntimeError(f"Inavalid frame checksum at frame {frame_num}")
+        print(f"processed frame {frame_num}")
+
+    def _frame_header(self) -> (int, int):
+        start = self._sec.get_pos()
+        if self._sec.get_int(length=14) != 0b11111111111110:  # sync code
+            raise RuntimeError("Lost sync")
+        self._sec.get_int()  # mandatory value
+        self._sec.get_int()  # fixed-blocksize stream; frame header encodes the frame number
+        tmp = self._sec.get_int(length=4)
+        blocksize = 0
+        if tmp == 0b0110:
+            tmp = 8
+        elif tmp == 0b0111:
+            tmp = 16
+        else:
+            blocksize = 1 << tmp
+            tmp = 0
+        self._sec.get_int(length=4)  # sample rate: get from STREAMINFO metadata block
+        self._sec.get_int(length=4)  # (number of independent channels)-1
+        self._sec.get_int(length=3)  # sample size in bits: get from STREAMINFO metadata block
+        self._sec.get_int()  # mandatory value
+        frame_num = self._sec.get_int_utf8()
+        if tmp:
+            blocksize = self._sec.get_int(length=tmp) + 1
+        expected_crc = self.Crc.crc8(self._sec.get_from(start).tobytes())
+        checksum = self._sec.get_int(length=8)
+        if expected_crc != checksum:
+            raise RuntimeError(f"Inavalid frame header checksum at frame {frame_num}")
+        return frame_num, blocksize
+
+    def _subframe(self, frame_num, blocksize):
+        order = self._subframe_header()
+        row = self._subframe_lpc(order, blocksize)
+
+    def _subframe_header(self) -> int:
+        self._sec.get_int()  # zero bit padding, to prevent sync-fooling string of 1s
+        self._sec.get_int()  # subframe type: 1xxxxx : SUBFRAME_LPC
+        order = self._sec.get_int(length=5) + 1  # xxxxx=order-1
+        self._sec.get_int()  # no wasted bits-per-sample in source subblock, k=0
+        return order
+
+    def _subframe_lpc(self, order: int, blocksize: int) -> dict:
+        row = {}
+        row["frame"] = np.asarray(
+            [self._sec.get_int(length=self._params.bits_per_sample, signed=True) for _ in range(order)],
+            dtype=f"int{self._params.bits_per_sample}")
+        qlp_precision = self._sec.get_int(length=4) + 1
+        shift = self._sec.get_int(length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
+
+        row["qlp"] = np.asarray(
+            [self._sec.get_int(length=qlp_precision, signed=True) for _ in range(order)],
+            dtype=f"int{self._params.bits_per_sample}")
+        row["residual"], row["bps"] = self._residual(blocksize - order)
+        return row
+
+    def _residual(self, samples: int) -> np.array:
+        self._sec.get_int(length=2)  # partitioned Rice coding with 4-bit Rice parameter
+        self._sec.get_int(length=4)  # 2^0 partitions
+        bps = self._sec.get_int(length=4)
+        residual, bits_read = self._ricer.bitstream_to_frame(self._sec[self._sec.get_pos():], samples, bps,
+                                                             want_bits=True)
+        self._sec.advance(bits_read)
+        return residual, bps

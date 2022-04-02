@@ -166,3 +166,5 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
             scale -= 1
         else:
             scale = 0
+
+    return bit_i

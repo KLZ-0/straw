@@ -12,7 +12,7 @@ class BaseCoder:
     _ricer: Ricer
 
     # Member variables
-    _raw: list
+    _raw: dict
     _data: pd.DataFrame
     _params: StreamParams
     _md5: md5

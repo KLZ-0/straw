@@ -89,21 +89,26 @@ class Ricer:
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int) -> np.array:
+    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int, want_bits: bool = False) -> np.array:
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
         :param bitstream: rice encoded stream
         :param frame_size: frame size
         :param bps: expected bits per sample
+        :param want_bits: if True returns the number of bits read
         :return: decoded frame
         """
+        bits_read = 0
         frame = np.zeros(frame_size, dtype=np.short)
 
         if len(bitstream) > 0:
-            ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
+            bits_read = ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
 
-        return frame
+        if want_bits:
+            return frame, bits_read
+        else:
+            return frame
 
     def _bitstream_to_frame_df_expander(self, df: pd.DataFrame) -> np.array:
         return self.bitstream_to_frame(df["stream"], df["size"], df["bps"])
