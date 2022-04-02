@@ -46,6 +46,11 @@ def decode(args):
     print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
 
     mid = timeit.default_timer()
+    d.restore()
+    stop = timeit.default_timer()
+    print(f"<TIME> restore: {stop - mid}", file=sys.stderr)
+
+    mid = timeit.default_timer()
     d.save_wav(args.output_file)
     stop = timeit.default_timer()
     print(f"<TIME> save wav: {stop - mid}", file=sys.stderr)
