@@ -1,4 +1,3 @@
-from hashlib import md5
 from pathlib import Path
 
 import soundfile
@@ -16,11 +15,12 @@ class Decoder(BaseCoder):
         self._samplebuffer = reader.get_buffer()
         self._data = self._data.groupby("seq").apply(lpc.compute_original)
         print(self._params.md5)
-        print(md5(self._samplebuffer.reshape((-1, 8))).digest())
+        print(self.get_md5())
 
         data, sr = soundfile.read("inputs/1min.wav", dtype="int16")
-        mine = self._data.loc[0, "frame"]
-        original = data.swapaxes(1, 0)[0][:self._params.max_block_size]
+        # mine = self._data.loc[235, "frame"]
+        mine = self._samplebuffer[1][:self._params.max_block_size]
+        original = data.swapaxes(1, 0)[1][:self._params.max_block_size]
         exit()
 
     def save_wav(self, output_file: Path):

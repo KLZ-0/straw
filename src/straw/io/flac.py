@@ -169,7 +169,7 @@ class FLACFormatReader(BaseReader):
         self._params.bits_per_sample = self._sec.get_int(length=5) + 1
         self._params.total_samples = self._sec.get_int(length=36)
         self._params.md5 = self._sec.get_bytes(length=128)
-        self._samplebuffer = np.zeros(self._params.channels * self._params.total_samples,
+        self._samplebuffer = np.zeros((self._params.channels, self._params.total_samples),
                                       dtype=f"int{self._params.bits_per_sample}")
         return self._params.total_samples // self._params.max_block_size + 1
 
@@ -177,11 +177,11 @@ class FLACFormatReader(BaseReader):
         start = self._sec.get_pos()
         frame_num, blocksize = self._frame_header()
         for i in range(self._params.channels):
-            row = self._subframe(blocksize)
+            row = self._subframe(blocksize, i)
             row["seq"] = frame_num
-            row["channel"] = i
             row["idx"] = i * expected_frames + frame_num
             self._raw.append(row)
+        self._samplebuffer_ptr += blocksize
         self._sec.skip_padding()
 
         # Footer
@@ -219,9 +219,9 @@ class FLACFormatReader(BaseReader):
             raise RuntimeError(f"Inavalid frame header checksum at frame {frame_num}")
         return frame_num, blocksize
 
-    def _subframe(self, blocksize: int) -> dict:
+    def _subframe(self, blocksize: int, subframe_num: int) -> dict:
         order = self._subframe_header()
-        return self._subframe_lpc(order, blocksize)
+        return self._subframe_lpc(order, blocksize, subframe_num)
 
     def _subframe_header(self) -> int:
         self._sec.get_int()  # zero bit padding, to prevent sync-fooling string of 1s
@@ -230,12 +230,13 @@ class FLACFormatReader(BaseReader):
         self._sec.get_int()  # no wasted bits-per-sample in source subblock, k=0
         return order
 
-    def _subframe_lpc(self, order: int, blocksize: int) -> dict:
+    def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
         row = {
-            "frame": self._samplebuffer[self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize],
-            "residual": self._samplebuffer[self._samplebuffer_ptr + order:self._samplebuffer_ptr + blocksize]
+            "channel": subframe_num,
+            "frame": self._samplebuffer[subframe_num][self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize],
+            "residual": self._samplebuffer[subframe_num][
+                        self._samplebuffer_ptr + order:self._samplebuffer_ptr + blocksize]
         }
-        self._samplebuffer_ptr += blocksize
         for i in range(order):
             row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
         row["qlp_precision"] = self._sec.get_int(length=4) + 1
