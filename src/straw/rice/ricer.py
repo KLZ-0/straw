@@ -89,7 +89,8 @@ class Ricer:
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int, want_bits: bool = False) -> np.array:
+    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int, want_bits: bool = False,
+                           own_frame=None) -> np.array:
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
@@ -97,10 +98,14 @@ class Ricer:
         :param frame_size: frame size
         :param bps: expected bits per sample
         :param want_bits: if True returns the number of bits read
+        :param own_frame: if not None, this frame will be filled
         :return: decoded frame
         """
         bits_read = 0
-        frame = np.zeros(frame_size, dtype=np.short)
+        if own_frame is None:
+            frame = np.zeros(frame_size, dtype=np.short)
+        else:
+            frame = own_frame[:frame_size]
 
         if len(bitstream) > 0:
             bits_read = ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)

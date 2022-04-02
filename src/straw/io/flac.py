@@ -175,6 +175,8 @@ class FLACFormatReader(BaseReader):
     # TODO: make an enum of sizes to not use magic numbers
     _sec = SlicedBitarray()
     _ricer = Ricer(adaptive=False)
+    _samplebuffer_ptr: int = 0
+    _samplebuffer: np.array
 
     def _stream(self):
         marker = self._f.read(4)
@@ -205,6 +207,8 @@ class FLACFormatReader(BaseReader):
         self._params.bits_per_sample = self._sec.get_int(length=5) + 1
         self._params.total_samples = self._sec.get_int(length=36)
         self._params.md5 = self._sec.get_bytes(length=128)
+        self._samplebuffer = np.zeros(self._params.channels * self._params.total_samples,
+                                      dtype=f"int{self._params.bits_per_sample}")
 
     def _frame(self):
         start = self._sec.get_pos()
@@ -270,14 +274,16 @@ class FLACFormatReader(BaseReader):
         row["qlp"] = np.asarray(
             [self._sec.get_int(length=qlp_precision, signed=True) for _ in range(order)],
             dtype=f"int{self._params.bits_per_sample}")
-        row["residual"], row["bps"] = self._residual(blocksize - order)
+        row["residual"], row["bps"] = self._residual(blocksize - order,
+                                                     array=self._samplebuffer[self._samplebuffer_ptr + order:])
+        self._samplebuffer_ptr += blocksize
         return row
 
-    def _residual(self, samples: int) -> np.array:
+    def _residual(self, samples: int, array: np.array) -> np.array:
         self._sec.get_int(length=2)  # partitioned Rice coding with 4-bit Rice parameter
         self._sec.get_int(length=4)  # 2^0 partitions
         bps = self._sec.get_int(length=4)
         residual, bits_read = self._ricer.bitstream_to_frame(self._sec[self._sec.get_pos():], samples, bps,
-                                                             want_bits=True)
+                                                             want_bits=True, own_frame=array)
         self._sec.advance(bits_read)
         return residual, bps
