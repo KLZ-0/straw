@@ -60,8 +60,9 @@ class Formatter:
         params = StreamParams()
         params.min_block_size = df.block_size
         params.max_block_size = df.block_size
+        max_residual_bytes = (df["stream_len"].max() // 8) + 1
         params.min_frame_size = 0  # unknown
-        params.max_frame_size = 0  # unknown
+        params.max_frame_size = int(max_residual_bytes) + 1000
         params.sample_rate = df.sample_rate
         params.channels = len(np.unique(df["channel"]))
         params.bits_per_sample = df.bits_per_sample

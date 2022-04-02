@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from bitarray import bitarray
 from bitarray.util import int2ba, ba2int
+from tqdm import tqdm
 
 from straw.io.base import BaseWriter, BaseReader
 from straw.rice import Ricer
@@ -183,13 +184,19 @@ class FLACFormatReader(BaseReader):
         if marker.decode("utf-8") != "fLaC":
             raise ValueError("Not a valid FLAC file!")
         self._sec.fromfile(self._f)
-        self._metadata_block()
-        while not self._sec.is_eof():
+        expected_frames = self._metadata_block()
+        pbar = tqdm(range(expected_frames))
+        pbar.set_description(f"Loading frames")
+        for i in pbar:
+            if self._sec.is_eof():
+                pbar.close()
+                break
+
             self._frame()
 
-    def _metadata_block(self):
+    def _metadata_block(self) -> int:
         data_len = self._metadata_block_header()
-        self._metadata_block_data(data_len)
+        return self._metadata_block_data()
 
     def _metadata_block_header(self) -> int:
         last_metadata_block = self._sec.get_int()  # this block is the last metadata block before the audio blocks
@@ -197,7 +204,7 @@ class FLACFormatReader(BaseReader):
         data_len = self._sec.get_int(length=24)
         return data_len
 
-    def _metadata_block_data(self, data_len: int):
+    def _metadata_block_data(self) -> int:
         self._params.min_block_size = self._sec.get_int(length=16)
         self._params.max_block_size = self._sec.get_int(length=16)
         self._params.min_frame_size = self._sec.get_int(length=24)
@@ -209,6 +216,7 @@ class FLACFormatReader(BaseReader):
         self._params.md5 = self._sec.get_bytes(length=128)
         self._samplebuffer = np.zeros(self._params.channels * self._params.total_samples,
                                       dtype=f"int{self._params.bits_per_sample}")
+        return self._params.total_samples // self._params.max_block_size + 1
 
     def _frame(self):
         start = self._sec.get_pos()
@@ -222,7 +230,7 @@ class FLACFormatReader(BaseReader):
         checksum = self._sec.get_int(length=16)
         if expected_crc != checksum:
             raise RuntimeError(f"Inavalid frame checksum at frame {frame_num}")
-        print(f"processed frame {frame_num}")
+        return frame_num
 
     def _frame_header(self) -> (int, int):
         start = self._sec.get_pos()
@@ -283,7 +291,8 @@ class FLACFormatReader(BaseReader):
         self._sec.get_int(length=2)  # partitioned Rice coding with 4-bit Rice parameter
         self._sec.get_int(length=4)  # 2^0 partitions
         bps = self._sec.get_int(length=4)
-        residual, bits_read = self._ricer.bitstream_to_frame(self._sec[self._sec.get_pos():], samples, bps,
-                                                             want_bits=True, own_frame=array)
+        bits_read = self._ricer.bitstream_to_frame(
+            self._sec[self._sec.get_pos():self._sec.get_pos() + self._params.max_frame_size * 8],
+            samples, bps, own_frame=array)
         self._sec.advance(bits_read)
-        return residual, bps
+        return array, bps

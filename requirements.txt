@@ -6,3 +6,4 @@ bitarray
 pandas
 cython
 crcmod
+tqdm
