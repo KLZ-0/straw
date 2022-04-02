@@ -14,11 +14,6 @@ def encode(args):
     print(f"<TIME> load_files: {stop - start}", file=sys.stderr)
 
     mid = timeit.default_timer()
-    e.create_frames()
-    stop = timeit.default_timer()
-    print(f"<TIME> create_frames: {stop - mid}", file=sys.stderr)
-
-    mid = timeit.default_timer()
     e.encode()
     stop = timeit.default_timer()
     print(f"<TIME> encode: {stop - mid}", file=sys.stderr)
@@ -46,12 +41,12 @@ def decode(args):
     print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
 
     mid = timeit.default_timer()
-    d.restore()
+    d.decode()
     stop = timeit.default_timer()
     print(f"<TIME> restore: {stop - mid}", file=sys.stderr)
 
     mid = timeit.default_timer()
-    d.save_wav(args.output_file)
+    d.save_file(args.output_file)
     stop = timeit.default_timer()
     print(f"<TIME> save wav: {stop - mid}", file=sys.stderr)
 

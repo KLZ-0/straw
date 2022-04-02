@@ -22,26 +22,54 @@ class Encoder(BaseCoder):
     # TODO: make the coders accept other sizes
     _bits_per_sample = 16  # stored in StreamParams once per group
 
+    ##########
+    # Public #
+    ##########
+
     def load_file(self, filename: Path):
         """
-        Load the specified file
+        Load the specified file into memory
         :param filename: file to load
-        :return: True on success, False on error
+        :return: None
         """
-        # TODO: verify if the files are from the same recording
-        self._source_size = 0
-
-        self._samplebuffer, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
+        self._samplebuffer, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}", always_2d=True)
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = sr
-
-        if len(self._samplebuffer.shape) > 1:
-            self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
-
+        self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
         self._params.md5 = self.get_md5()
-        return True
+        self._create_dataframe()
 
-    def create_frames(self):
+    def encode(self):
+        """
+        Encode the signal
+        :return: None
+        """
+        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
+        self._data[["qlp", "qlp_precision", "shift"]] = pd.DataFrame(tmp.to_list())
+        self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
+        self._data["stream_len"] = self._data["stream"].apply(len)
+
+    def save_file(self, output_file: Path):
+        """
+        Save the encoded signal
+        :param output_file: target file
+        :return: None
+        """
+        self._parametrize()
+        Formatter().save(self._data, self._params, output_file, self._flac_mode)
+
+    ###########
+    # Private #
+    ###########
+
+    def _create_dataframe(self):
+        """
+        Create a dataframe from the raw signal, this includes slicing the signal into specific views
+        NOTE: the underlying memory stays as a contiguous memory chunk
+        :return:
+        """
         ds = {"seq": [], "frame": [], "channel": []}
         for channel, channel_data in enumerate(self._samplebuffer):
             sliced = self._slice_channel_data_into_frames(channel_data)
@@ -51,24 +79,11 @@ class Encoder(BaseCoder):
 
         self._data = pd.DataFrame(ds)
 
-    def load_stream(self, stream, samplerate):
-        pass
-
-    def encode(self):
-        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
-        self._data[["qlp", "qlp_precision", "shift"]] = pd.DataFrame(tmp.to_list())
-
-        self._data = self._data.groupby("seq").apply(lpc.compute_residual)
-
-    def save_file(self, output_file: Path):
-        self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
-        self._data["stream_len"] = self._data["stream"].apply(len)
-        self._parametrize()
-        Formatter().save(self._data, self._params, output_file, self._flac_mode)
-        # TODO: actually save bitstreams
-
     def _parametrize(self):
+        """
+        Parameter extraction to be used for encoding the whole stream
+        :return: None
+        """
         self._params.max_block_size = int(self._data["frame"].apply(len).max())
         self._params.min_block_size = self._params.max_block_size
         max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
@@ -78,7 +93,17 @@ class Encoder(BaseCoder):
         self._params.bits_per_sample = self._bits_per_sample
         self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
 
+    ###########
+    # Utility #
+    ###########
+
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
+        """
+        Print a bunch of stuff...
+        :param output_file: output file (only the size is needed)
+        :param stream: stream where the output should be written
+        :return: None
+        """
         print(f"Number of frames: {len(self._data)}", file=stream)
         print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
