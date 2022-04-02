@@ -17,7 +17,6 @@ class Encoder(BaseCoder):
     # TODO: find the best values for these
     _lpc_order = 10  # can be sourced from len(df["qlp"]) once per group
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
-    _frame_size = 4096  # bytes, can be sourced from len(df["frame"]) once per group
     _params = StreamParams()
 
     # TODO: make the coders accept other sizes
@@ -33,22 +32,19 @@ class Encoder(BaseCoder):
         self._source_size = 0
 
         self._samplebuffer, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
-        self._params.md5 = self.get_md5()
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = sr
 
         if len(self._samplebuffer.shape) > 1:
             self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
+        self._params.md5 = self.get_md5()
         return True
-
-    def _slice_data_into_frames(self, data):
-        return [data[i:i + self._frame_size] for i in range(0, len(data), self._frame_size)]
 
     def create_frames(self):
         ds = {"seq": [], "frame": [], "channel": []}
         for channel, channel_data in enumerate(self._samplebuffer):
-            sliced = self._slice_data_into_frames(channel_data)
+            sliced = self._slice_channel_data_into_frames(channel_data)
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
@@ -73,8 +69,8 @@ class Encoder(BaseCoder):
         # TODO: actually save bitstreams
 
     def _parametrize(self):
-        self._params.min_block_size = self._frame_size
-        self._params.max_block_size = self._frame_size
+        self._params.max_block_size = int(self._data["frame"].apply(len).max())
+        self._params.min_block_size = self._params.max_block_size
         max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
         self._params.min_frame_size = 0  # unknown
         self._params.max_frame_size = int(max_residual_bytes) + 1000
@@ -82,21 +78,11 @@ class Encoder(BaseCoder):
         self._params.bits_per_sample = self._bits_per_sample
         self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
 
-    def restore(self):
-        self._data["residual"] = self._ricer.bitstreams_to_frames(
-            self._data["stream"], self._data["residual"].apply(len), self._data["bps"])
-
-        self._data = self._data.groupby("seq").apply(lpc.compute_original)
-
-        if self._data.apply(lpc.compare_restored, axis=1).all():
-            print("Lossless :)")
-        else:
-            print("Not lossless :|")
-
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         print(f"Number of frames: {len(self._data)}", file=stream)
         print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
+        print(f"md5: {self._params.md5.hex(' ')}", file=stream)
         print(f"Length of bitstream: {size} bits, "
               f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)", file=stream)
         lpc_bytes = np.ceil(len(self._data) * self._lpc_precision * self._lpc_order * 1 / 8)

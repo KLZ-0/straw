@@ -13,6 +13,7 @@ class BaseCoder:
     _ricer: Ricer
 
     # Member variables
+    _default_frame_size: int = 4096  # bytes
     _data: pd.DataFrame
     _params: StreamParams
     _samplebuffer: np.array
@@ -23,6 +24,9 @@ class BaseCoder:
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
+
+    def _slice_channel_data_into_frames(self, data: np.array):
+        return [data[i:i + self._default_frame_size] for i in range(0, len(data), self._default_frame_size)]
 
     def usage_mib(self):
         """
@@ -41,4 +45,4 @@ class BaseCoder:
         return self._data
 
     def get_md5(self):
-        return md5(self._samplebuffer).digest()
+        return md5(self._samplebuffer.swapaxes(1, 0)).digest()

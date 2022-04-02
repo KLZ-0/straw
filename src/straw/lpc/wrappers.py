@@ -44,24 +44,25 @@ def compute_residual(data: pd.DataFrame):
     return data
 
 
-def _compute_original_df_expander(data: pd.DataFrame, qlp, shift):
-    return steps.restore_signal_cython(data["residual"], qlp, shift, data["frame"][:len(qlp)])
+def _compute_original_df_expander(data: pd.DataFrame, qlp, shift, inplace):
+    return steps.restore_signal_cython(data["frame"], qlp, shift, inplace)
 
 
-def compute_original(data: pd.DataFrame):
+def compute_original(data: pd.DataFrame, inplace=False):
     """
     Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
     :param data: input dataframe with columns [frame, qlp, shift]
+    :param inplace: whether the restoring should be done in place (faster)
     :return: residual as a numpy array
     """
     qlp = data["qlp"][data["qlp"].first_valid_index()]
     shift = int(data["shift"][data["shift"].first_valid_index()])
 
-    data["restored"] = data.apply(_compute_original_df_expander,
-                                  qlp=qlp, shift=shift,
-                                  axis=1, result_type="reduce")
+    tmp = data.apply(_compute_original_df_expander, qlp=qlp, shift=shift, axis=1, result_type="reduce", inplace=inplace)
 
-    return data
+    if not inplace:
+        data["restored"] = tmp
+        return data
 
 
 def compare_restored(data: pd.DataFrame) -> bool:
@@ -70,4 +71,4 @@ def compare_restored(data: pd.DataFrame) -> bool:
     :param data: input dataframe with columns [frame, restored]
     :return: True if equal, False otherwise
     """
-    return not (data["frame"] - data["restored"]).any()
+    return not (data["frame"] - data["original"]).any()

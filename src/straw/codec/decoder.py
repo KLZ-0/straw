@@ -13,15 +13,25 @@ class Decoder(BaseCoder):
         self._data = reader.get_data()
         self._params = reader.get_params()
         self._samplebuffer = reader.get_buffer()
-        self._data = self._data.groupby("seq").apply(lpc.compute_original)
-        print(self._params.md5)
-        print(self.get_md5())
+        self._data.groupby("seq").apply(lpc.compute_original, inplace=True)
+        if self.get_md5() != self._params.md5:
+            raise ValueError("Non-matching md5 checksum")
 
-        data, sr = soundfile.read("inputs/1min.wav", dtype="int16")
-        # mine = self._data.loc[235, "frame"]
-        mine = self._samplebuffer[1][:self._params.max_block_size]
-        original = data.swapaxes(1, 0)[1][:self._params.max_block_size]
-        exit()
+        self.test()
+
+    def test(self):
+        tmp, _ = soundfile.read("inputs/1min.wav", dtype="int16")
+        orig_frames = []
+        for channel_data in tmp.swapaxes(1, 0):
+            orig_frames += self._slice_channel_data_into_frames(channel_data)
+        self._data["original"] = orig_frames
+        if self._data.apply(lpc.compare_restored, axis=1).all():
+            print("Lossless :)")
+        else:
+            print("Not lossless :|")
+
+        print(f"restored: {self.get_md5().hex(' ')}")
+        print(f"file:     {self._params.md5.hex(' ')}")
 
     def save_wav(self, output_file: Path):
         soundfile.write(output_file, self._samplebuffer.swapaxes(1, 0), samplerate=self._params.sample_rate)
