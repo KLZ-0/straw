@@ -1,5 +1,4 @@
 import sys
-from hashlib import md5
 from pathlib import Path
 from typing import TextIO
 
@@ -24,29 +23,22 @@ class Encoder(BaseCoder):
     # TODO: make the coders accept other sizes
     _bits_per_sample = 16  # stored in StreamParams once per group
 
-    def load_files(self, filenames: list):
+    def load_file(self, filename: Path):
         """
-        Load all specified files as separate channels of the same recording
-        :param filenames: list of files to load
+        Load the specified file
+        :param filename: file to load
         :return: True on success, False on error
         """
-        self._raw = []
-
         # TODO: verify if the files are from the same recording
         self._source_size = 0
-        self._samplerate = 0
-        for filename in filenames:
-            data, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
-            self._md5 = md5(data)
-            self._source_size += data.nbytes
-            self._samplerate = sr  # TODO: should be stored for each stream
 
-            if len(data.shape) > 1:
-                self._source_size = data.nbytes
-                self._raw = data.swapaxes(1, 0)
-                return True
+        self._samplebuffer, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}")
+        self._params.md5 = self.get_md5()
+        self._source_size = self._samplebuffer.nbytes
+        self._params.sample_rate = sr
 
-            self._raw.append(data.flatten("F"))
+        if len(self._samplebuffer.shape) > 1:
+            self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
         return True
 
@@ -55,13 +47,12 @@ class Encoder(BaseCoder):
 
     def create_frames(self):
         ds = {"seq": [], "frame": [], "channel": []}
-        for channel, channel_data in enumerate(self._raw):
+        for channel, channel_data in enumerate(self._samplebuffer):
             sliced = self._slice_data_into_frames(channel_data)
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
 
-        self._raw = []  # free this reference, we don't need it anymore
         self._data = pd.DataFrame(ds)
 
     def load_stream(self, stream, samplerate):
@@ -77,12 +68,19 @@ class Encoder(BaseCoder):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
-        self._data.block_size = self._frame_size
-        self._data.sample_rate = self._samplerate
-        self._data.bits_per_sample = self._bits_per_sample
-        self._data.md5 = self._md5
-        Formatter().save(self._data, output_file, self._flac_mode)
+        self._parametrize()
+        Formatter().save(self._data, self._params, output_file, self._flac_mode)
         # TODO: actually save bitstreams
+
+    def _parametrize(self):
+        self._params.min_block_size = self._frame_size
+        self._params.max_block_size = self._frame_size
+        max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
+        self._params.min_frame_size = 0  # unknown
+        self._params.max_frame_size = int(max_residual_bytes) + 1000
+        self._params.channels = len(np.unique(self._data["channel"]))
+        self._params.bits_per_sample = self._bits_per_sample
+        self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
 
     def restore(self):
         self._data["residual"] = self._ricer.bitstreams_to_frames(

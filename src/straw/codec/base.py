@@ -1,5 +1,6 @@
 from hashlib import md5
 
+import numpy as np
 import pandas as pd
 
 from straw.io.params import StreamParams
@@ -12,14 +13,12 @@ class BaseCoder:
     _ricer: Ricer
 
     # Member variables
-    _raw: list
     _data: pd.DataFrame
     _params: StreamParams
-    _md5: md5
+    _samplebuffer: np.array
 
     # TODO: these things should be in params
     _source_size: int
-    _samplerate: int
 
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
@@ -40,3 +39,6 @@ class BaseCoder:
 
     def get_data(self) -> pd.DataFrame:
         return self._data
+
+    def get_md5(self):
+        return md5(self._samplebuffer).digest()

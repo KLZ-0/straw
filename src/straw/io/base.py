@@ -1,9 +1,11 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from crcmod import mkCrcFun
 
 from straw import static
+from straw.io.bitarray import SlicedBitarray
 from straw.io.params import StreamParams
 from straw.rice import Ricer
 
@@ -31,6 +33,12 @@ class BaseIO:
         """
         pass
 
+    def get_data(self):
+        return self._data
+
+    def get_params(self):
+        return self._params
+
 
 class BaseWriter(BaseIO):
     def __init__(self, data: pd.DataFrame, params: StreamParams):
@@ -53,6 +61,10 @@ class BaseReader(BaseIO):
     _raw: list
     _ricer: Ricer()
 
+    _sec = SlicedBitarray()
+    _samplebuffer_ptr: int = 0
+    _samplebuffer: np.array
+
     def __init__(self):
         self._params = StreamParams()
         self._raw = []
@@ -69,4 +81,6 @@ class BaseReader(BaseIO):
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
         self._data = pd.DataFrame(self._raw, columns=static.columns)
-        return self._data, self._params
+
+    def get_buffer(self):
+        return self._samplebuffer

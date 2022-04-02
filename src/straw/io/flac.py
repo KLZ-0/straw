@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from bitarray import bitarray
-from bitarray.util import int2ba, ba2int
+from bitarray.util import int2ba
 from tqdm import tqdm
 
 from straw.io.base import BaseWriter, BaseReader
@@ -130,54 +130,9 @@ class FLACFormatWriter(BaseWriter):
         return sec
 
 
-class SlicedBitarray(bitarray):
-    _current_ptr: int = 0
-
-    def get_int(self, length: int = 1, signed=False) -> int:
-        part = self[self._current_ptr:self._current_ptr + length]
-        if len(part) == 0:
-            raise ValueError("Unexpected EOF")
-        self._current_ptr += length
-        return ba2int(part, signed=signed)
-
-    def get_bytes(self, length: int = 8) -> bytes:
-        part = self[self._current_ptr:self._current_ptr + length]
-        if len(part) == 0:
-            raise ValueError("Unexpected EOF")
-        self._current_ptr += length
-        return part.tobytes()
-
-    def get_int_utf8(self) -> int:
-        c = self.get_bytes()
-        while True:
-            try:
-                return ord(c.decode("utf-8"))
-            except UnicodeDecodeError:
-                c += self.get_bytes()
-
-    def get_from(self, start: int) -> bitarray:
-        return self[start:self._current_ptr]
-
-    def get_pos(self) -> int:
-        return self._current_ptr
-
-    def advance(self, length: int = 8):
-        self._current_ptr += length
-
-    def skip_padding(self):
-        if self._current_ptr % 8 != 0:
-            self._current_ptr = ((self._current_ptr // 8) + 1) * 8
-
-    def is_eof(self) -> bool:
-        return len(self[self._current_ptr:self._current_ptr + 1]) == 0
-
-
 class FLACFormatReader(BaseReader):
     # TODO: make an enum of sizes to not use magic numbers
-    _sec = SlicedBitarray()
     _ricer = Ricer(adaptive=False)
-    _samplebuffer_ptr: int = 0
-    _samplebuffer: np.array
 
     def _stream(self):
         marker = self._f.read(4)
@@ -286,9 +241,8 @@ class FLACFormatReader(BaseReader):
         row["qlp_precision"] = self._sec.get_int(length=4) + 1
         row["shift"] = self._sec.get_int(length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
 
-        row["qlp"] = np.asarray(
-            [self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)],
-            dtype=f"int{self._params.bits_per_sample}")
+        row["qlp"] = np.asarray([self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)],
+                                dtype=np.int32)
         row["residual"], row["bps"] = self._residual(blocksize - order, array=row["residual"])
         return row
 

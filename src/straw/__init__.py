@@ -4,11 +4,12 @@ from .codec import Encoder, Decoder
 def encode(args):
     import timeit
     import sys
+    from pathlib import Path
 
     e = Encoder(args.flac_mode)
 
     start = timeit.default_timer()
-    e.load_files(args.input_files)
+    e.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
     print(f"<TIME> load_files: {stop - start}", file=sys.stderr)
 
@@ -48,6 +49,13 @@ def decode(args):
     d.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
     print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
+
+    mid = timeit.default_timer()
+    d.save_wav(args.output_file)
+    stop = timeit.default_timer()
+    print(f"<TIME> create_frames: {stop - mid}", file=sys.stderr)
+
+    print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
 
 
 def run(args):
