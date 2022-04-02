@@ -47,7 +47,7 @@ def decode(args):
     start = timeit.default_timer()
     d.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
-    print(f"<TIME> load_files: {stop - start}", file=sys.stderr)
+    print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
 
 
 def run(args):

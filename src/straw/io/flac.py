@@ -192,7 +192,7 @@ class FLACFormatReader(BaseReader):
                 pbar.close()
                 break
 
-            self._frame()
+            self._frame(expected_frames)
 
     def _metadata_block(self) -> int:
         data_len = self._metadata_block_header()
@@ -218,11 +218,15 @@ class FLACFormatReader(BaseReader):
                                       dtype=f"int{self._params.bits_per_sample}")
         return self._params.total_samples // self._params.max_block_size + 1
 
-    def _frame(self):
+    def _frame(self, expected_frames: int):
         start = self._sec.get_pos()
         frame_num, blocksize = self._frame_header()
         for i in range(self._params.channels):
-            self._subframe(frame_num, blocksize)
+            row = self._subframe(blocksize)
+            row["seq"] = frame_num
+            row["channel"] = i
+            row["idx"] = i * expected_frames + frame_num
+            self._raw.append(row)
         self._sec.skip_padding()
 
         # Footer
@@ -260,9 +264,9 @@ class FLACFormatReader(BaseReader):
             raise RuntimeError(f"Inavalid frame header checksum at frame {frame_num}")
         return frame_num, blocksize
 
-    def _subframe(self, frame_num, blocksize):
+    def _subframe(self, blocksize: int) -> dict:
         order = self._subframe_header()
-        row = self._subframe_lpc(order, blocksize)
+        return self._subframe_lpc(order, blocksize)
 
     def _subframe_header(self) -> int:
         self._sec.get_int()  # zero bit padding, to prevent sync-fooling string of 1s
@@ -272,19 +276,18 @@ class FLACFormatReader(BaseReader):
         return order
 
     def _subframe_lpc(self, order: int, blocksize: int) -> dict:
-        row = {}
+        row = {"residual": self._samplebuffer[self._samplebuffer_ptr + order:]}
+        self._samplebuffer_ptr += blocksize
         row["frame"] = np.asarray(
             [self._sec.get_int(length=self._params.bits_per_sample, signed=True) for _ in range(order)],
             dtype=f"int{self._params.bits_per_sample}")
-        qlp_precision = self._sec.get_int(length=4) + 1
-        shift = self._sec.get_int(length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
+        row["qlp_precision"] = self._sec.get_int(length=4) + 1
+        row["shift"] = self._sec.get_int(length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
 
         row["qlp"] = np.asarray(
-            [self._sec.get_int(length=qlp_precision, signed=True) for _ in range(order)],
+            [self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)],
             dtype=f"int{self._params.bits_per_sample}")
-        row["residual"], row["bps"] = self._residual(blocksize - order,
-                                                     array=self._samplebuffer[self._samplebuffer_ptr + order:])
-        self._samplebuffer_ptr += blocksize
+        row["residual"], row["bps"] = self._residual(blocksize - order, array=row["residual"])
         return row
 
     def _residual(self, samples: int, array: np.array) -> np.array:

@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 from crcmod import mkCrcFun
 
+from straw import static
 from straw.io.params import StreamParams
 from straw.rice import Ricer
 
@@ -49,12 +50,12 @@ class BaseWriter(BaseIO):
 
 
 class BaseReader(BaseIO):
-    _raw: dict
+    _raw: list
     _ricer: Ricer()
 
     def __init__(self):
         self._params = StreamParams()
-        self._raw = {}
+        self._raw = []
 
     def load(self, input_file: Path) -> (pd.DataFrame, StreamParams):
         """
@@ -66,5 +67,6 @@ class BaseReader(BaseIO):
             self._f = f
             self._stream()
         self._format_specific_checks()
-        self._data = pd.DataFrame(self._raw)
+        self._raw.sort(key=lambda x: x["idx"])
+        self._data = pd.DataFrame(self._raw, columns=static.columns)
         return self._data, self._params

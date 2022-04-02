@@ -85,9 +85,8 @@ class Encoder(BaseCoder):
         # TODO: actually save bitstreams
 
     def restore(self):
-        self._data["residual_len"] = self._data["residual"].apply(len)
         self._data["residual"] = self._ricer.bitstreams_to_frames(
-            self._data["stream"], self._data["residual_len"], self._data["bps"])
+            self._data["stream"], self._data["residual"].apply(len), self._data["bps"])
 
         self._data = self._data.groupby("seq").apply(lpc.compute_original)
 
