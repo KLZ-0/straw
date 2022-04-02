@@ -276,11 +276,13 @@ class FLACFormatReader(BaseReader):
         return order
 
     def _subframe_lpc(self, order: int, blocksize: int) -> dict:
-        row = {"residual": self._samplebuffer[self._samplebuffer_ptr + order:]}
+        row = {
+            "frame": self._samplebuffer[self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize],
+            "residual": self._samplebuffer[self._samplebuffer_ptr + order:self._samplebuffer_ptr + blocksize]
+        }
         self._samplebuffer_ptr += blocksize
-        row["frame"] = np.asarray(
-            [self._sec.get_int(length=self._params.bits_per_sample, signed=True) for _ in range(order)],
-            dtype=f"int{self._params.bits_per_sample}")
+        for i in range(order):
+            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
         row["qlp_precision"] = self._sec.get_int(length=4) + 1
         row["shift"] = self._sec.get_int(length=5, signed=True)  # NOTE: in our implementation this shuld not be signed
 
