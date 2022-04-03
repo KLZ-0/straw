@@ -42,8 +42,9 @@ class StrawFormatWriter(BaseWriter):
 
     def _frame(self, df: pd.DataFrame):
         sec = bitarray()
-        qlp = df["qlp"][df["qlp"].first_valid_index()]
-        tmp = df.apply(self._subframe, axis=1, order=len(qlp))
+        qlp_idx = df["qlp"].first_valid_index()
+        qlp = None if qlp_idx is None else df["qlp"][qlp_idx]
+        tmp = df.apply(self._subframe, axis=1, qlp=qlp)
         for subframe_bitstream in tmp:
             sec += subframe_bitstream
         sec.fill()  # zero-padding to byte alignment
@@ -92,9 +93,9 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self.Crc.crc8(sec.tobytes()), length=8)
         return sec
 
-    def _subframe(self, df: pd.Series, order: int = 0) -> bitarray:
+    def _subframe(self, df: pd.Series, qlp: np.array) -> bitarray:
         sec = self._subframe_header(df)
-        sec += self._subframe_data(df, order)
+        sec += self._subframe_data(df, qlp)
         return sec
 
     def _subframe_header(self, df: pd.Series) -> bitarray:
@@ -102,21 +103,20 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(df["frame_type"], length=2)
         return sec
 
-    def _subframe_data(self, df: pd.Series, order: int = 0) -> bitarray:
+    def _subframe_data(self, df: pd.Series, qlp: np.array) -> bitarray:
         subframe_type = df["frame_type"]
         if subframe_type == 0b00:  # SUBFRAME_CONSTANT
-            print("encoded const frame")
             return self._subframe_constant(df)
         elif subframe_type == 0b01:  # SUBFRAME_RAW
             return self._subframe_raw(df)
         elif subframe_type == 0b11:  # SUBFRAME_LPC
-            return self._subframe_lpc(df, order)
+            return self._subframe_lpc(df, len(qlp))
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
 
     def _subframe_constant(self, df: pd.Series) -> bitarray:
         sec = bitarray()
-        sec += int2ba(int(df["qlp"]), length=self._params.bits_per_sample, signed=True)
+        sec += int2ba(int(df["frame"][0]), length=self._params.bits_per_sample, signed=True)
         return sec
 
     def _subframe_raw(self, df: pd.Series) -> bitarray:

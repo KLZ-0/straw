@@ -33,7 +33,7 @@ def compute_residual(data: pd.DataFrame):
     shift_idx = data[["shift"]].first_valid_index()
 
     if qlp_idx is None:
-        data["residual"] = None
+        data["residual"] = data["frame"].apply(lambda x: x[[0]])
     elif isinstance(data["frame"], np.ndarray):
         data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
     else:

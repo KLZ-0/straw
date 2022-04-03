@@ -91,7 +91,7 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
             m = 1 << k
             # print("e switched up:\t\t ", i, s, m)
             continue
-        if scale < -resp:
+        if scale < -resp and k > 0:
             scale = 0
             k -= 1
             m = 1 << k
@@ -153,7 +153,7 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
             m = 1 << k
             # print("dec switched up:\t ", i, s, m)
             continue
-        if scale < -resp:
+        if scale < -resp and k > 0:
             scale = 0
             k -= 1
             m = 1 << k
