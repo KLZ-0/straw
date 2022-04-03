@@ -40,6 +40,26 @@ Added:
 
 <32> Size of the frame in bytes (size including the header sync code and the frame footer)
 
+Moved from [SUBFRAME_LPC](#SUBFRAME_LPC):
+
+- <1> Contains LPC subframes
+    ```
+    0 : no
+    1 : yes
+    ```
+
+- <0/5> if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
+
+- <0/5> if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits (NOTE: this
+  number is signed two's-complement).
+
+- <0/bpc*order> if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc order) (
+  NOTE: the coefficients are signed two's-complement).
+
+Moved from [SUBFRAME_HEADER](#SUBFRAME_HEADER):
+
+- <0/5> if(Contains LPC subframes bit == 1) (LPC order) - 1
+
 Removed:
 
 - <1> Reserved:
@@ -108,8 +128,43 @@ Removed:
 Modified:
 
 - Changed the order of some fields
+- Broken byte-alignment in header
 - <0/16> if(Block size length bit == 0) 16 bit (blocksize-1)
 - <0/8> elif(Block size length bit == 1) blocksize = (2^n) samples
 - <8-?>: "UTF-8" coded frame number - changed to unspecified length
 - <15> Sync code '101010101010101'
 - changed the sync code
+
+## SUBFRAME_HEADER
+
+Moved to [FRAME](#FRAME_HEADER):
+
+- <6> Subframe type:
+    ```
+    1xxxxx : SUBFRAME_LPC, xxxxx=order-1
+    ```
+
+Removed:
+
+- <1+k> 'Wasted bits-per-sample' flag:
+    ```
+    0 : no wasted bits-per-sample in source subblock, k=0
+    1 : k wasted bits-per-sample in source subblock, k-1 follows, unary coded; e.g. k=3 => 001 follows, k=7 => 0000001 follows.
+    ```
+
+Modified:
+
+- <~~6~~ -> 2> Subframe type
+
+## SUBFRAME_RAW
+
+- Renamed from **SUBFRAME_VERBATIM**
+
+## SUBFRAME_LPC
+
+Moved to [FRAME](#FRAME_HEADER):
+
+- <4> (Quantized linear predictor coefficients' precision in bits)-1 (1111 = invalid).
+- <5> Quantized linear predictor coefficient shift needed in bits (NOTE: this number is signed two's-complement).
+- <bpc*order> Unencoded predictor coefficients (qlp coeff precision * lpc order) (NOTE: the coefficients are signed
+  two's-complement).
