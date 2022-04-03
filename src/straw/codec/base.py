@@ -51,4 +51,7 @@ class BaseCoder:
         return self._params
 
     def get_md5(self):
-        return md5(self._samplebuffer.swapaxes(1, 0)).digest()
+        try:
+            return md5(self._samplebuffer.swapaxes(1, 0)).digest()
+        except ValueError:
+            return md5(np.ascontiguousarray(self._samplebuffer.swapaxes(1, 0))).digest()
