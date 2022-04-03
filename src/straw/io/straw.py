@@ -105,13 +105,19 @@ class StrawFormatWriter(BaseWriter):
     def _subframe_data(self, df: pd.Series, order: int = 0) -> bitarray:
         subframe_type = df["frame_type"]
         if subframe_type == 0b00:  # SUBFRAME_CONSTANT
-            raise NotImplementedError("Encoding SUBFRAME_CONSTANT not yet implemented")
+            print("encoded const frame")
+            return self._subframe_constant(df)
         elif subframe_type == 0b01:  # SUBFRAME_RAW
             return self._subframe_raw(df)
         elif subframe_type == 0b11:  # SUBFRAME_LPC
             return self._subframe_lpc(df, order)
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
+
+    def _subframe_constant(self, df: pd.Series) -> bitarray:
+        sec = bitarray()
+        sec += int2ba(int(df["qlp"]), length=self._params.bits_per_sample, signed=True)
+        return sec
 
     def _subframe_raw(self, df: pd.Series) -> bitarray:
         sec = bitarray()

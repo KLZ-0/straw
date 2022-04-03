@@ -59,31 +59,29 @@ class Ricer:
         :return: encoded bitarray
         """
         data = bitarray()
-
-        if frame is not None:
-            # k = frexp(intrl(frame[0]))[1]
-            ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
-
+        ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
         return data
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
+        if df["frame_type"] != 0b11:
+            return bitarray()
+
         return self.frame_to_bitstream(df["frame"], df["bps"])
 
-    def frames_to_bitstreams(self, frames: pd.Series, bps: pd.Series, parallel: bool = True) -> pd.Series:
+    def frames_to_bitstreams(self, df: pd.DataFrame, parallel: bool = True) -> pd.Series:
         """
         Encode a series of frames to a series of bitsreams
         :param frames: series of frames
         :param bps: expected bits per second for this frame
+        :param ft: frame types
         :param parallel: if True then use multithreading
         :return: encoded bitarrays
         """
 
-        comp = pd.DataFrame({"frame": frames, "bps": bps})
-
         if not parallel:
-            return comp.apply(self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
+            return df.apply(self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
-        return self.parallel.apply(comp, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
+        return self.parallel.apply(df, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
     ############
     # Decoding #

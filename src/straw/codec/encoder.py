@@ -58,13 +58,15 @@ class Encoder(BaseCoder):
         Encode the signal
         :return: None
         """
-        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
+        self._parametrize()
+        lpc_frames = self._set_frame_types()
+        tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = pd.DataFrame(tmp.to_list())
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        self._data["frame_type"] = np.full(len(self._data["residual"]), 0b11, dtype="B")
-        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
+        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data)
         self._data["stream_len"] = self._data["stream"].apply(len)
+        self._ensure_compression()
 
     def save_file(self, output_file: Path):
         """
@@ -72,8 +74,6 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
-        self._parametrize()
-        self._ensure_compression()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -109,6 +109,16 @@ class Encoder(BaseCoder):
         self._params.channels = len(np.unique(self._data["channel"]))
         self._params.bits_per_sample = self._bits_per_sample
         self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
+
+    def _set_frame_types(self):
+        # all frames are LPC frames by default
+        self._data["frame_type"] = np.full(len(self._data["frame"]), 0b11, dtype="B")
+
+        # Constant frames
+        const_frames = self._data["frame"].apply(lambda x: not (x - x[0]).any())
+        self._data.loc[const_frames, "frame_type"] = 0b00
+
+        return ~const_frames
 
     def _ensure_compression(self):
         max_allowed_bits = self._data["residual"].apply(len) * self._params.bits_per_sample
