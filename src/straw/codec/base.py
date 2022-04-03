@@ -44,5 +44,11 @@ class BaseCoder:
     def get_data(self) -> pd.DataFrame:
         return self._data
 
+    def get_soundfile_compatible_array(self) -> np.array:
+        return self._samplebuffer.swapaxes(1, 0)
+
+    def get_params(self) -> StreamParams:
+        return self._params
+
     def get_md5(self):
         return md5(self._samplebuffer.swapaxes(1, 0)).digest()

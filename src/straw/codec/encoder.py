@@ -26,16 +26,25 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def load_file(self, filename: Path):
+    def load_file(self, file):
         """
         Load the specified file into memory
-        :param filename: file to load
+        :param file: str or int or file-like object - anything that soundfile accepts
         :return: None
         """
-        self._samplebuffer, sr = soundfile.read(filename, dtype=f"int{self._bits_per_sample}", always_2d=True)
+        data, sr = soundfile.read(file, dtype=f"int{self._bits_per_sample}", always_2d=True)
+        self.load_data(data, sr)
+
+    def load_data(self, data: np.array, samplerate: int):
+        if len(data.shape) == 1:
+            self._samplebuffer = data.reshape((1, -1))
+        elif data.shape[0] > data.shape[1]:
+            self._samplebuffer = data.swapaxes(1, 0)
+        else:
+            self._samplebuffer = data
+
         self._source_size = self._samplebuffer.nbytes
-        self._params.sample_rate = sr
-        self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
+        self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
         self._create_dataframe()
 
