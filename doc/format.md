@@ -36,7 +36,8 @@ Heavily based on the FLAC format
     ~127 : invalid, to avoid confusion with a frame sync code
     ```
 
-- `<24>` Length (in bytes) of metadata to follow (does not include the size of the METADATA_BLOCK_HEADER)
+- `<0/24>` if(BLOCK_TYPE != STREAMINFO) Length (in bytes) of metadata to follow (does not include the size of the
+  METADATA_BLOCK_HEADER)
 
 ## METADATA_BLOCK_DATA
 
@@ -79,19 +80,7 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 
 ## FRAME_HEADER
 
-- `<15>` Sync code '101010101010101'
-
-- `<1>` Block size length:
-    ```
-    0 : get 16 bit (blocksize-1)
-    1 : get 8 bit exponent for (2^n) samples
-    ```
-
-- `<0/16>` if(Block size length bit == 0) 16 bit (blocksize-1)
-
-- `<0/8>` elif(Block size length bit == 1) blocksize = (2^n) samples
-
-NOTE: This is where byte-alignment ends
+- `<14>` Sync code '10101010101010'
 
 - `<1>` Contains LPC subframes
     ```
@@ -99,15 +88,26 @@ NOTE: This is where byte-alignment ends
     1 : yes
     ```
 
+- `<1>` Block size length:
+    ```
+    0 : get 8 bit exponent for (2^n) samples
+    1 : get 16 bit (blocksize-1)
+    ```
+
+- `<0/8>` elif(Block size length bit == 0) blocksize = (2^n) samples
+
+- `<0/16>` if(Block size length bit == 1) 16 bit (blocksize-1)
+
 - `<0/5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
 
-- `<0/5>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
+- `<0/4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
 
-- `<0/5>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits (NOTE: this
-  number is signed two's-complement).
+- `<0/4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
 
 - `<0/bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc
   order) (NOTE: the coefficients are signed two's-complement).
+
+- `<?>` if(Contains LPC subframes bit == 1) Zero-padding to byte alignment.
 
 - `<8-?>`: "UTF-8" coded frame number
 
@@ -130,7 +130,6 @@ NOTE: Subframes are not byte-aligned
 
 ## SUBFRAME_HEADER
 
-- `<1>` Zero bit padding, to prevent sync-fooling string of 1s
 - `<2>` Subframe type:
     ```
     00 : SUBFRAME_CONSTANT

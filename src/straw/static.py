@@ -7,4 +7,5 @@ columns = [
     "shift",  # float (because of nans...) - shift needed (in bits) to revert the quantization
     "residual",  # pd.array - the signal residual
     "bps",  # int - bits per sample or also the k parameter of rice coding
+    "frame_type"  # int (enum) - corresponds to one of SUBFRAME_CONSTANT, SUBFRAME_RAW, SUBFRAME_LPC
 ]

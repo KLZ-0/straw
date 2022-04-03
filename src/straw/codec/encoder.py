@@ -57,6 +57,7 @@ class Encoder(BaseCoder):
         self._data[["qlp", "qlp_precision", "shift"]] = pd.DataFrame(tmp.to_list())
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        self._data["frame_type"] = np.full(len(self._data["residual"]), 0b11, dtype="B")
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data["residual"], self._data["bps"])
         self._data["stream_len"] = self._data["stream"].apply(len)
 

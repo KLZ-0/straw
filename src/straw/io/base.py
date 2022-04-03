@@ -56,6 +56,10 @@ class BaseWriter(BaseIO):
             self._f = f
             self._stream()
 
+    @staticmethod
+    def encode_int_utf8(val: int) -> bytes:
+        return chr(val).encode("utf-8")
+
 
 class BaseReader(BaseIO):
     _raw: list
