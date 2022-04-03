@@ -117,17 +117,12 @@ class Encoder(BaseCoder):
         print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
         print(f"md5: {self._params.md5.hex(' ')}", file=stream)
-        print(f"Length of bitstream: {size} bits, "
+        print(f"Length of residual bitstream: {size} bits, "
               f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)", file=stream)
         lpc_bytes = np.ceil(len(self._data) * self._lpc_precision * self._lpc_order * 1 / 8)
         print(f"Bytes needed for coefficients: {lpc_bytes:.0f} B", file=stream)
         print(f"Output file size: {output_file.stat().st_size}", file=stream)
-        print(f"Ratio = {np.ceil(size / 8) / self._source_size:.3f}", file=stream)
-        print(f"Ratio with LPC coeffs = {(np.ceil(size / 8) + lpc_bytes) / self._source_size:.3f}", file=stream)
-        lpc_saved = lpc_bytes * (len(np.unique(self._data["channel"])) - 1)
-        print(f"Grand Ratio with common LPC = {(output_file.stat().st_size - lpc_saved) / self._source_size:.3f}",
-              file=stream)
-        print(f"Curent grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
+        print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
