@@ -10,7 +10,7 @@ The "fLaC" marker was replaced by "sTrW"
 
 Added:
 
-- `<3>` reserved
+- `<27>` Total number of frames
 
 Removed:
 

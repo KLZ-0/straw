@@ -43,10 +43,10 @@ class Decoder(BaseCoder):
         soundfile.write(output_file, self._samplebuffer.swapaxes(1, 0), samplerate=self._params.sample_rate)
 
     ###########
-    # Private #
+    # Utility #
     ###########
 
-    def _test(self, wav_file: Path = Path("inputs/1min.wav")):
+    def test(self, wav_file: Path = Path("inputs/1min.wav")):
         """
         Test the decoder with a sample file
         :return:

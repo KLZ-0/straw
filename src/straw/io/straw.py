@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 from bitarray import bitarray
 from bitarray.util import int2ba
+from tqdm import tqdm
 
-from straw.io.base import BaseWriter
+from straw.io.base import BaseWriter, BaseReader
 
 
 class StrawFormatWriter(BaseWriter):
@@ -34,7 +35,7 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self._params.sample_rate, length=20)
         sec.frombytes(self.encode_int_utf8(self._params.channels - 1))
         sec += int2ba(self._params.bits_per_sample - 1, length=5)
-        sec += int2ba(0, length=3)
+        sec += int2ba(int(len(self._data[self._data["channel"] == 0])), length=27)
         sec += int2ba(self._params.total_samples, length=36)
         sec.frombytes(self._params.md5)
         return sec
@@ -55,7 +56,6 @@ class StrawFormatWriter(BaseWriter):
         sec.tofile(self._f)
 
     def _frame_header(self, df: pd.DataFrame, frame_data_size: int) -> bitarray:
-        # TODO: in straw this should contain the size of the whole frame so we can partition and parallelize it
         sec = bitarray()
         sec += int2ba(0b10101010101010, length=14)  # sync code
         contains_lpc = df["qlp"].first_valid_index() is not None
@@ -103,15 +103,21 @@ class StrawFormatWriter(BaseWriter):
         return sec
 
     def _subframe_data(self, df: pd.Series, order: int = 0) -> bitarray:
-        frame_type = df["frame_type"]
-        if frame_type == 0b00:  # SUBFRAME_CONSTANT
-            pass
-        elif frame_type == 0b01:  # SUBFRAME_RAW
-            pass
-        elif frame_type == 0b11:  # SUBFRAME_LPC
+        subframe_type = df["frame_type"]
+        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
+            raise NotImplementedError("Encoding SUBFRAME_CONSTANT not yet implemented")
+        elif subframe_type == 0b01:  # SUBFRAME_RAW
+            return self._subframe_raw(df)
+        elif subframe_type == 0b11:  # SUBFRAME_LPC
             return self._subframe_lpc(df, order)
         else:
-            raise ValueError(f"Invalid frame type: {frame_type}")
+            raise ValueError(f"Invalid frame type: {subframe_type}")
+
+    def _subframe_raw(self, df: pd.Series) -> bitarray:
+        sec = bitarray()
+        for sample in df["frame"]:
+            sec += int2ba(int(sample), length=self._params.bits_per_sample, signed=True)
+        return sec
 
     def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
         sec = bitarray()
@@ -125,3 +131,137 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(int(df["bps"]), length=4)
         sec += df["stream"]
         return sec
+
+
+class StrawFormatReader(BaseReader):
+    def _stream(self):
+        marker = self._f.read(4)
+        if marker.decode("utf-8") != "sTrW":
+            raise ValueError("Not a valid Straw file!")
+        self._sec.fromfile(self._f)
+        expected_frames = self._metadata_block()
+        pbar = tqdm(range(expected_frames))
+        pbar.set_description(f"Loading frames")
+        for i in pbar:
+            if self._sec.is_eof():
+                pbar.close()
+                break
+
+            self._frame(expected_frames)
+
+    def _metadata_block(self) -> int:
+        data_len = self._metadata_block_header()
+        return self._metadata_block_data()
+
+    def _metadata_block_header(self) -> int:
+        last_metadata_block = self._sec.get_int()  # this block is the last metadata block before the audio blocks
+        block_type = self._sec.get_int(length=7)  # BLOCK_TYPE: STREAMINFO
+        if block_type == 0:
+            return 0
+        else:
+            data_len = self._sec.get_int(length=24)
+            return data_len
+
+    def _metadata_block_data(self) -> int:
+        self._params.sample_rate = self._sec.get_int(length=20)
+        self._params.channels = self._sec.get_int_utf8() + 1
+        self._params.bits_per_sample = self._sec.get_int(length=5) + 1
+        expected_frames = self._sec.get_int(length=27)
+        self._params.total_samples = self._sec.get_int(length=36)
+        self._params.md5 = self._sec.get_bytes(length=128)
+
+        # Allocate sample buffer
+        self._allocate_buffer(channels=self._params.channels,
+                              bits_per_sample=self._params.bits_per_sample,
+                              total_samples=self._params.total_samples)
+        return expected_frames
+
+    def _frame(self, expected_frames: int):
+        start = self._sec.get_pos()
+        common, frame_size, blocksize = self._frame_header()
+        for i in range(self._params.channels):
+            row = self._subframe(len(common["qlp"]) if "qlp" in common else 0, blocksize, i) | common
+            row["idx"] = i * expected_frames + common["seq"]
+            self._raw.append(row)
+        self._samplebuffer_ptr += blocksize
+        self._sec.skip_padding()
+
+        # Footer
+        expected_crc = self.Crc.crc16(self._sec.get_from(start).tobytes())
+        checksum = self._sec.get_int(length=16)
+        if expected_crc != checksum:
+            raise RuntimeError(f"Inavalid frame checksum at frame {common['seq']}")
+
+    def _frame_header(self) -> (dict, int, int):
+        common = {}
+        start = self._sec.get_pos()
+        if self._sec.get_int(length=14) != 0b10101010101010:  # sync code
+            raise RuntimeError("Lost sync")
+        contains_lpc = self._sec.get_int()
+        if self._sec.get_int():
+            blocksize = self._sec.get_int(length=16) + 1
+        else:
+            blocksize = 1 << self._sec.get_int(length=8)
+
+        if contains_lpc:
+            order = self._sec.get_int(length=5) + 1
+            common["qlp_precision"] = self._sec.get_int(length=4) + 1
+            common["shift"] = self._sec.get_int(length=4)
+            common["qlp"] = np.asarray(
+                [self._sec.get_int(length=common["qlp_precision"], signed=True) for _ in range(order)], dtype=np.int32)
+            self._sec.skip_padding()
+
+        common["seq"] = self._sec.get_int_utf8()
+        frame_size = self._sec.get_int(length=32)
+
+        expected_crc = self.Crc.crc8(self._sec.get_from(start).tobytes())
+        checksum = self._sec.get_int(length=8)
+        if expected_crc != checksum:
+            raise RuntimeError(f"Inavalid frame header checksum at frame {common['seq']}")
+        return common, frame_size, blocksize
+
+    def _subframe(self, order: int, blocksize: int, subframe_num: int) -> dict:
+        subframe_type = self._subframe_header()
+        return self._subframe_data(subframe_type, order, blocksize, subframe_num)
+
+    def _subframe_header(self) -> int:
+        return self._sec.get_int(length=2)
+
+    def _subframe_data(self, subframe_type: int, order: int, blocksize: int, subframe_num: int) -> dict:
+        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
+            raise NotImplementedError("Decoding SUBFRAME_CONSTANT not yet implemented")
+        elif subframe_type == 0b01:  # SUBFRAME_RAW
+            return self._subframe_raw(blocksize, subframe_num)
+        elif subframe_type == 0b11:  # SUBFRAME_LPC
+            return self._subframe_lpc(order, blocksize, subframe_num)
+        else:
+            raise ValueError(f"Invalid frame type: {subframe_type}")
+
+    def _subframe_raw(self, blocksize: int, subframe_num: int) -> dict:
+        row = {
+            "channel": subframe_num,
+            "frame": self._samplebuffer[subframe_num][self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize]
+        }
+        for i in range(blocksize):
+            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        return row
+
+    def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
+        row = {
+            "channel": subframe_num,
+            "frame": self._samplebuffer[subframe_num][self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize],
+            "residual": self._samplebuffer[subframe_num][
+                        self._samplebuffer_ptr + order:self._samplebuffer_ptr + blocksize]
+        }
+        for i in range(order):
+            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        row["residual"], row["bps"] = self._residual(array=row["residual"])
+        return row
+
+    def _residual(self, array: np.array) -> np.array:
+        bps = self._sec.get_int(length=4)
+        bits_read = self._ricer.bitstream_to_frame(
+            self._sec[self._sec.get_pos():self._sec.get_pos() + len(array) * self._params.bits_per_sample],
+            len(array), bps, own_frame=array)
+        self._sec.advance(bits_read)
+        return array, bps

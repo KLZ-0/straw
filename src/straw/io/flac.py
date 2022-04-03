@@ -5,10 +5,13 @@ from bitarray.util import int2ba
 from tqdm import tqdm
 
 from straw.io.base import BaseWriter, BaseReader
+from straw.io.params import FLACStreamParams
 from straw.rice import Ricer
 
 
 class FLACFormatWriter(BaseWriter):
+    _params: FLACStreamParams
+
     def _format_specific_checks(self):
         if len(np.unique(self._data["channel"])) > 8:
             raise ValueError("The FLAC format only supports up to 8 channels")
@@ -169,9 +172,11 @@ class FLACFormatReader(BaseReader):
         self._params.bits_per_sample = self._sec.get_int(length=5) + 1
         self._params.total_samples = self._sec.get_int(length=36)
         self._params.md5 = self._sec.get_bytes(length=128)
-        self._samplebuffer = np.zeros((self._params.total_samples, self._params.channels),
-                                      dtype=f"int{self._params.bits_per_sample}")
-        self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
+
+        # Allocate sample buffer
+        self._allocate_buffer(channels=self._params.channels,
+                              bits_per_sample=self._params.bits_per_sample,
+                              total_samples=self._params.total_samples)
         return self._params.total_samples // self._params.max_block_size + 1
 
     def _frame(self, expected_frames: int):

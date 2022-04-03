@@ -63,7 +63,7 @@ class BaseWriter(BaseIO):
 
 class BaseReader(BaseIO):
     _raw: list
-    _ricer: Ricer()
+    _ricer = Ricer()
 
     _sec = SlicedBitarray()
     _samplebuffer_ptr: int = 0
@@ -85,6 +85,10 @@ class BaseReader(BaseIO):
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
         self._data = pd.DataFrame(self._raw, columns=static.columns)
+
+    def _allocate_buffer(self, total_samples: int, channels: int, bits_per_sample: int):
+        self._samplebuffer = np.zeros((total_samples, channels), dtype=f"int{bits_per_sample}")
+        self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
     def get_buffer(self):
         return self._samplebuffer

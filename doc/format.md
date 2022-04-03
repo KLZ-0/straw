@@ -59,7 +59,7 @@ One of:
 
 - `<5>` (bits per sample)-1. 4 to 32 bits per sample.
 
-- `<3>` reserved
+- `<27>` Total number of frames
 
 - `<36>` Total samples in stream. 'Samples' means inter-channel sample, i.e. one second of 44.1Khz audio will have 44100
   samples regardless of the number of channels. A value of zero here means the number of total samples is unknown.

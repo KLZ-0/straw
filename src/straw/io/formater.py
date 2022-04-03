@@ -4,7 +4,7 @@ import pandas as pd
 
 from straw.io.flac import FLACFormatWriter, FLACFormatReader
 from straw.io.params import StreamParams
-from straw.io.straw import StrawFormatWriter
+from straw.io.straw import StrawFormatWriter, StrawFormatReader
 
 
 class Formatter:
@@ -49,8 +49,7 @@ class Formatter:
         if flac_mode:
             reader = FLACFormatReader()
         else:
-            # TODO
-            return None
+            reader = StrawFormatReader()
 
         reader.load(input_file)
         self.validate_dataframe(reader.get_data(), reader.get_params())

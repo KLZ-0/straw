@@ -4,13 +4,11 @@ import numpy as np
 import pandas as pd
 
 from straw.io.params import StreamParams
-from straw.rice import Ricer
 
 
 class BaseCoder:
     # Member utils
     _flac_mode: bool
-    _ricer: Ricer
 
     # Member variables
     _default_frame_size: int = 4096  # bytes
@@ -23,7 +21,6 @@ class BaseCoder:
 
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
-        self._ricer = Ricer(adaptive=True if not flac_mode else False)
 
     def _slice_channel_data_into_frames(self, data: np.array):
         return [data[i:i + self._default_frame_size] for i in range(0, len(data), self._default_frame_size)]
