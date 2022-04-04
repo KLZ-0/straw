@@ -103,9 +103,8 @@ class Encoder(BaseCoder):
         if self._flac_mode:
             self._params.max_block_size = int(self._data["frame"].apply(len).max())
             self._params.min_block_size = self._params.max_block_size
-            max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.min_frame_size = 0  # unknown
-            self._params.max_frame_size = int(max_residual_bytes) + 1000
+            self._params.max_frame_size = 0
         self._params.channels = len(np.unique(self._data["channel"]))
         self._params.bits_per_sample = self._bits_per_sample
         self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
@@ -123,6 +122,10 @@ class Encoder(BaseCoder):
     def _ensure_compression(self):
         max_allowed_bits = self._data["residual"].apply(len) * self._params.bits_per_sample
         self._data.loc[self._data["stream_len"] > max_allowed_bits, "frame_type"] = 0b01
+
+        if self._flac_mode:
+            max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
+            self._params.max_frame_size = int(max_residual_bytes) + 1000
 
     ###########
     # Utility #
