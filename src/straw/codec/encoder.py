@@ -62,7 +62,7 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        self._apply_corrections()  # 0, 1, 2, 3
+        # self._apply_corrections()  # 0, 1, 2, 3
         # self._deconvolve_signals()  # 1
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
@@ -71,7 +71,7 @@ class Encoder(BaseCoder):
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         # self._apply_corrections("residual")  # 4
         # self._deconvolve_signals("residual")  # 3, 4
-        self._deconvolve_signals("residual", localized=True)  # 3*
+        # self._deconvolve_signals("residual", localized=True)  # 3*
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._ensure_compression()
@@ -82,10 +82,10 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
-        self._print_var(seq=4)
+        # self._print_var(seq=4)
         # exp = 4
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810), file_name=f"{exp}_frame.png")
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", file_name=f"{exp}_residual.png", limit=(1740, 1800))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
         # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
