@@ -29,16 +29,19 @@ class LPCSignalIntegrity(unittest.TestCase):
     def test_zeroframe_qlp(self):
         df = pd.DataFrame({"frame": [self.signal_zeros]})
         qlp, precision, shift = lpc.compute_qlp(df.loc[0], self.lpc_order, self.lpc_precision)
-        self.assertIsNone(qlp)
         self.assertEqual(shift, 0)
+        self.assertEqual(precision, 0)
 
     def test_zeroframe_residual(self):
-        df = pd.DataFrame({"frame": [self.signal_zeros]})
-        df["qlp"] = [None]
-        df["shift"] = [0]
+        df = pd.Series({
+            "frame": self.signal_zeros,
+            "qlp": None,
+            "shift": 0,
+        })
 
-        df = lpc.compute_residual(df.loc[0])
-        self.assertIsNone(df["residual"])
+        df = lpc.compute_residual(pd.DataFrame(df).T)
+        self.assertIsInstance(df.loc[0, "residual"], np.ndarray)
+        self.assertEqual(df.loc[0, "residual"][0], 0)
 
 
 if __name__ == '__main__':
