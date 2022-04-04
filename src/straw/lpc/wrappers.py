@@ -8,19 +8,29 @@ Pandas-lever wrappers
 """
 
 
-def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
+def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> pd.Series:
     """
     Compute LPC and quantize the LPC coefficients
     :param frame: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
-    :return: tuple(qlp coefficients, quantization level)
+    :return: Series(qlp coefficients, qlp precision, qlp shift)
     """
+    df = pd.Series({
+        "qlp": np.array([]),
+        "qlp_precision": 0,
+        "shift": 0,
+    })
+
     lpc = steps.compute_lpc(frame["frame"], order)
     if lpc is None:
-        return None, 0
+        return df
 
-    return steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
+    qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
+    df["qlp"] = qlp
+    df["qlp_precision"] = precision
+    df["shift"] = shift
+    return df
 
 
 def compute_residual(data: pd.DataFrame):
@@ -32,8 +42,8 @@ def compute_residual(data: pd.DataFrame):
     qlp_idx = data[["qlp"]].first_valid_index()
     shift_idx = data[["shift"]].first_valid_index()
 
-    if qlp_idx is None or shift_idx is None:
-        data["residual"] = None
+    if qlp_idx is None:
+        data["residual"] = data["frame"].apply(lambda x: x[[0]])
     elif isinstance(data["frame"], np.ndarray):
         data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
     else:
@@ -44,24 +54,25 @@ def compute_residual(data: pd.DataFrame):
     return data
 
 
-def _compute_original_df_expander(data: pd.DataFrame, qlp, shift):
-    return steps.restore_signal_cython(data["residual"], qlp, shift, data["frame"][:len(qlp)])
+def _compute_original_df_expander(data: pd.DataFrame, qlp, shift, inplace):
+    return steps.restore_signal_cython(data["frame"], qlp, shift, inplace)
 
 
-def compute_original(data: pd.DataFrame):
+def compute_original(data: pd.DataFrame, inplace=False):
     """
     Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
     :param data: input dataframe with columns [frame, qlp, shift]
+    :param inplace: whether the restoring should be done in place (faster)
     :return: residual as a numpy array
     """
     qlp = data["qlp"][data["qlp"].first_valid_index()]
     shift = int(data["shift"][data["shift"].first_valid_index()])
 
-    data["restored"] = data.apply(_compute_original_df_expander,
-                                  qlp=qlp, shift=shift,
-                                  axis=1, result_type="reduce")
+    tmp = data.apply(_compute_original_df_expander, qlp=qlp, shift=shift, axis=1, result_type="reduce", inplace=inplace)
 
-    return data
+    if not inplace:
+        data["restored"] = tmp
+        return data
 
 
 def compare_restored(data: pd.DataFrame) -> bool:
@@ -70,4 +81,4 @@ def compare_restored(data: pd.DataFrame) -> bool:
     :param data: input dataframe with columns [frame, restored]
     :return: True if equal, False otherwise
     """
-    return not (data["frame"] - data["restored"]).any()
+    return not (data["frame"] - data["original"]).any()

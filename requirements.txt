@@ -5,3 +5,5 @@ matplotlib
 bitarray
 pandas
 cython
+crcmod
+tqdm

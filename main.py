@@ -1,4 +1,5 @@
 import argparse
+from pathlib import Path
 
 import straw
 
@@ -10,6 +11,8 @@ if __name__ == '__main__':
                         help="Output file")
     parser.add_argument("-d", "--decode", dest="decode", action="store_true",
                         help="Decode")
+    parser.add_argument("-f", "--flac", dest="flac_mode", action="store_true",
+                        help="FLAC mode")
 
     # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",
@@ -19,6 +22,15 @@ if __name__ == '__main__':
                         default="outputs", help="Override figure directory (default='outputs')")
 
     args = parser.parse_args()
+
+    # Fix args
+    if args.output_file:
+        args.output_file = Path(args.output_file)
+    else:
+        pth = Path(args.input_files[0])
+        args.output_file = (pth.parent / pth.stem).with_suffix(".straw")
+
+    # TODO: this part has to get proper args
 
     if args.figures:
         from figures import plot_all

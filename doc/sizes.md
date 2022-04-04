@@ -43,3 +43,12 @@ Length of bitstream: 48592697 bits, bytes: 6074088 aligned (5.79 MiB)
 - Ratio = 0.395
 - With LPC coeffs = 0.397
 - FLAC = 0.372
+
+### 10min.wav
+
+Number of frames: 18752 Source size: 153600000 (146.48 MiB)
+md5: 3a 14 27 33 a3 22 13 07 03 f2 49 e7 1f 42 80 94 Length of residual bitstream: 417762113 bits, bytes: 52220265
+aligned (49.80 MiB)
+Bytes needed for coefficients: 281280 B Output file size: 52670798 Grand Ratio = 0.343
+
+10min.wav: wrote 52374790 bytes, ratio=0.341

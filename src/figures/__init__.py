@@ -8,7 +8,7 @@ def plot_all(args=None):
     from .lpc import LPCPlot
     from .rice import RicePlot
 
-    e = Encoder(args)
+    e = Encoder()
     e.load_files(args.input_files)
     e.create_frames()
     e.encode()

@@ -148,10 +148,10 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
     Wrapper around Cython extension for LPC coefficient quantization
     :param lpc_c: numpy array of LPC coefficients to be quantized
     :param precision: target precition in bits
-    :return: tuple(QLP, shift)
+    :return: tuple(QLP, precision, shift)
     """
     shift = ext.quantize_lpc(lpc_c, precision)
-    return lpc_c.astype(np.int32), shift
+    return lpc_c.astype(np.int32), precision, shift
 
 
 ##############
@@ -217,17 +217,18 @@ def restore_signal(residual, qlp, lp_quantization, warmup_samples):
     return data
 
 
-def restore_signal_cython(residual, qlp, lp_quantization, warmup_samples) -> np.array:
+def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int, inplace: bool = False) -> np.array:
     """
     Restores the original signal given the residual with quantized LPC coefficients
     Wrapper around Cython extension for signal restoration
-    :param residual: residual signal
+    :param frame: signal array initialized with the first samples from the original signal and the residual
     :param qlp: quantized LPC coefficients
     :param lp_quantization: quantization shift
-    :param warmup_samples: warmup samples (the first samples from the original signal)
+    :param inplace: whether the restoring should be done in place (faster)
     :return: reconstructed signal as a numpy array
     """
     # TODO: make this a proper wrapper without the need for duplicated lines
-    data = np.pad(warmup_samples[:qlp.shape[0]], (0, residual.shape[0]))
-    ext.restore_signal(residual, qlp, lp_quantization, data)
-    return data
+    if not inplace:
+        frame = frame.copy()
+    ext.restore_signal(frame, qlp, lp_quantization)
+    return frame
