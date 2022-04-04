@@ -7,7 +7,7 @@ from bitarray import bitarray
 # Signedness correction #
 #########################
 
-cdef short _interleave(short x):
+cdef int _interleave(short x):
     """
     Implementation of the overlap and interleave scheme from https://en.wikipedia.org/wiki/Golomb_coding
     :param x: signed integer to be remaped
@@ -22,7 +22,7 @@ cdef short _interleave(short x):
         return -2 * x - 1
 
 @cython.cdivision(True)
-cdef short _deinterleave(short x):
+cdef short _deinterleave(int x):
     """
     Reverse of _interleave(short x)
     :param x: positive interleaved integer
@@ -61,7 +61,8 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
     :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
-    cdef short m, q, s
+    cdef short m, q
+    cdef int s  # int because of interleaving
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
     m = 1 << k
@@ -124,7 +125,8 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
     :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
-    cdef short m, q, s, j
+    cdef short m, q, j
+    cdef int s  # int because of interleaving
     cdef Py_ssize_t x_max, i
     cdef Py_ssize_t bit_i = 0
     x_max = frame.shape[0]
