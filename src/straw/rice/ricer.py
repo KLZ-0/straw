@@ -66,7 +66,7 @@ class Ricer:
         if df["frame_type"] != 0b11:
             return bitarray()
 
-        return self.frame_to_bitstream(df["frame"], df["bps"])
+        return self.frame_to_bitstream(df["residual"], df["bps"])
 
     def frames_to_bitstreams(self, df: pd.DataFrame, parallel: bool = True) -> pd.Series:
         """
