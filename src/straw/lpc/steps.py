@@ -148,7 +148,7 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
     Wrapper around Cython extension for LPC coefficient quantization
     :param lpc_c: numpy array of LPC coefficients to be quantized
     :param precision: target precition in bits
-    :return: tuple(QLP, shift)
+    :return: tuple(QLP, precision, shift)
     """
     shift = ext.quantize_lpc(lpc_c, precision)
     return lpc_c.astype(np.int32), precision, shift

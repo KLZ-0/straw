@@ -8,19 +8,29 @@ Pandas-lever wrappers
 """
 
 
-def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> (np.array, int):
+def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> pd.Series:
     """
     Compute LPC and quantize the LPC coefficients
     :param frame: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
-    :return: tuple(qlp coefficients, quantization level)
+    :return: Series(qlp coefficients, qlp precision, qlp shift)
     """
+    df = pd.Series({
+        "qlp": np.array([]),
+        "qlp_precision": 0,
+        "shift": 0,
+    })
+
     lpc = steps.compute_lpc(frame["frame"], order)
     if lpc is None:
-        return None, 0, 0
+        return df
 
-    return steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
+    qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
+    df["qlp"] = qlp
+    df["qlp_precision"] = precision
+    df["shift"] = shift
+    return df
 
 
 def compute_residual(data: pd.DataFrame):
