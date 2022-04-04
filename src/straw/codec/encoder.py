@@ -8,7 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import GainCorrector, BiasCorrector, ShiftCorrector
+from straw.correctors import BiasCorrector, ShiftCorrector, deconvolve
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -28,9 +28,10 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False):
+    def __init__(self, flac_mode=False, do_corrections=True):
         super(Encoder, self).__init__(flac_mode)
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
+        self._do_corrections = do_corrections
 
     def load_file(self, file):
         """
@@ -64,8 +65,11 @@ class Encoder(BaseCoder):
         # self._apply_corrections()
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
+        # self._deconvolve_signals()
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        # self._apply_corrections("residual")
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        # self._deconvolve_signals("residual")
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._ensure_compression()
@@ -76,8 +80,11 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
+        self._print_var(seq=4)
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1740, 1800), file_name="gain_shift_correction_after.png")
         # show_frame(self._data[self._data["seq"] == 4], col_name="residual", limit=(1740, 1800))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
+        # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -131,13 +138,32 @@ class Encoder(BaseCoder):
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.max_frame_size = int(max_residual_bytes) + 1000
 
-    def _apply_corrections(self):
-        # Without:
-        # Length of bitstream: 48952282 bits, bytes: 6119036 aligned (5.84 MiB)
-        self._data = self._data.groupby("seq").apply(GainCorrector().apply)
-        self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
-        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
-        # self._data = self._data.groupby("seq").apply(deconvolve)
+    def _apply_corrections(self, col_name="frame"):
+        if self._do_corrections:
+            # return
+            # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
+            self._data = self._data.groupby("seq").apply(BiasCorrector().apply, col_name=col_name)
+            self._data = self._data.groupby("seq").apply(ShiftCorrector().apply, col_name=col_name)
+
+    def _deconvolve_signals(self, col_name="frame"):
+        if self._do_corrections:
+            # return
+            self._data = self._data.groupby("seq").apply(deconvolve, col_name=col_name)
+
+    def _print_var(self, seq=0):
+        old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
+        nocorr_var = np.asarray([1180.79508441, 1856.41195693, 3204.70594336, 2090.79251358, 1489.54344976,
+                                 1078.56373649, 1556.83422256, 2079.87009688])
+        self._tmp(seq, np.var, "var", nocorr_var)
+        self._tmp(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
+
+    def _tmp(self, seq, func, name, old_vals=None):
+        var = self._data[self._data["seq"] == seq]["residual"].apply(func).to_numpy()
+        print(f"- {name}:", np.array2string(var, precision=3, suppress_small=True))
+        if old_vals is not None:
+            print(f"- original {name}:", np.array2string(old_vals, precision=3, suppress_small=True))
+            print(f"- {name} difference:", np.array2string(var - old_vals, precision=3, suppress_small=True))
+            print(f"total diff: {(var - old_vals).sum():.3f}")
 
     ###########
     # Utility #
@@ -163,4 +189,3 @@ class Encoder(BaseCoder):
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
-
