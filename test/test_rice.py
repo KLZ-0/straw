@@ -12,7 +12,7 @@ class Rice(unittest.TestCase):
     """
     k = 2
     m = 1 << k
-    r = rice.Ricer(m)
+    r = rice.Ricer()
 
     def test_rice_ext_arange_decode(self):
         frame = np.arange(20, dtype=np.int16)
