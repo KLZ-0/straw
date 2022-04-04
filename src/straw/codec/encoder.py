@@ -8,7 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import BiasCorrector, ShiftCorrector, deconvolve
+from straw.correctors import BiasCorrector, ShiftCorrector, deconvolve, localized_deconvolve
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -62,15 +62,16 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        # self._apply_corrections()  # 0, 1, 2, 3
+        self._apply_corrections()  # 0, 1, 2, 3
         # self._deconvolve_signals()  # 1
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._deconvolve_signals()  # 2
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        self._apply_corrections("residual")  # 4
-        self._deconvolve_signals("residual")  # 3, 4
+        # self._apply_corrections("residual")  # 4
+        # self._deconvolve_signals("residual")  # 3, 4
+        self._deconvolve_signals("residual", localized=True)  # 3*
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._ensure_compression()
@@ -147,12 +148,18 @@ class Encoder(BaseCoder):
             self._data = self._data.groupby("seq").apply(BiasCorrector().apply, col_name=col_name)
             self._data = self._data.groupby("seq").apply(ShiftCorrector().apply, col_name=col_name)
 
-    def _deconvolve_signals(self, col_name="frame"):
+    def _deconvolve_signals(self, col_name="frame", localized=False):
         if self._do_corrections:
-            # return
-            self._data = self._data.groupby("seq").apply(deconvolve, col_name=col_name)
+            if localized:
+                self._data = self._data.groupby("seq").apply(localized_deconvolve, col_name=col_name)
+            else:
+                self._data = self._data.groupby("seq").apply(deconvolve, col_name=col_name)
 
     def _print_var(self, seq=0):
+        old_stream_len = 214523
+        stream_len = self._data[self._data["seq"] == seq]["stream_len"].sum()
+        print("- stream_len:", stream_len)
+        print("- stream_len diff:", stream_len - old_stream_len)
         old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
         nocorr_var = np.asarray([10997.481, 24395.01, 50948.516, 36896.603, 21682.603, 11630.761,
                                  14912.361, 18267.361])
