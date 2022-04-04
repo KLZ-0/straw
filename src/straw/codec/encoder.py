@@ -8,6 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
+from straw.correctors import GainCorrector, BiasCorrector, ShiftCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -60,6 +61,7 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
+        # self._apply_corrections()
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
@@ -74,6 +76,8 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1740, 1800), file_name="gain_shift_correction_after.png")
+        # show_frame(self._data[self._data["seq"] == 4], col_name="residual", limit=(1740, 1800))
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -126,6 +130,14 @@ class Encoder(BaseCoder):
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.max_frame_size = int(max_residual_bytes) + 1000
+
+    def _apply_corrections(self):
+        # Without:
+        # Length of bitstream: 48952282 bits, bytes: 6119036 aligned (5.84 MiB)
+        self._data = self._data.groupby("seq").apply(GainCorrector().apply)
+        self._data = self._data.groupby("seq").apply(BiasCorrector().apply)
+        self._data = self._data.groupby("seq").apply(ShiftCorrector().apply)
+        # self._data = self._data.groupby("seq").apply(deconvolve)
 
     ###########
     # Utility #

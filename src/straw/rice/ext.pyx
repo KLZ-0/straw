@@ -184,7 +184,7 @@ def kparams(short[:] frame, short k, short resp):
     :param resp: rice parameter responsiveness
     :return: None
     """
-    cdef short s
+    cdef int s
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
     m = 1 << k
@@ -200,7 +200,7 @@ def kparams(short[:] frame, short k, short resp):
             k += 1
             m = 1 << k
             continue
-        if scale < -resp:
+        if scale < -resp and k > 0:
             scale = 0
             k -= 1
             m = 1 << k

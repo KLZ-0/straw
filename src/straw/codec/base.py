@@ -32,11 +32,11 @@ class BaseCoder:
         """
         return self._data.memory_usage(index=True, deep=True).sum() / (2 ** 20)
 
-    def sample_frame(self) -> pd.Series:
-        return self._data.loc[0]
+    def sample_frame(self, seq=0) -> pd.Series:
+        return self._data.loc[seq]
 
-    def sample_frame_multichannel(self) -> pd.DataFrame:
-        return self._data[self._data["seq"] == 0]
+    def sample_frame_multichannel(self, seq=0) -> pd.DataFrame:
+        return self._data[self._data["seq"] == seq]
 
     def get_data(self) -> pd.DataFrame:
         return self._data
