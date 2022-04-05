@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import soundfile
 
+from figures import show_frame
 from straw import lpc
 from straw.codec.base import BaseCoder
 from straw.correctors import BiasCorrector, ShiftCorrector, deconvolve, localized_deconvolve
@@ -62,7 +63,7 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        # self._apply_corrections()  # 0, 1, 2, 3
+        self._apply_corrections()  # 0, 1, 2, 3
         # self._deconvolve_signals()  # 1
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
@@ -82,13 +83,27 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
+        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
         # self._print_var(seq=4)
         # exp = 4
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
         # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
+        self._decorr()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
+
+    def _decorr(self):
+        frames = self._data[self._data["seq"] == 4]
+        frame1 = frames["frame"][frames.index[0]]
+        frame2 = frames["frame"][frames.index[1]]
+        f1 = frame1.astype(np.float) / (1 << 15)
+        f2 = frame2.astype(np.float) / (1 << 15)
+        tmp = np.correlate(f1, f2, mode="same") * (1 << 15)
+        # frame1[:] =
+        # frame2[:] = 0
+        # frame2[:] = new_frame
+        show_frame(frames.loc[[frames.index[0], frames.index[1]]], limit=(1750, 1810))
 
     ###########
     # Private #
