@@ -63,7 +63,7 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        self._apply_corrections()  # 0, 1, 2, 3
+        # self._apply_corrections()  # 0, 1, 2, 3
         # self._deconvolve_signals()  # 1
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp

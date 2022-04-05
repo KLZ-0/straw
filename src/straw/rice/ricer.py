@@ -15,7 +15,7 @@ class Ricer:
     Currently only supports memory for for memory efficiency comparisons and benchmarks
     """
 
-    def __init__(self, adaptive=True, responsiveness: int = 6):
+    def __init__(self, adaptive=True, responsiveness: int = 16):
         self.adaptive = adaptive
         self.parallel = ParallelCompute()
         self.responsiveness = responsiveness
@@ -137,7 +137,7 @@ class Ricer:
     ###########
 
     @staticmethod
-    def frame_to_kparams(frame: np.ndarray, k: int, responsiveness: int):
+    def frame_to_kparams(frame: np.ndarray, k: int, responsiveness: int = 16):
         frame = np.copy(frame)
         ext.kparams(frame, k, responsiveness)
         return frame

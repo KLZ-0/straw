@@ -11,7 +11,7 @@ class BaseCoder:
     _flac_mode: bool
 
     # Member variables
-    _default_frame_size: int = 4096  # bytes
+    _default_frame_size: int = 1 << 12  # bytes
     _data: pd.DataFrame
     _params: StreamParams
     _samplebuffer: np.array
