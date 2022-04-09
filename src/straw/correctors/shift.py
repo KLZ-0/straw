@@ -1,46 +1,29 @@
 import numpy as np
 import pandas as pd
 
-from straw.correctors.base import BaseCorrector
 
+class ShiftCorrector:
+    def get_lags(self, samplebuffer: np.ndarray) -> (np.ndarray, np.ndarray):
+        leading_channel = self._find_leading_channel(samplebuffer, limit=10)
+        lags = self._find_lags(samplebuffer, leading_channel, limit=10)
+        return lags
 
-class ShiftCorrector(BaseCorrector):
-    def apply(self, df: pd.DataFrame, col_name: str = "frame"):
-        """
-        Takes dataframe with 1-n channels
-        Strip samples from start
-        TODO: deal with 1 channel
-        :param col_name:
-        :param df:
-        :return:
-        """
-        super().apply(df, col_name)
+    def _find_leading_channel(self, samplebuffer: np.ndarray, limit=10):
+        lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
+        reference = samplebuffer[0].astype(np.int64)
+        for i in range(1, samplebuffer.shape[0]):
+            lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
 
-        lags, ref_idx = self.get_lags(df[col_name])
-        max_lag = np.max(lags)
+        return np.argmin(lags)
 
-        # show_frame(df, limit=60)
-
-        for i, row in df.iterrows():
-            lag = lags[i]
-            new_frame_size = len(row[col_name]) - max_lag
-            df[col_name][i] = row[col_name][lag:new_frame_size + lag]
-
-        # show_frame(df, limit=60)
-
-        # exit()
-        return df
-
-    def get_lags(self, frames, limit=10):
-        """
-        Return lags compared to the leading channel, and the index of the leading channel
-        :param limit:
-        :param frames:
-        :return:
-        """
-        lags = frames.apply(self._double_sided_corr, reference=frames[frames.index.min()].astype(np.int64), limit=limit)
-        idx_min = lags.idxmin()
-        return frames.apply(self._corr, reference=frames[idx_min].astype(np.int64), end=limit - 1), idx_min
+    def _find_lags(self, samplebuffer: np.ndarray, leading_channel, limit=10) -> np.ndarray:
+        lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
+        reference = samplebuffer[leading_channel].astype(np.int64)
+        for i in range(samplebuffer.shape[0]):
+            if i == leading_channel:
+                continue
+            lags[i] = self._corr(frame=samplebuffer[i], reference=reference, end=limit - 1)
+        return lags
 
     def _double_sided_corr(self, frame: np.array, reference: np.array, limit):
         lag_pos = self._corr(frame, reference, limit // 2 - 1)

@@ -9,6 +9,7 @@ from straw.io.params import StreamParams
 class BaseCoder:
     # Member utils
     _flac_mode: bool
+    _lags: np.ndarray
 
     # Member variables
     _default_frame_size: int = 1 << 12  # bytes

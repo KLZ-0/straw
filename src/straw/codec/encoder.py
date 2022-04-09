@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from figures import show_frame
 from straw import lpc
 from straw.codec.base import BaseCoder
 from straw.correctors import BiasCorrector, ShiftCorrector, deconvolve, localized_deconvolve
@@ -54,6 +53,7 @@ class Encoder(BaseCoder):
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
+        self._lags = ShiftCorrector().get_lags(self._samplebuffer)
         self._create_dataframe()
 
     def encode(self):
@@ -90,20 +90,7 @@ class Encoder(BaseCoder):
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
         # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
-        self._decorr()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
-
-    def _decorr(self):
-        frames = self._data[self._data["seq"] == 4]
-        frame1 = frames["frame"][frames.index[0]]
-        frame2 = frames["frame"][frames.index[1]]
-        f1 = frame1.astype(np.float) / (1 << 15)
-        f2 = frame2.astype(np.float) / (1 << 15)
-        tmp = np.correlate(f1, f2, mode="same") * (1 << 15)
-        # frame1[:] =
-        # frame2[:] = 0
-        # frame2[:] = new_frame
-        show_frame(frames.loc[[frames.index[0], frames.index[1]]], limit=(1750, 1810))
 
     ###########
     # Private #
@@ -116,8 +103,10 @@ class Encoder(BaseCoder):
         :return:
         """
         ds = {"seq": [], "frame": [], "channel": []}
+        total_size = self._samplebuffer.shape[1] - np.max(self._lags)
         for channel, channel_data in enumerate(self._samplebuffer):
-            sliced = self._slice_channel_data_into_frames(channel_data)
+            lag = self._lags[channel]
+            sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag])
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
@@ -158,10 +147,10 @@ class Encoder(BaseCoder):
 
     def _apply_corrections(self, col_name="frame"):
         if self._do_corrections:
-            # return
             # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
             self._data = self._data.groupby("seq").apply(BiasCorrector().apply, col_name=col_name)
-            self._data = self._data.groupby("seq").apply(ShiftCorrector().apply, col_name=col_name)
+            # self._data = ShiftCorrector().apply(self._data, col_name=col_name)
+            # self._data = self._data.groupby("seq").apply(ShiftCorrector().local_apply, col_name=col_name)
 
     def _deconvolve_signals(self, col_name="frame", localized=False):
         if self._do_corrections:
