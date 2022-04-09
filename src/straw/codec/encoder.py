@@ -70,7 +70,7 @@ class Encoder(BaseCoder):
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         # self._deconvolve_signals("residual")  # 3, 4
-        # self._deconvolve_signals("residual", localized=True)  # 3*
+        self._deconvolve_signals("residual", localized=True)  # 3*
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._ensure_compression()

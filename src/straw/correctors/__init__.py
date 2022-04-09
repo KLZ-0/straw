@@ -28,16 +28,19 @@ def deconvolve(df, col_name: str = "residual"):
 
 
 def localized_sub(x1, x2):
+    oldx1 = x1.copy()
     diff = x1 - x2
     # too low will cause noise to be decorrelated
     # too high will cause audio that could be decorrelated to not be decorrelated
-    limits = 150
-    min_section_len = 2  # at least 2
+    limits = x2.max() >> 3
     if diff.any():
         # return x1^x2
         nonzero = np.nonzero(np.abs(x2) > limits)[0]
         x1[nonzero] = diff[nonzero]
-        return x1
+        if np.var(x1) > np.var(oldx1):
+            return oldx1
+        else:
+            return x1
     else:
         return x1
 
