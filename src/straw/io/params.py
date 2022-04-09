@@ -1,9 +1,14 @@
+import numpy as np
+
+
 class StreamParams:
     sample_rate: int = None
     channels: int = None
     bits_per_sample: int = None
     total_samples: int = None
     md5: bytes = None
+    lags: np.ndarray
+    bias: np.ndarray
 
 
 class FLACStreamParams(StreamParams):

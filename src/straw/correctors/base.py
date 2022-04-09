@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 
@@ -7,3 +8,6 @@ class BaseCorrector:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
         return df
+
+    def global_apply(self, samplebuffer: np.ndarray) -> (np.ndarray, np.ndarray):
+        return samplebuffer, np.zeros(samplebuffer.shape[0])

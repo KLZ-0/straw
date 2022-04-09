@@ -53,7 +53,7 @@ class Encoder(BaseCoder):
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
-        self._lags = ShiftCorrector().get_lags(self._samplebuffer)
+        self._apply_corrections()
         self._create_dataframe()
 
     def encode(self):
@@ -63,14 +63,12 @@ class Encoder(BaseCoder):
         """
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        # self._apply_corrections()  # 0, 1, 2, 3
         # self._deconvolve_signals()  # 1
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._deconvolve_signals()  # 2
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        # self._apply_corrections("residual")  # 4
         # self._deconvolve_signals("residual")  # 3, 4
         # self._deconvolve_signals("residual", localized=True)  # 3*
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
@@ -103,9 +101,9 @@ class Encoder(BaseCoder):
         :return:
         """
         ds = {"seq": [], "frame": [], "channel": []}
-        total_size = self._samplebuffer.shape[1] - np.max(self._lags)
+        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         for channel, channel_data in enumerate(self._samplebuffer):
-            lag = self._lags[channel]
+            lag = self._params.lags[channel]
             sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag])
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
@@ -145,12 +143,11 @@ class Encoder(BaseCoder):
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.max_frame_size = int(max_residual_bytes) + 1000
 
-    def _apply_corrections(self, col_name="frame"):
+    def _apply_corrections(self):
         if self._do_corrections:
             # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
-            self._data = self._data.groupby("seq").apply(BiasCorrector().apply, col_name=col_name)
-            # self._data = ShiftCorrector().apply(self._data, col_name=col_name)
-            # self._data = self._data.groupby("seq").apply(ShiftCorrector().local_apply, col_name=col_name)
+            self._samplebuffer, self._params.lags = ShiftCorrector().global_apply(self._samplebuffer)
+            self._samplebuffer, self._params.bias = BiasCorrector().global_apply(self._samplebuffer)
 
     def _deconvolve_signals(self, col_name="frame", localized=False):
         if self._do_corrections:

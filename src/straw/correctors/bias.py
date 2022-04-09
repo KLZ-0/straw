@@ -1,25 +1,12 @@
 import numpy as np
-import pandas as pd
 
 from straw.correctors.base import BaseCorrector
 
 
 class BiasCorrector(BaseCorrector):
-    def apply(self, df: pd.DataFrame, col_name: str = "frame"):
-        """
-        Takes dataframe with 1-n channels
-        TODO: deal with 1 channel
-        :param col_name:
-        :param df:
-        :return:
-        """
-        super().apply(df, col_name)
-
-        for i, row in df.iterrows():
-            df[col_name][i] = self.remove_bias(row[col_name])
-
-        return df
-
-    @staticmethod
-    def remove_bias(frame: np.ndarray):
-        return frame - int(frame.mean())
+    def global_apply(self, samplebuffer: np.ndarray) -> (np.ndarray, np.ndarray):
+        bias = np.zeros(samplebuffer.shape[0], dtype=np.int16)
+        for i in range(samplebuffer.shape[0]):
+            bias[i] = samplebuffer[i].mean()
+            samplebuffer[i] -= bias[i]
+        return samplebuffer, bias
