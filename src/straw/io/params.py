@@ -7,8 +7,9 @@ class StreamParams:
     bits_per_sample: int = None
     total_samples: int = None
     md5: bytes = None
-    lags: np.ndarray
-    bias: np.ndarray
+    leading_channel: int = None
+    lags: np.ndarray  # length equal to number of channels, each value represents lag on a channel
+    bias: np.ndarray  # length equal to number of channels, each value represents bias on a channel
 
 
 class FLACStreamParams(StreamParams):

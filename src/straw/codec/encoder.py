@@ -146,8 +146,8 @@ class Encoder(BaseCoder):
     def _apply_corrections(self):
         if self._do_corrections:
             # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
-            self._samplebuffer, self._params.lags = ShiftCorrector().global_apply(self._samplebuffer)
-            self._samplebuffer, self._params.bias = BiasCorrector().global_apply(self._samplebuffer)
+            self._samplebuffer = ShiftCorrector().global_apply(self._samplebuffer, self._params)
+            self._samplebuffer = BiasCorrector().global_apply(self._samplebuffer, self._params)
 
     def _deconvolve_signals(self, col_name="frame", localized=False):
         if self._do_corrections:

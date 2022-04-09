@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from straw.io.params import StreamParams
+
 
 class BaseCorrector:
     def apply(self, df: pd.DataFrame, col_name: str = "frame") -> pd.DataFrame:
@@ -9,5 +11,5 @@ class BaseCorrector:
 
         return df
 
-    def global_apply(self, samplebuffer: np.ndarray) -> (np.ndarray, np.ndarray):
-        return samplebuffer, np.zeros(samplebuffer.shape[0])
+    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
+        return samplebuffer

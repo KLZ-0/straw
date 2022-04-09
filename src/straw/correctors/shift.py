@@ -2,13 +2,15 @@ import numpy as np
 import pandas as pd
 
 from straw.correctors.base import BaseCorrector
+from straw.io.params import StreamParams
 
 
 class ShiftCorrector(BaseCorrector):
-    def global_apply(self, samplebuffer: np.ndarray) -> (np.ndarray, np.ndarray):
+    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
         leading_channel = self._find_leading_channel(samplebuffer, limit=10)
-        lags = self._find_lags(samplebuffer, leading_channel, limit=10)
-        return samplebuffer, lags
+        params.lags = self._find_lags(samplebuffer, leading_channel, limit=10)
+        params.leading_channel = leading_channel
+        return samplebuffer
 
     def _find_leading_channel(self, samplebuffer: np.ndarray, limit=10):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
