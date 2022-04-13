@@ -61,18 +61,27 @@ class Encoder(BaseCoder):
         Encode the signal
         :return: None
         """
+        # Extract stream parameters & initialize frame types
         self._parametrize()
         lpc_frames = self._set_frame_types()
-        # self._decorrelate_signals()  # 1
+
+        # Compute LPC & quantize coeffs
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
-        # self._decorrelate_signals()  # 2
+
+        # Create residuals
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        # TODO: calculate this
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
-        # self._decorrelate_signals("residual")  # 3, 4
-        self._decorrelate_signals("residual")  # 3*
+
+        # Decorrelation
+        self._decorrelate_signals("residual")
+
+        # Rice encoding
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
+
+        # Recheck frame types
         self._ensure_compression()
 
     def save_file(self, output_file: Path):
@@ -81,13 +90,7 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
-        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
-        # self._print_var(seq=4)
-        # exp = 4
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
-        # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
+        self._tmp()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -153,6 +156,10 @@ class Encoder(BaseCoder):
     def _decorrelate_signals(self, col_name="residual"):
         self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
 
+    #########
+    # Other #
+    #########
+
     def _print_var(self, seq=0):
         old_stream_len = 214523
         stream_len = self._data[self._data["seq"] == seq]["stream_len"].sum()
@@ -161,10 +168,10 @@ class Encoder(BaseCoder):
         old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
         nocorr_var = np.asarray([10997.481, 24395.01, 50948.516, 36896.603, 21682.603, 11630.761,
                                  14912.361, 18267.361])
-        self._tmp(seq, np.var, "var", nocorr_var)
-        self._tmp(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
+        self._print_var_details(seq, np.var, "var", nocorr_var)
+        self._print_var_details(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
 
-    def _tmp(self, seq, func, name, old_vals=None):
+    def _print_var_details(self, seq, func, name, old_vals=None):
         residuals = self._data[self._data["seq"] == seq]["residual"]
         residuals = residuals.apply(lambda x: x[1740:1800])
         var = residuals.apply(func).to_numpy()
@@ -173,6 +180,19 @@ class Encoder(BaseCoder):
             print(f"- original {name}:", np.array2string(old_vals, precision=3, suppress_small=True))
             print(f"- {name} difference:", np.array2string(var - old_vals, precision=3, suppress_small=True))
             print(f"total {name} diff: {(var - old_vals).sum():.3f}")
+
+    def _tmp(self):
+        """
+        Temporary method for experiments and plots
+        """
+        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
+        # self._print_var(seq=4)
+        # from figures import show_frame
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
+        # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
+        pass
 
     ###########
     # Utility #
