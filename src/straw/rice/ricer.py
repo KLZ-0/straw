@@ -54,10 +54,8 @@ class Ricer:
 
     def frames_to_bitstreams(self, df: pd.DataFrame, parallel: bool = True) -> pd.Series:
         """
-        Encode a series of frames to a series of bitsreams
-        :param frames: series of frames
-        :param bps: expected bits per second for this frame
-        :param ft: frame types
+        Encode frames to a series of bitsreams
+        :param df: DataFrame with columns ["residual", "bps", "frame_type"]
         :param parallel: if True then use multithreading
         :return: encoded bitarrays
         """
