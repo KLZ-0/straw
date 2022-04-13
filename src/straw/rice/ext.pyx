@@ -206,7 +206,7 @@ def kparams(short[:] frame, short k, short resp):
 
         update_scale(s, m, &scale)
 
-def interleave_frame(short[:] frame):
+def interleave_frame(int[:] frame):
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
     for i in range(x_max):

@@ -4,6 +4,7 @@ import pyximport
 from bitarray import bitarray
 
 from ..compute import ParallelCompute
+from ..io.sizes import StrawSizes
 
 pyximport.install()
 from . import ext
@@ -24,28 +25,11 @@ class Ricer:
     # Optimal order guessing #
     ##########################
 
-    @staticmethod
-    def _compute_expected_bits_per_sample(lpc_error, residual_samples):
-        error_scale = 0.5 / residual_samples
-
-        if lpc_error > 0.0:
-            bps = 0.5 * np.log(error_scale * lpc_error) / np.log(2)
-            if bps >= 0.0:
-                return bps
-            else:
-                return 0.0
-        elif lpc_error < 0.0:
-            return 1e32
-        else:
-            return 0.0
-
-    @staticmethod
-    def guess_parameter(lpc_error, residual_samples):
-        # TODO: this gives a shitty output
-        lpc_residual_bits_per_sample = Ricer._compute_expected_bits_per_sample(lpc_error, residual_samples)
-        rice_parameter = int(lpc_residual_bits_per_sample + 0.5) if (lpc_residual_bits_per_sample > 0.0) else 0
-        rice_parameter += 1  # account for signed conversion
-        return rice_parameter
+    def guess_parameter(self, frame_residual: np.array) -> np.int8:
+        smallframe = frame_residual[:self.responsiveness].astype(np.int32)
+        ext.interleave_frame(smallframe)
+        param = np.clip(np.log2(smallframe.mean()), 0, (1 << StrawSizes.bps) - 1)
+        return np.round(param).astype(np.int8)
 
     ############
     # Encoding #

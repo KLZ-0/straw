@@ -71,8 +71,7 @@ class Encoder(BaseCoder):
 
         # Create residuals
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
-        # TODO: calculate this
-        self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
 
         # Decorrelation
         self._decorrelate_signals("residual")
