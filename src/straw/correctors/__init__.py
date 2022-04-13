@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from .bias import BiasCorrector
 from .gain import GainCorrector
@@ -39,11 +38,11 @@ def localized_sub(x1, x2):
         nonzero = np.nonzero(np.abs(x2) > limits)[0]
         x1[nonzero] = diff[nonzero]
         if np.var(x1) > np.var(oldx1):
-            return pd.Series({0: oldx1, 1: False})
+            return oldx1, False
         else:
-            return pd.Series({0: x1, 1: True})
+            return x1, True
     else:
-        return pd.Series({0: x1, 1: False})
+        return x1, False
 
 
 def localized_add(x1, x2, was_coded):
@@ -56,6 +55,10 @@ def localized_add(x1, x2, was_coded):
     return x1
 
 
+def localized_deconvolve_expander(df, reference: np.ndarray, col_name: str):
+    return localized_sub(df[col_name], x2=reference)
+
+
 def localized_deconvolve(df, col_name: str = "residual"):
     """
     Finds the medium channels residual and subtracts it from all other channels
@@ -64,13 +67,16 @@ def localized_deconvolve(df, col_name: str = "residual"):
     if col_name not in df.columns:
         raise ValueError(f"Column '{col_name}' not in dataframe")
 
-    df[[col_name, "was_coded"]] = df[col_name].apply(localized_sub, x2=df[col_name][df.index[0]])
-    # df["residual"] = df["residual"].apply(np.subtract, x2=df["residual"][mid_idx])
+    df[[col_name, "was_coded"]] = df.apply(localized_deconvolve_expander,
+                                           reference=df[col_name][df.index[0]],
+                                           col_name=col_name,
+                                           axis=1,
+                                           result_type="expand")
 
     return df
 
 
-def localized_deconvolve_revert_expander(df, reference: np.ndarray, col_name: str = "residual"):
+def localized_deconvolve_revert_expander(df, reference: np.ndarray, col_name: str):
     return localized_add(df[col_name], x2=reference, was_coded=df["was_coded"])
 
 
@@ -82,7 +88,9 @@ def localized_deconvolve_revert(df, col_name: str = "residual"):
     if col_name not in df.columns:
         raise ValueError(f"Column '{col_name}' not in dataframe")
 
-    df[col_name] = df.apply(localized_deconvolve_revert_expander, reference=df[col_name][df.index[0]], axis=1)
-    # df["residual"] = df["residual"].apply(np.subtract, x2=df["residual"][mid_idx])
+    df[col_name] = df.apply(localized_deconvolve_revert_expander,
+                            reference=df[col_name][df.index[0]],
+                            col_name=col_name,
+                            axis=1)
 
     return df
