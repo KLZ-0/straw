@@ -9,7 +9,7 @@ from straw import Encoder, Decoder
 
 def read(file) -> (np.array, int):
     d = Decoder()
-    d.load_file(file)
+    d.load_file(Path(file))
     d.decode()
     return d.get_soundfile_compatible_array(), d.get_params().sample_rate
 
@@ -18,7 +18,7 @@ def write(file, data: np.array, samplerate: int):
     e = Encoder()
     e.load_data(data, samplerate)
     e.encode()
-    e.save_file(file)
+    e.save_file(Path(file))
 
 
 def _encode(args):

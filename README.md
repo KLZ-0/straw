@@ -26,25 +26,34 @@ pip install -r requirements.txt
 
 # Usage
 
-For now, straw can be run either using the provided launcher script `main.py` in an activated virtual environment:
+### Standalone encoder/decoder
+
+First activate the virtual environment:
 
 ```shell
 source venv/bin/activate
 export PYTHONPATH=$PYTHONPATH:src
 ```
 
+Encoding:
+
 ```shell
-python3 main.py -i /path/to/source.wav -o /path/to/output.straw
+python3 main.py -i /path/to/input.wav -o /path/to/output.straw
 ```
 
-Or used as a library, for example:
+Decoding:
+
+```shell
+python3 main.py -d -i /path/to/input.straw -o /path/to/output.wav
+```
+
+### Library
+
+The library usage is analogous to soundfile:
 
 ```python
-from straw.encoder import Encoder
+import straw
 
-e = Encoder()
-e.load_files("/path/to/source.wav")
-e.create_frames()
-e.encode()
-e.save_file("/path/to/output.straw")
+data, sample_rate = straw.read("existing_file.straw")
+straw.write("new_file.straw", data, sample_rate)
 ```
