@@ -8,7 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import BiasCorrector, ShiftCorrector, decorrelate, localized_decorrelate
+from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -70,7 +70,7 @@ class Encoder(BaseCoder):
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
         # self._decorrelate_signals("residual")  # 3, 4
-        self._decorrelate_signals("residual", localized=True)  # 3*
+        self._decorrelate_signals("residual")  # 3*
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
         self._ensure_compression()
@@ -150,12 +150,8 @@ class Encoder(BaseCoder):
             self._samplebuffer = BiasCorrector().global_apply(self._samplebuffer, self._params)
             self._samplebuffer = ShiftCorrector().global_apply(self._samplebuffer, self._params)
 
-    def _decorrelate_signals(self, col_name="frame", localized=False):
-        if self._do_corrections:
-            if localized:
-                self._data = self._data.groupby("seq").apply(localized_decorrelate, col_name=col_name)
-            else:
-                self._data = self._data.groupby("seq").apply(decorrelate, col_name=col_name)
+    def _decorrelate_signals(self, col_name="residual"):
+        self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
 
     def _print_var(self, seq=0):
         old_stream_len = 214523

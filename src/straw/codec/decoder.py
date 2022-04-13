@@ -4,7 +4,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import localized_decorrelate_revert
+from straw.correctors import Decorrelator
 from straw.io import Formatter
 
 
@@ -53,8 +53,8 @@ class Decoder(BaseCoder):
         for i in range(self._params.channels):
             self._samplebuffer[i] += self._params.bias[i]
 
-    def _revert_decorrelate(self, col_name="frame"):
-        self._data = self._data.groupby("seq").apply(localized_decorrelate_revert, col_name=col_name)
+    def _revert_decorrelate(self, col_name="residual"):
+        self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate_revert, col_name=col_name)
 
     ###########
     # Utility #
