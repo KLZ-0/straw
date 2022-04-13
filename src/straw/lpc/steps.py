@@ -7,7 +7,7 @@ import pyximport
 from scipy.linalg import solve_toeplitz
 
 pyximport.install()
-from . import ext
+from . import ext_lpc
 
 
 ####################
@@ -150,7 +150,7 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
     :param precision: target precition in bits
     :return: tuple(QLP, precision, shift)
     """
-    shift = ext.quantize_lpc(lpc_c, precision)
+    shift = ext_lpc.quantize_lpc(lpc_c, precision)
     return lpc_c.astype(np.int32), precision, shift
 
 
@@ -230,5 +230,5 @@ def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int, 
     # TODO: make this a proper wrapper without the need for duplicated lines
     if not inplace:
         frame = frame.copy()
-    ext.restore_signal(frame, qlp, lp_quantization)
+    ext_lpc.restore_signal(frame, qlp, lp_quantization)
     return frame

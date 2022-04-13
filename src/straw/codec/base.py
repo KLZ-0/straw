@@ -11,10 +11,10 @@ class BaseCoder:
     _flac_mode: bool
 
     # Member variables
-    _default_frame_size: int = 4096  # bytes
+    _default_frame_size: int = 1 << 12  # bytes
     _data: pd.DataFrame
     _params: StreamParams
-    _samplebuffer: np.array
+    _samplebuffer: np.ndarray
 
     # TODO: these things should be in params
     _source_size: int
@@ -32,11 +32,11 @@ class BaseCoder:
         """
         return self._data.memory_usage(index=True, deep=True).sum() / (2 ** 20)
 
-    def sample_frame(self) -> pd.Series:
-        return self._data.loc[0]
+    def sample_frame(self, seq=0) -> pd.Series:
+        return self._data.loc[seq]
 
-    def sample_frame_multichannel(self) -> pd.DataFrame:
-        return self._data[self._data["seq"] == 0]
+    def sample_frame_multichannel(self, seq=0) -> pd.DataFrame:
+        return self._data[self._data["seq"] == seq]
 
     def get_data(self) -> pd.DataFrame:
         return self._data

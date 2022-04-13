@@ -36,6 +36,14 @@ cdef short _deinterleave(int x):
     else:
         return (x + 1) / -2
 
+cdef void update_scale(int s, short m, short *scale):
+    if s > m:
+        scale[0] += 1
+    elif s < m:
+        scale[0] -= 1
+    else:
+        scale[0] = 0
+
 ############
 # Encoding #
 ############
@@ -99,12 +107,7 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
             # print("e switched down:\t ", i, s, m)
             continue
 
-        if s > m:
-            scale += 1
-        elif s < m:
-            scale -= 1
-        else:
-            scale = 0
+        update_scale(s, m, &scale)
 
 ############
 # Decoding #
@@ -162,11 +165,49 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
             # print("dec switched down:\t ", i, s, m)
             continue
 
-        if s > m:
-            scale += 1
-        elif s < m:
-            scale -= 1
-        else:
-            scale = 0
+        update_scale(s, m, &scale)
 
     return bit_i
+
+###########
+# Utility #
+###########
+
+@cython.cdivision(True)
+def kparams(short[:] frame, short k, short resp):
+    """
+    Encodes a whole residual frame and appends it to the end of the given bitstream
+    :param frame: the frame to be encoded
+    :param k: starting rice parameter
+    :param resp: rice parameter responsiveness
+    :return: None
+    """
+    cdef int s
+    cdef Py_ssize_t x_max, i
+    x_max = frame.shape[0]
+    m = 1 << k
+
+    cdef short scale = 0
+
+    for i in range(x_max):
+        s = _interleave(frame[i])
+        frame[i] = k
+
+        if scale > resp:
+            scale = 0
+            k += 1
+            m = 1 << k
+            continue
+        if scale < -resp and k > 0:
+            scale = 0
+            k -= 1
+            m = 1 << k
+            continue
+
+        update_scale(s, m, &scale)
+
+def interleave_frame(int[:] frame):
+    cdef Py_ssize_t x_max, i
+    x_max = frame.shape[0]
+    for i in range(x_max):
+        frame[i] = _interleave(frame[i])

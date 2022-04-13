@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
-from figures.baseplot import BasePlot
+from figures.base import BasePlot
 
 
 class CorrectionsPlot(BasePlot):

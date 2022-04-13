@@ -38,6 +38,17 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(int(len(self._data[self._data["channel"] == 0])), length=27)
         sec += int2ba(self._params.total_samples, length=36)
         sec.frombytes(self._params.md5)
+        sec.frombytes(self.encode_int_utf8(self._params.leading_channel))
+        for val in self._params.lags:
+            sec += int2ba(int(val), length=4)
+        for c in range(self._params.channels):
+            for val in self._params.removed_samples_start[c]:
+                sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
+            for val in self._params.removed_samples_end[c]:
+                sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
+        for val in self._params.bias:
+            sec += int2ba(int(val), length=8, signed=True)
+        sec.fill()
         return sec
 
     def _frame(self, df: pd.DataFrame):
@@ -127,6 +138,7 @@ class StrawFormatWriter(BaseWriter):
 
     def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
         sec = bitarray()
+        sec.append(df["was_coded"])
         for warmup_sample in df["frame"][:order]:
             sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
         sec += self._residual(df)
@@ -171,6 +183,8 @@ class StrawFormatReader(BaseReader):
     def _metadata_block_data(self) -> int:
         self._params.sample_rate = self._sec.get_int(length=20)
         self._params.channels = self._sec.get_int_utf8() + 1
+        self._params.lags = np.zeros(self._params.channels, dtype=np.int8)  # 4 bit
+        self._params.bias = np.zeros(self._params.channels, dtype=np.int8)  # 8 bit signed
         self._params.bits_per_sample = self._sec.get_int(length=5) + 1
         expected_frames = self._sec.get_int(length=27)
         self._params.total_samples = self._sec.get_int(length=36)
@@ -180,6 +194,21 @@ class StrawFormatReader(BaseReader):
         self._allocate_buffer(channels=self._params.channels,
                               bits_per_sample=self._params.bits_per_sample,
                               total_samples=self._params.total_samples)
+
+        self._params.leading_channel = self._sec.get_int_utf8()
+        for i in range(self._params.lags.shape[0]):
+            self._params.lags[i] = self._sec.get_int(length=4)
+        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
+        for c in range(self._params.channels):
+            lag = self._params.lags[c]
+            for s in range(lag):
+                self._samplebuffer[c][s] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            for e in range(total_size + lag, self._samplebuffer.shape[1]):
+                self._samplebuffer[c][e] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        for i in range(self._params.bias.shape[0]):
+            self._params.bias[i] = self._sec.get_int(length=8, signed=True)
+        self._sec.skip_padding()
+
         return expected_frames
 
     def _frame(self, expected_frames: int):
@@ -246,7 +275,10 @@ class StrawFormatReader(BaseReader):
     def _subframe_raw(self, blocksize: int, subframe_num: int) -> dict:
         row = {
             "channel": subframe_num,
-            "frame": self._samplebuffer[subframe_num][self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize]
+            "frame": self._samplebuffer[subframe_num][
+                     self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
+                                                                              self._params.lags[
+                                                                                  subframe_num] + blocksize]
         }
         for i in range(blocksize):
             row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
@@ -255,10 +287,16 @@ class StrawFormatReader(BaseReader):
     def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
         row = {
             "channel": subframe_num,
-            "frame": self._samplebuffer[subframe_num][self._samplebuffer_ptr:self._samplebuffer_ptr + blocksize],
+            "frame": self._samplebuffer[subframe_num][
+                     self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
+                                                                              self._params.lags[
+                                                                                  subframe_num] + blocksize],
             "residual": self._samplebuffer[subframe_num][
-                        self._samplebuffer_ptr + order:self._samplebuffer_ptr + blocksize]
+                        self._samplebuffer_ptr + self._params.lags[subframe_num] + order:self._samplebuffer_ptr +
+                                                                                         self._params.lags[
+                                                                                             subframe_num] + blocksize]
         }
+        row["was_coded"] = self._sec.get_int()
         for i in range(order):
             row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
         row["residual"], row["bps"] = self._residual(array=row["residual"])

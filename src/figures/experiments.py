@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-from figures.baseplot import BasePlot
+from figures.base import BasePlot
 
 
 def sub(x1, x2):

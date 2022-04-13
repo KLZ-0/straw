@@ -8,6 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
+from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -27,9 +28,10 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False):
+    def __init__(self, flac_mode=False, do_corrections=True):
         super(Encoder, self).__init__(flac_mode)
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
+        self._do_corrections = do_corrections
 
     def load_file(self, file):
         """
@@ -51,6 +53,7 @@ class Encoder(BaseCoder):
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
+        self._apply_corrections()
         self._create_dataframe()
 
     def encode(self):
@@ -58,14 +61,26 @@ class Encoder(BaseCoder):
         Encode the signal
         :return: None
         """
+        # Extract stream parameters & initialize frame types
         self._parametrize()
         lpc_frames = self._set_frame_types()
+
+        # Compute LPC & quantize coeffs
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
+
+        # Create residuals
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
-        self._data["bps"] = np.full(len(self._data["residual"]), 4, dtype="B")
+        self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
+
+        # Decorrelation
+        self._decorrelate_signals("residual")
+
+        # Rice encoding
         self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
         self._data["stream_len"] = self._data["stream"].apply(len)
+
+        # Recheck frame types
         self._ensure_compression()
 
     def save_file(self, output_file: Path):
@@ -74,6 +89,7 @@ class Encoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
+        self._tmp()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -87,8 +103,10 @@ class Encoder(BaseCoder):
         :return:
         """
         ds = {"seq": [], "frame": [], "channel": []}
+        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         for channel, channel_data in enumerate(self._samplebuffer):
-            sliced = self._slice_channel_data_into_frames(channel_data)
+            lag = self._params.lags[channel]
+            sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag])
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
@@ -107,7 +125,8 @@ class Encoder(BaseCoder):
             self._params.max_frame_size = 0
         self._params.channels = len(np.unique(self._data["channel"]))
         self._params.bits_per_sample = self._bits_per_sample
-        self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
+        # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
+        self._params.total_samples = int(self._samplebuffer.shape[1])
 
     def _set_frame_types(self):
         # all frames are LPC frames by default
@@ -127,6 +146,53 @@ class Encoder(BaseCoder):
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.max_frame_size = int(max_residual_bytes) + 1000
 
+    def _apply_corrections(self):
+        if self._do_corrections:
+            # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
+            BiasCorrector().global_apply(self._samplebuffer, self._params)
+            ShiftCorrector().global_apply(self._samplebuffer, self._params)
+
+    def _decorrelate_signals(self, col_name="residual"):
+        self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
+
+    #########
+    # Other #
+    #########
+
+    def _print_var(self, seq=0):
+        old_stream_len = 214523
+        stream_len = self._data[self._data["seq"] == seq]["stream_len"].sum()
+        print("- stream_len:", stream_len)
+        print("- stream_len diff:", stream_len - old_stream_len)
+        old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
+        nocorr_var = np.asarray([10997.481, 24395.01, 50948.516, 36896.603, 21682.603, 11630.761,
+                                 14912.361, 18267.361])
+        self._print_var_details(seq, np.var, "var", nocorr_var)
+        self._print_var_details(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
+
+    def _print_var_details(self, seq, func, name, old_vals=None):
+        residuals = self._data[self._data["seq"] == seq]["residual"]
+        residuals = residuals.apply(lambda x: x[1740:1800])
+        var = residuals.apply(func).to_numpy()
+        print(f"- {name}:", np.array2string(var, separator=", ", precision=3, suppress_small=True))
+        if old_vals is not None:
+            print(f"- original {name}:", np.array2string(old_vals, precision=3, suppress_small=True))
+            print(f"- {name} difference:", np.array2string(var - old_vals, precision=3, suppress_small=True))
+            print(f"total {name} diff: {(var - old_vals).sum():.3f}")
+
+    def _tmp(self):
+        """
+        Temporary method for experiments and plots
+        """
+        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
+        # self._print_var(seq=4)
+        # from figures import show_frame
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
+        # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
+        pass
+
     ###########
     # Utility #
     ###########
@@ -139,16 +205,16 @@ class Encoder(BaseCoder):
         :return: None
         """
         print(f"Number of frames: {len(self._data)}", file=stream)
-        print(f"Source size: {self._source_size} ({self._source_size / 2 ** 20:.2f} MiB)", file=stream)
+        print(f"Source size: {self._source_size} ({self._source_size / (2 ** 20):.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
         print(f"md5: {self._params.md5.hex(' ')}", file=stream)
         print(f"Length of residual bitstream: {size} bits, "
-              f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / 2 ** 20:.2f} MiB)", file=stream)
+              f"bytes: {np.ceil(size / 8):.0f} aligned ({np.ceil(size / 8) / (2 ** 20):.2f} MiB)", file=stream)
         lpc_bytes = np.ceil(len(self._data) * self._lpc_precision * self._lpc_order * 1 / 8)
         print(f"Bytes needed for coefficients: {lpc_bytes:.0f} B", file=stream)
-        print(f"Output file size: {output_file.stat().st_size}", file=stream)
+        print(f"Output file size: {output_file.stat().st_size} ({output_file.stat().st_size / (2 ** 20):.2f} MiB)",
+              file=stream)
         print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
-

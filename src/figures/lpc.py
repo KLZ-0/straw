@@ -6,7 +6,7 @@ import pandas as pd
 import seaborn as sns
 
 # NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
-from figures.baseplot import BasePlot
+from figures.base import BasePlot
 from straw.lpc import steps
 
 
@@ -84,7 +84,7 @@ class LPCPlot(BasePlot):
         """
         Shows the residuals after using common LPC coefficients across all channels
         """
-        data = self._e.sample_frame_multichannel()
+        data = self._e.sample_frame_multichannel(1)
         df = {"x": [], "value": [], "Channel": []}
         for i, ds in enumerate(data["residual"]):
             df["x"] += [i for i in range(len(ds))]
