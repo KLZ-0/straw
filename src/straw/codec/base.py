@@ -14,7 +14,7 @@ class BaseCoder:
     _default_frame_size: int = 1 << 12  # bytes
     _data: pd.DataFrame
     _params: StreamParams
-    _samplebuffer: np.array
+    _samplebuffer: np.ndarray
 
     # TODO: these things should be in params
     _source_size: int

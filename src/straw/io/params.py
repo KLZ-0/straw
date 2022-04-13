@@ -9,6 +9,8 @@ class StreamParams:
     md5: bytes = None
     leading_channel: int = None
     lags: np.ndarray  # length equal to number of channels, each value represents lag on a channel
+    removed_samples_start = []  # removed samples for each channel from the start
+    removed_samples_end = []  # removed samples for each channel from the end
     bias: np.ndarray  # length equal to number of channels, each value represents bias on a channel
 
 

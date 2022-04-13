@@ -67,6 +67,19 @@ One of:
 - `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the
   audio data even when the error does not result in an invalid bitstream.
 
+- `<8-?>` "UTF-8" coded leading channel
+
+- `<n*4>` Shift needed for each channel compared to the leading channel, n = number of channels
+
+- `<c*n*b>` Removed samples start + end flattened, c = number of channels, n = number of removed samples (max lag), b =
+  bits per sample
+  - NOTE: the values are signed two's-complement
+
+- `<n*8>` DC bias removed from each channel, n = number of channels
+  - NOTE: the values are signed two's-complement
+
+- `<?>` Zero-padding to byte alignment.
+
 ### NOTES
 
 The "UTF-8" coding is the same variable length code used to store compressed UCS-2, extended to handle larger input.
@@ -158,6 +171,7 @@ The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
 ## SUBFRAME_LPC
 
+- `<1>`  Is coded - whether a localized deconvolve was used for this specific subframe
 - `<bps*order>` Unencoded warm-up samples (bits-per-sample * lpc order).
 - [RESIDUAL](#RESIDUAL) Encoded residual
 
