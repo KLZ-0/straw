@@ -13,7 +13,7 @@ def sub(x1, x2):
         return x1
 
 
-def deconvolve(df, col_name: str = "residual"):
+def decorrelate(df, col_name: str = "residual"):
     """
     Finds the medium channels residual and subtracts it from all other channels
     :return: new residuals
@@ -55,11 +55,11 @@ def localized_add(x1, x2, was_coded):
     return x1
 
 
-def localized_deconvolve_expander(df, reference: np.ndarray, col_name: str):
+def localized_decorrelate_expander(df, reference: np.ndarray, col_name: str):
     return localized_sub(df[col_name], x2=reference)
 
 
-def localized_deconvolve(df, col_name: str = "residual"):
+def localized_decorrelate(df, col_name: str = "residual"):
     """
     Finds the medium channels residual and subtracts it from all other channels
     :return: new residuals
@@ -67,7 +67,7 @@ def localized_deconvolve(df, col_name: str = "residual"):
     if col_name not in df.columns:
         raise ValueError(f"Column '{col_name}' not in dataframe")
 
-    df[[col_name, "was_coded"]] = df.apply(localized_deconvolve_expander,
+    df[[col_name, "was_coded"]] = df.apply(localized_decorrelate_expander,
                                            reference=df[col_name][df.index[0]],
                                            col_name=col_name,
                                            axis=1,
@@ -76,11 +76,11 @@ def localized_deconvolve(df, col_name: str = "residual"):
     return df
 
 
-def localized_deconvolve_revert_expander(df, reference: np.ndarray, col_name: str):
+def localized_decorrelate_revert_expander(df, reference: np.ndarray, col_name: str):
     return localized_add(df[col_name], x2=reference, was_coded=df["was_coded"])
 
 
-def localized_deconvolve_revert(df, col_name: str = "residual"):
+def localized_decorrelate_revert(df, col_name: str = "residual"):
     """
     Finds the medium channels residual and subtracts it from all other channels
     :return: new residuals
@@ -88,7 +88,7 @@ def localized_deconvolve_revert(df, col_name: str = "residual"):
     if col_name not in df.columns:
         raise ValueError(f"Column '{col_name}' not in dataframe")
 
-    df[col_name] = df.apply(localized_deconvolve_revert_expander,
+    df[col_name] = df.apply(localized_decorrelate_revert_expander,
                             reference=df[col_name][df.index[0]],
                             col_name=col_name,
                             axis=1)

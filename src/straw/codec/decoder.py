@@ -4,7 +4,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import localized_deconvolve_revert
+from straw.correctors import localized_decorrelate_revert
 from straw.io import Formatter
 
 
@@ -29,7 +29,7 @@ class Decoder(BaseCoder):
         Decode the signal and verify its integrity
         :return: None
         """
-        self._revert_deconvolve("residual")
+        self._revert_decorrelate("residual")
         self._data.groupby("seq").apply(lpc.compute_original, inplace=True)
         self._revert_corrections()
         if self.get_md5() != self._params.md5:
@@ -53,8 +53,8 @@ class Decoder(BaseCoder):
         for i in range(self._params.channels):
             self._samplebuffer[i] += self._params.bias[i]
 
-    def _revert_deconvolve(self, col_name="frame"):
-        self._data = self._data.groupby("seq").apply(localized_deconvolve_revert, col_name=col_name)
+    def _revert_decorrelate(self, col_name="frame"):
+        self._data = self._data.groupby("seq").apply(localized_decorrelate_revert, col_name=col_name)
 
     ###########
     # Utility #

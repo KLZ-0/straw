@@ -171,7 +171,7 @@ The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
 ## SUBFRAME_LPC
 
-- `<1>`  Is coded - whether a localized deconvolve was used for this specific subframe
+- `<1>`  Is coded - whether a localized decorrelation was used for this specific subframe
 - `<bps*order>` Unencoded warm-up samples (bits-per-sample * lpc order).
 - [RESIDUAL](#RESIDUAL) Encoded residual
 
