@@ -4,6 +4,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
+from straw.correctors import Decorrelator
 from straw.io import Formatter
 
 
@@ -28,7 +29,9 @@ class Decoder(BaseCoder):
         Decode the signal and verify its integrity
         :return: None
         """
+        self._revert_decorrelate("residual")
         self._data.groupby("seq").apply(lpc.compute_original, inplace=True)
+        self._revert_corrections()
         if self.get_md5() != self._params.md5:
             print(f"md5 restored: {self.get_md5().hex(' ')}")
             print(f"md5 file:     {self._params.md5.hex(' ')}")
@@ -43,6 +46,17 @@ class Decoder(BaseCoder):
         soundfile.write(output_file, self._samplebuffer.swapaxes(1, 0), samplerate=self._params.sample_rate)
 
     ###########
+    # Private #
+    ###########
+
+    def _revert_corrections(self):
+        for i in range(self._params.channels):
+            self._samplebuffer[i] += self._params.bias[i]
+
+    def _revert_decorrelate(self, col_name="residual"):
+        self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate_revert, col_name=col_name)
+
+    ###########
     # Utility #
     ###########
 
@@ -52,11 +66,8 @@ class Decoder(BaseCoder):
         :return:
         """
         tmp, _ = soundfile.read(wav_file, dtype="int16")
-        orig_frames = []
-        for channel_data in tmp.swapaxes(1, 0):
-            orig_frames += self._slice_channel_data_into_frames(channel_data)
-        self._data["original"] = orig_frames
-        if self._data.apply(lpc.compare_restored, axis=1).all():
+        tmp = tmp.swapaxes(1, 0)
+        if not (self._samplebuffer - tmp).any():
             print("Lossless :)")
         else:
             print("Not lossless :|")

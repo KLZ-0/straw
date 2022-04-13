@@ -73,12 +73,3 @@ def compute_original(data: pd.DataFrame, inplace=False):
     if not inplace:
         data["restored"] = tmp
         return data
-
-
-def compare_restored(data: pd.DataFrame) -> bool:
-    """
-    Compares the restored signal to the original
-    :param data: input dataframe with columns [frame, restored]
-    :return: True if equal, False otherwise
-    """
-    return not (data["frame"] - data["original"]).any()

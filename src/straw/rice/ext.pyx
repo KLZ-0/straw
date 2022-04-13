@@ -36,6 +36,14 @@ cdef short _deinterleave(int x):
     else:
         return (x + 1) / -2
 
+cdef void update_scale(int s, short m, short *scale):
+    if s > m:
+        scale[0] += 1
+    elif s < m:
+        scale[0] -= 1
+    else:
+        scale[0] = 0
+
 ############
 # Encoding #
 ############
@@ -99,12 +107,7 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
             # print("e switched down:\t ", i, s, m)
             continue
 
-        if s > m:
-            scale += 1
-        elif s < m:
-            scale -= 1
-        else:
-            scale = 0
+        update_scale(s, m, &scale)
 
 ############
 # Decoding #
@@ -162,12 +165,7 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
             # print("dec switched down:\t ", i, s, m)
             continue
 
-        if s > m:
-            scale += 1
-        elif s < m:
-            scale -= 1
-        else:
-            scale = 0
+        update_scale(s, m, &scale)
 
     return bit_i
 
@@ -206,12 +204,7 @@ def kparams(short[:] frame, short k, short resp):
             m = 1 << k
             continue
 
-        if s > m:
-            scale += 1
-        elif s < m:
-            scale -= 1
-        else:
-            scale = 0
+        update_scale(s, m, &scale)
 
 def interleave_frame(short[:] frame):
     cdef Py_ssize_t x_max, i

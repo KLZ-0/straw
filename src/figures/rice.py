@@ -65,7 +65,7 @@ class RicePlot(BasePlot):
 
     @staticmethod
     def _get_params_variable(frame: np.ndarray) -> np.ndarray:
-        return np.full(frame.shape, 1) << Ricer.frame_to_kparams(frame, 4, 6)
+        return np.full(frame.shape, 1) << Ricer.frame_to_kparams(frame, 4)
 
     @staticmethod
     def _get_interleaved_signal(frame: np.ndarray) -> np.ndarray:

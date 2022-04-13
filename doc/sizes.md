@@ -27,6 +27,11 @@ Length of bitstream: 45480438 bits, bytes: 5685055 aligned (5.42 MiB)
 - With LPC coeffs = 0.372
 - FLAC = 0.372
 
+Length of residual bitstream: 45424683 bits, bytes: 5678086 aligned (5.42 MiB)
+Grand Ratio = 0.373
+
+Length of residual bitstream: 45432940 bits, bytes: 5679350 aligned (5.42 MiB)
+
 ### Corrections (#23)
 
 **Standard Rice:**  
@@ -52,3 +57,9 @@ aligned (49.80 MiB)
 Bytes needed for coefficients: 281280 B Output file size: 52670798 Grand Ratio = 0.343
 
 10min.wav: wrote 52374790 bytes, ratio=0.341
+
+Number of frames: 18752 Source size: 153600000 (146.48 MiB)
+md5: 3a 14 27 33 a3 22 13 07 03 f2 49 e7 1f 42 80 94 Length of residual bitstream: 417245474 bits, bytes: 52155685
+aligned (49.74 MiB)
+Bytes needed for coefficients: 281280 B Output file size: 52608454 Grand Ratio = 0.343 Size of the resulting dataframe:
+200.587 MiB
