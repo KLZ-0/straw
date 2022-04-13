@@ -17,7 +17,6 @@ class Modifiers:
         :param x2: reference array
         :return: True if x1 was modified, False otherwise
         """
-        oldx1 = x1.copy()
         diff = x1 - x2
         # too low will cause noise to be decorrelated
         # too high will cause audio that could be decorrelated to not be decorrelated
@@ -25,12 +24,11 @@ class Modifiers:
             limits = x2.max() >> 3
             # return x1^x2
             nonzero = np.nonzero(np.abs(x2) > limits)[0]
-            x1[nonzero] = diff[nonzero]
-            if np.var(x1) > np.var(oldx1):
-                x1[:] = oldx1
-                return False
-            else:
+            if diff[nonzero].var() < x1[nonzero].var():
+                x1[nonzero] = diff[nonzero]
                 return True
+            else:
+                return False
         else:
             return False
 
