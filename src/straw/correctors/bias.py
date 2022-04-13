@@ -11,4 +11,3 @@ class BiasCorrector(BaseCorrector):
             bias[i] = samplebuffer[i].mean()
             samplebuffer[i] -= bias[i]
         params.bias = bias
-        return samplebuffer

@@ -12,4 +12,4 @@ class BaseCorrector:
         return df
 
     def global_apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
-        return samplebuffer
+        return

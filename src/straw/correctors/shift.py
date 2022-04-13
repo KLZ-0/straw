@@ -15,7 +15,6 @@ class ShiftCorrector(BaseCorrector):
             lag = params.lags[i]
             params.removed_samples_start.append(samplebuffer[i][:lag])
             params.removed_samples_end.append(samplebuffer[i][total_size + lag:])
-        return samplebuffer
 
     def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
