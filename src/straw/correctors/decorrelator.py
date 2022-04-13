@@ -24,7 +24,7 @@ class Modifiers:
             limits = x2.max() >> 3
             # return x1^x2
             nonzero = np.nonzero(np.abs(x2) > limits)[0]
-            if diff[nonzero].var() < x1[nonzero].var():
+            if nonzero.shape[0] != 0 and diff[nonzero].var() < x1[nonzero].var():
                 x1[nonzero] = diff[nonzero]
                 return True
             else:
