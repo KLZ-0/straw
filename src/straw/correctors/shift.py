@@ -6,9 +6,9 @@ from straw.io.params import StreamParams
 
 
 class ShiftCorrector(BaseCorrector):
-    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
-        leading_channel = self._find_leading_channel(samplebuffer, limit=10)
-        params.lags = self._find_lags(samplebuffer, leading_channel, limit=10)
+    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
+        leading_channel = self._find_leading_channel(samplebuffer, limit=limit)
+        params.lags = self._find_lags(samplebuffer, leading_channel, limit=limit)
         params.leading_channel = leading_channel
         total_size = samplebuffer.shape[1] - np.max(params.lags)
         for i in range(samplebuffer.shape[0]):
@@ -17,7 +17,7 @@ class ShiftCorrector(BaseCorrector):
             params.removed_samples_end.append(samplebuffer[i][total_size + lag:])
         return samplebuffer
 
-    def _find_leading_channel(self, samplebuffer: np.ndarray, limit=10):
+    def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
         reference = samplebuffer[0].astype(np.int64)
         for i in range(1, samplebuffer.shape[0]):
@@ -25,7 +25,7 @@ class ShiftCorrector(BaseCorrector):
 
         return np.argmin(lags)
 
-    def _find_lags(self, samplebuffer: np.ndarray, leading_channel, limit=10) -> np.ndarray:
+    def _find_lags(self, samplebuffer: np.ndarray, leading_channel, limit) -> np.ndarray:
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
         reference = samplebuffer[leading_channel].astype(np.int64)
         for i in range(samplebuffer.shape[0]):
