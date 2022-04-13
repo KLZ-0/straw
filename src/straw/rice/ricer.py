@@ -7,7 +7,7 @@ from ..compute import ParallelCompute
 from ..io.sizes import StrawSizes
 
 pyximport.install()
-from . import ext
+from . import ext_rice
 
 
 class Ricer:
@@ -27,7 +27,7 @@ class Ricer:
 
     def guess_parameter(self, frame_residual: np.array) -> np.int8:
         smallframe = frame_residual[:self.responsiveness].astype(np.int32)
-        ext.interleave_frame(smallframe)
+        ext_rice.interleave_frame(smallframe)
         param = np.clip(np.log2(smallframe.mean()), 0, (1 << StrawSizes.bps) - 1)
         return np.round(param).astype(np.int8)
 
@@ -43,7 +43,7 @@ class Ricer:
         :return: encoded bitarray
         """
         data = bitarray()
-        ext.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
+        ext_rice.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
         return data
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
@@ -86,7 +86,7 @@ class Ricer:
             frame = own_frame[:frame_size]
 
         if len(bitstream) > 0:
-            bits_read = ext.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
+            bits_read = ext_rice.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
 
         if own_frame is None:
             return frame
@@ -121,11 +121,11 @@ class Ricer:
     @staticmethod
     def frame_to_kparams(frame: np.ndarray, k: int, responsiveness: int = 16):
         frame = np.copy(frame)
-        ext.kparams(frame, k, responsiveness)
+        ext_rice.kparams(frame, k, responsiveness)
         return frame
 
     @staticmethod
     def frame_to_interleaved(frame: np.ndarray):
         frame = np.copy(frame)
-        ext.interleave_frame(frame)
+        ext_rice.interleave_frame(frame)
         return frame
