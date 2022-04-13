@@ -26,6 +26,17 @@ pip install -r requirements.txt
 
 # Usage
 
+### Library
+
+The library usage is analogous to soundfile:
+
+```python
+import straw
+
+data, sample_rate = straw.read("existing_file.straw")
+straw.write("new_file.straw", data, sample_rate)
+```
+
 ### Standalone encoder/decoder
 
 First activate the virtual environment:
@@ -45,15 +56,4 @@ Decoding:
 
 ```shell
 python3 main.py -d -i /path/to/input.straw -o /path/to/output.wav
-```
-
-### Library
-
-The library usage is analogous to soundfile:
-
-```python
-import straw
-
-data, sample_rate = straw.read("existing_file.straw")
-straw.write("new_file.straw", data, sample_rate)
 ```
