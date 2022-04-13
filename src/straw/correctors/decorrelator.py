@@ -14,21 +14,21 @@ class Modifiers:
             nonzero = np.nonzero(np.abs(x2) > limits)[0]
             x1[nonzero] = diff[nonzero]
             if np.var(x1) > np.var(oldx1):
-                return oldx1, False
+                x1[:] = oldx1
+                return False
             else:
-                return x1, True
+                return True
         else:
-            return x1, False
+            return False
 
     @staticmethod
     def localized_add(x1, x2, was_coded):
         if not was_coded:
-            return x1
+            return
 
         limits = x2.max() >> 3
         nonzero = np.nonzero(np.abs(x2) > limits)[0]
         x1[nonzero] = (x2 + x1)[nonzero]
-        return x1
 
 
 class Decorrelator:
@@ -44,17 +44,16 @@ class Decorrelator:
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        df[[col_name, "was_coded"]] = df.apply(self.localized_decorrelate_expander,
-                                               reference=df[col_name][df.index[0]],
-                                               col_name=col_name,
-                                               axis=1,
-                                               result_type="expand")
+        df["was_coded"] = df.apply(self.localized_decorrelate_expander,
+                                   reference=df[col_name][df.index[0]],
+                                   col_name=col_name,
+                                   axis=1)
 
         return df
 
     @staticmethod
-    def localized_decorrelate_revert_expander(df, reference: np.ndarray, col_name: str):
-        return Modifiers.localized_add(df[col_name], x2=reference, was_coded=df["was_coded"])
+    def localized_decorrelate_revert_expander(df: pd.DataFrame, reference: np.ndarray, col_name: str):
+        Modifiers.localized_add(df[col_name], x2=reference, was_coded=df["was_coded"])
 
     def localized_decorrelate_revert(self, df, col_name: str = "residual"):
         """
@@ -64,9 +63,9 @@ class Decorrelator:
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        df[col_name] = df.apply(self.localized_decorrelate_revert_expander,
-                                reference=df[col_name][df.index[0]],
-                                col_name=col_name,
-                                axis=1)
+        df.apply(self.localized_decorrelate_revert_expander,
+                 reference=df[col_name][df.index[0]],
+                 col_name=col_name,
+                 axis=1)
 
         return df
