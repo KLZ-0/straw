@@ -1,8 +1,6 @@
 import librosa
 import numpy as np
 
-from straw.io.sizes import StrawSizes
-
 
 class Signals:
     # @staticmethod
@@ -45,24 +43,28 @@ class Signals:
     #     return np.asarray(lst)
 
     @staticmethod
-    def _add_indice(lst: list, indice: int, last_indice: int, max_block_size: int):
-        if indice - last_indice <= max_block_size:
-            return [indice]
-        else:
-            intermediate_indice = last_indice + max_block_size
-            return [intermediate_indice] + Signals._add_indice(lst, indice, intermediate_indice, max_block_size)
+    def _add_indice(indice: int, last_indice: int, max_block_size: int):
+        lst = []
+        while True:
+            if indice - last_indice <= max_block_size:
+                return lst + [indice]
+            else:
+                last_indice = last_indice + max_block_size
+                lst.append(last_indice)
 
     @staticmethod
-    def get_frame_limits_by_energy(channel_data: np.array, frame_resolution: int = 256, treshold: int = 120):
+    def get_frame_limits_by_energy(channel_data: np.array,
+                                   min_block_size: int = 1 << 11,
+                                   treshold: int = 140,
+                                   max_block_size: int = 1 << 12):
         """
         Returns a list of indices where frames should start
         """
-        max_block_size = (1 << StrawSizes.frame_header.block_size_exact) - 1
-        treshold *= frame_resolution
+        treshold *= min_block_size
         data = channel_data.astype(np.int64)
         lst = []
-        for i in range(0, data.shape[0], frame_resolution):
-            fr = data[i:i + frame_resolution]
+        for i in range(0, data.shape[0], min_block_size):
+            fr = data[i:i + min_block_size]
             shorttime_energy = np.sum(fr * fr) / fr.shape[0]
             lst.append(shorttime_energy)
         energies = np.asarray(lst)
@@ -72,10 +74,10 @@ class Signals:
         indices = []
         last_indice = 0
         for indice in borders.nonzero()[0]:
-            indice *= frame_resolution
-            indices += Signals._add_indice(lst, indice, last_indice, max_block_size)
+            indice *= min_block_size
+            indices += Signals._add_indice(indice, last_indice, max_block_size)
             last_indice = indice
-        indices += Signals._add_indice(lst, channel_data.shape[0], last_indice, max_block_size)
+        indices += Signals._add_indice(channel_data.shape[0], last_indice, max_block_size)
 
         # vals = borders[0 * (4096 // frame_resolution):1 * (4096 // frame_resolution)]
         # plt.plot(vals)
