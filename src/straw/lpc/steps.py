@@ -35,7 +35,7 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         if not signal.apply(np.any).all():
             return None
 
-        window = get_window("hamming", signal[signal.index[0]].shape[0])
+        window = get_window("tukey", signal[signal.index[0]].shape[0])
         r = np.asarray([_autocorr((s.astype(float) / (1 << 15)) * window, p + 1) for s in signal])
         r = np.mean(r, axis=0)
     else:
