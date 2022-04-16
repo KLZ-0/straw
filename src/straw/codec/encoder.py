@@ -70,9 +70,11 @@ class Encoder(BaseCoder):
         # Compute LPC & quantize coeffs
         tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
+        # self._data = tmp
 
         # Create residuals
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        # self._data = self._data.apply(lpc.compute_residual, axis=1)
         self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
 
         # Decorrelation
@@ -92,6 +94,10 @@ class Encoder(BaseCoder):
         :return: None
         """
         self._tmp()
+        # self._data[["stream_len"]].to_pickle("/tmp/old_streamlen.pkl.gz")
+        # new_lens = self._data[["stream_len"]]
+        # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
+        # diff = (new_lens - old_lens)["stream_len"]
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -162,6 +168,7 @@ class Encoder(BaseCoder):
             ShiftCorrector().global_apply(self._samplebuffer, self._params)
 
     def _decorrelate_signals(self, col_name="residual"):
+        # TODO: do not decorrelate for frames with separate LPC
         self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
 
     #########
@@ -195,6 +202,7 @@ class Encoder(BaseCoder):
         """
         # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
         # self._print_var(seq=4)
+        # from figures import show_frame
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")

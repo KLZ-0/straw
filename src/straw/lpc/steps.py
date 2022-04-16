@@ -35,6 +35,8 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         if not signal.apply(np.any).all():
             return None
 
+        # This is also valid
+        # r = np.asarray([_autocorr(s.astype(float) / (1 << 15), p + 1) for s in signal])
         r = np.asarray([_autocorr(s.astype("i8"), p + 1) for s in signal])
         r = np.mean(r, axis=0)
     else:
