@@ -105,13 +105,14 @@ class Encoder(BaseCoder):
         :return:
         """
 
+        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         if self._do_dynamic_blocking:
-            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0])
+            lag = self._params.lags[0]
+            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag])
         else:
             limits = None
 
         ds = {"seq": [], "frame": [], "channel": []}
-        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         for channel, channel_data in enumerate(self._samplebuffer):
             lag = self._params.lags[channel]
             sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag], limits=limits)

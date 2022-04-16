@@ -75,6 +75,7 @@ class Signals:
             indice *= frame_resolution
             indices += Signals._add_indice(lst, indice, last_indice, max_block_size)
             last_indice = indice
+        indices += Signals._add_indice(lst, channel_data.shape[0], last_indice, max_block_size)
 
         # vals = borders[0 * (4096 // frame_resolution):1 * (4096 // frame_resolution)]
         # plt.plot(vals)

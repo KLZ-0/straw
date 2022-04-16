@@ -26,10 +26,7 @@ class BaseCoder:
         if limits is None:
             return [data[i:i + self._default_frame_size] for i in range(0, len(data), self._default_frame_size)]
         else:
-            return [data[
-                    limits[i]:
-                    limits[i] + data.shape[0] if i + 1 >= limits.shape[0] else limits[i + 1]
-                    ] for i in range(limits.shape[0])]
+            return [data[limits[i]:limits[i + 1]] for i in range(limits.shape[0] - 1)]
 
     def usage_mib(self):
         """
