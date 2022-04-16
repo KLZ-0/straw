@@ -95,10 +95,10 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 
 - `<14>` Sync code '10101010101010'
 
-- `<1>` Contains LPC subframes
+- `<1>` Reserved
     ```
-    0 : no
-    1 : yes
+    0 : mandatory value
+    1 : reserved
     ```
 
 - `<1>` Block size length:
@@ -110,17 +110,6 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 - `<0/8>` elif(Block size length bit == 0) blocksize = (2^n) samples
 
 - `<0/16>` if(Block size length bit == 1) 16 bit (blocksize-1)
-
-- `<0/5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
-
-- `<0/4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
-
-- `<0/4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
-
-- `<0/bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc
-  order) (NOTE: the coefficients are signed two's-complement).
-
-- `<?>` if(Contains LPC subframes bit == 1) Zero-padding to byte alignment.
 
 - `<8-?>`: "UTF-8" coded frame number
 
@@ -171,7 +160,24 @@ The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
 ## SUBFRAME_LPC
 
-- `<1>`  Is coded - whether a localized decorrelation was used for this specific subframe
+- `<1>` - has coefficients - can mean that this is the main channel, if not the main channel then it is coded
+  independently
+
+if (has coefficients):
+
+- `<5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
+- `<4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
+- `<4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
+- `<bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc order) (
+  NOTE: the coefficients are signed two's-complement).
+
+else:
+
+- `<0/1>`  Is decorrelated - anly applicable if the frame does not have separate LPC coefficients - whether a localized
+  decorrelation was used for this specific subframe
+
+endif
+
 - `<bps*order>` Unencoded warm-up samples (bits-per-sample * lpc order).
 - [RESIDUAL](#RESIDUAL) Encoded residual
 
