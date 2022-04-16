@@ -12,6 +12,7 @@ from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
+from straw.util import Signals
 
 
 class Encoder(BaseCoder):
@@ -28,10 +29,11 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False, do_corrections=True):
+    def __init__(self, flac_mode=False, do_corrections=True, dynamic_blocksize=False):
         super(Encoder, self).__init__(flac_mode)
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
         self._do_corrections = do_corrections
+        self._do_dynamic_blocking = dynamic_blocksize
 
     def load_file(self, file):
         """
@@ -102,11 +104,18 @@ class Encoder(BaseCoder):
         NOTE: the underlying memory stays as a contiguous memory chunk
         :return:
         """
-        ds = {"seq": [], "frame": [], "channel": []}
+
         total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
+        if self._do_dynamic_blocking:
+            lag = self._params.lags[0]
+            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag])
+        else:
+            limits = None
+
+        ds = {"seq": [], "frame": [], "channel": []}
         for channel, channel_data in enumerate(self._samplebuffer):
             lag = self._params.lags[channel]
-            sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag])
+            sliced = self._slice_channel_data_into_frames(channel_data[lag:total_size + lag], limits=limits)
             ds["seq"] += [i for i in range(len(sliced))]
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
@@ -186,11 +195,18 @@ class Encoder(BaseCoder):
         """
         # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
         # self._print_var(seq=4)
-        # from figures import show_frame
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
-        # show_frame(self._data[self._data["seq"] == 4], col_name="residual")
+        # show_frame(self._data[(self._data["seq"] == 4) & (self._data["channel"] == 0)], col_name="frame")
+        # show_frame(self._data[(self._data["seq"] == 65) & (self._data["channel"] == 0)], col_name="frame")
+
+        # df = self._data[(self._data["seq"] == 66) & (self._data["channel"] == 0)]
+        # show_frame(df, col_name="frame", terminate=False)
+        # # df["zeros"] = df["frame"].apply(self._get_zerocrossing_rate)
+        # # show_frame(df, col_name="zeros", terminate=False)
+        # df["energy"] = df["frame"].apply(self._get_shorttime_energy)
+        # show_frame(df, col_name="energy")
         pass
 
     ###########

@@ -17,6 +17,8 @@ if __name__ == '__main__':
     # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",
                         help="Generate figures - temporary option for runs with non-consistent behavior")
+    parser.add_argument("--no-dynamic-blocks", dest="dynamic_blocksize", action="store_false",
+                        help="Use dynamic blocksize, by default delimited by short-term energy")
     parser.add_argument("--figures-show", dest="fig_show", action="store_true", help="Show figures")
     parser.add_argument("--figures-dir", dest="fig_dir", metavar="FIG_DIR", type=str,
                         default="outputs", help="Override figure directory (default='outputs')")

@@ -22,8 +22,11 @@ class BaseCoder:
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
 
-    def _slice_channel_data_into_frames(self, data: np.array):
-        return [data[i:i + self._default_frame_size] for i in range(0, len(data), self._default_frame_size)]
+    def _slice_channel_data_into_frames(self, data: np.array, limits: np.array = None):
+        if limits is None:
+            return [data[i:i + self._default_frame_size] for i in range(0, len(data), self._default_frame_size)]
+        else:
+            return [data[limits[i]:limits[i + 1]] for i in range(limits.shape[0] - 1)]
 
     def usage_mib(self):
         """
