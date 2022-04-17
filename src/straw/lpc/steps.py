@@ -40,13 +40,11 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         r = np.asarray([_autocorr((s.astype(float) / (1 << 15)) * window, p + 1) for s in signal])
         r = np.mean(r, axis=0)
     else:
-        # Extend to 64 bits to prevent overflows
-        signal = signal.astype("i8")
-
         if not signal.any():
             return None
 
-        r = _autocorr(signal, p + 1)
+        window = get_window("tukey", signal.shape[0])
+        r = _autocorr((signal.astype(float) / (1 << 15)) * window, p + 1)
 
     return solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
