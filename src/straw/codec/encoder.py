@@ -228,7 +228,8 @@ class Encoder(BaseCoder):
         :param stream: stream where the output should be written
         :return: None
         """
-        print(f"Number of frames: {len(self._data)}", file=stream)
+        print(f"Number of frames: {len(self._data.groupby('seq').groups)}", file=stream)
+        print(f"Number of subframes: {len(self._data)}", file=stream)
         print(f"Source size: {self._source_size} ({self._source_size / (2 ** 20):.2f} MiB)", file=stream)
         size = self._data["stream_len"].sum()
         print(f"md5: {self._params.md5.hex(' ')}", file=stream)
