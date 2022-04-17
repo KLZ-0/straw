@@ -163,7 +163,7 @@ class Encoder(BaseCoder):
 
     def _apply_corrections(self):
         if self._do_corrections:
-            # self._data = self._data.groupby("seq").apply(GainCorrector().apply, col_name=col_name)
+            # GainCorrector().global_apply(self._samplebuffer, self._params)
             BiasCorrector().global_apply(self._samplebuffer, self._params)
             ShiftCorrector().global_apply(self._samplebuffer, self._params)
 
@@ -202,9 +202,9 @@ class Encoder(BaseCoder):
         """
         # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
         # self._print_var(seq=4)
-        # from figures import show_frame
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
+        from figures import show_frame
+        show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
+        show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
         # show_frame(self._data[(self._data["seq"] == 4) & (self._data["channel"] == 0)], col_name="frame")
         # show_frame(self._data[(self._data["seq"] == 65) & (self._data["channel"] == 0)], col_name="frame")

@@ -4,30 +4,17 @@ import numpy as np
 import pandas as pd
 
 from straw.correctors.base import BaseCorrector
+from straw.io.params import StreamParams
 
 
 class GainCorrector(BaseCorrector):
-    def apply(self, df: pd.DataFrame, col_name: str = "frame"):
-        """
-        Takes dataframe with 1-n channels
-        TODO: deal with 1 channel
-        :param col_name:
-        :param df:
-        :return:
-        """
-        super().apply(df, col_name)
-
-        ref_idx = self.choose_idx(df[col_name])
-        for i, row in df.iterrows():
-            if i == ref_idx:
-                continue
-            df[col_name][i], factor = self.equalize(row[col_name], df[col_name][ref_idx])
-
-        return df
+    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
+        for i in range(1, samplebuffer.shape[0]):
+            factor = self.equalize(samplebuffer[i], reference=samplebuffer[0])
 
     @staticmethod
     def energy(frame: np.ndarray):
-        return np.sqrt(frame.var())
+        return frame.std()
 
     @staticmethod
     def equalize(frame: np.ndarray, reference: np.ndarray):
@@ -41,11 +28,12 @@ class GainCorrector(BaseCorrector):
         # frame: 6
         # ref: 1
         # expected ratio > 1.0
-        frame = frame.astype(np.float)
+        tmp = frame.astype(np.double)
         factor = Fraction((GainCorrector.energy(reference) / GainCorrector.energy(frame))).limit_denominator(1 << 12)
-        frame *= factor.numerator
-        frame /= factor.denominator
-        return frame.astype(np.int16), factor
+        tmp *= factor.numerator
+        tmp /= factor.denominator
+        frame[:] = tmp.astype(np.int16)
+        return factor
 
     @staticmethod
     def deequalize(frame: np.ndarray, factor):
