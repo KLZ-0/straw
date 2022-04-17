@@ -170,6 +170,7 @@ class Encoder(BaseCoder):
     def _decorrelate_signals(self, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
         self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
+        self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
 
     #########
     # Other #
@@ -202,9 +203,9 @@ class Encoder(BaseCoder):
         """
         # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
         # self._print_var(seq=4)
-        from figures import show_frame
-        show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
-        show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1740, 1800))
+        # from figures import show_frame
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1730, 1790))
         # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
         # show_frame(self._data[(self._data["seq"] == 4) & (self._data["channel"] == 0)], col_name="frame")
         # show_frame(self._data[(self._data["seq"] == 65) & (self._data["channel"] == 0)], col_name="frame")

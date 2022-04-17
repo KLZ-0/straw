@@ -54,6 +54,7 @@ class Decoder(BaseCoder):
             self._samplebuffer[i] += self._params.bias[i]
 
     def _revert_decorrelate(self, col_name="residual"):
+        self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate_revert, col_name=col_name)
         self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate_revert, col_name=col_name)
 
     ###########

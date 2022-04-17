@@ -3,6 +3,9 @@ import pandas as pd
 
 
 class Modifiers:
+    #############################
+    # Subtraction decorrelation #
+    #############################
     @staticmethod
     def indicator(x):
         return np.mean(np.abs(x))
@@ -45,8 +48,30 @@ class Modifiers:
 
         x1[:] = x2 + x1
 
+    ##########################
+    # Mid-side decorrelation #
+    ##########################
+
+    @staticmethod
+    def transform_midside(x1: np.array, x2: np.array):
+        diff = x1 - x2
+        mid = (x1 + x2) // 2
+        x1[:] = diff
+        x2[:] = mid
+
+    @staticmethod
+    def transform_midside_reverse(x1: np.array, x2: np.array):
+        diff = x1.copy()
+        mid = x2.copy()
+        x1[:] = mid + np.ceil(diff / 2)
+        x2[:] = mid - np.floor(diff // 2)
+
 
 class Decorrelator:
+    #############################
+    # Subtraction decorrelation #
+    #############################
+
     @staticmethod
     def localized_decorrelate_expander(df: pd.DataFrame, reference: np.ndarray, col_name: str):
         return Modifiers.localized_sub(df[col_name], x2=reference)
@@ -89,5 +114,29 @@ class Decorrelator:
                  reference=df[col_name][df.index[0]],
                  col_name=col_name,
                  axis=1)
+
+        return df
+
+    ##########################
+    # Mid-side decorrelation #
+    ##########################
+
+    @staticmethod
+    def midside_decorrelate(df: pd.DataFrame, col_name: str = "residual"):
+        if col_name not in df.columns:
+            raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        for i in range(0, len(df.index), 2):
+            Modifiers.transform_midside(df.loc[df.index[i], col_name], x2=df.loc[df.index[i + 1], col_name])
+
+        return df
+
+    @staticmethod
+    def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual"):
+        if col_name not in df.columns:
+            raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        for i in range(0, len(df.index), 2):
+            Modifiers.transform_midside_reverse(df.loc[df.index[i], col_name], x2=df.loc[df.index[i + 1], col_name])
 
         return df
