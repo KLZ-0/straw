@@ -238,7 +238,7 @@ class Encoder(BaseCoder):
         print(f"Bytes needed for coefficients: {lpc_bytes:.0f} B", file=stream)
         print(f"Output file size: {output_file.stat().st_size} ({output_file.stat().st_size / (2 ** 20):.2f} MiB)",
               file=stream)
-        print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.3f}", file=stream)
+        print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.4f}", file=stream)
 
         # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)

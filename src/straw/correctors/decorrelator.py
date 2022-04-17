@@ -4,6 +4,10 @@ import pandas as pd
 
 class Modifiers:
     @staticmethod
+    def indicator(x):
+        return np.mean(np.abs(x))
+
+    @staticmethod
     def localized_sub(x1: np.array, x2: np.array) -> bool:
         """
         Performs localized subtraction on array x1 with the reference array (x2)
@@ -18,14 +22,9 @@ class Modifiers:
         :return: True if x1 was modified, False otherwise
         """
         diff = x1 - x2
-        # too low will cause noise to be decorrelated
-        # too high will cause audio that could be decorrelated to not be decorrelated
         if diff.any():
-            limits = x2.max() >> 3
-            # return x1^x2
-            nonzero = np.nonzero(np.abs(x2) > limits)[0]
-            if nonzero.shape[0] != 0 and diff[nonzero].var() < x1[nonzero].var():
-                x1[nonzero] = diff[nonzero]
+            if Modifiers.indicator(diff) < Modifiers.indicator(x1):
+                x1[:] = diff
                 return True
             else:
                 return False
@@ -44,9 +43,7 @@ class Modifiers:
         if not was_coded:
             return
 
-        limits = x2.max() >> 3
-        nonzero = np.nonzero(np.abs(x2) > limits)[0]
-        x1[nonzero] = (x2 + x1)[nonzero]
+        x1[:] = x2 + x1
 
 
 class Decorrelator:
