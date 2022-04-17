@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy.signal import get_window
 
 from straw.correctors.base import BaseCorrector
 from straw.io.params import StreamParams
@@ -7,8 +8,9 @@ from straw.io.params import StreamParams
 
 class ShiftCorrector(BaseCorrector):
     def global_apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
-        leading_channel = self._find_leading_channel(samplebuffer, limit=limit)
-        params.lags = self._find_lags(samplebuffer, leading_channel, limit=limit)
+        windowed = (samplebuffer * get_window("nuttall", samplebuffer.shape[1])).astype(np.int64)
+        leading_channel = self._find_leading_channel(windowed, limit=limit)
+        params.lags = self._find_lags(windowed, leading_channel, limit=limit)
         params.leading_channel = leading_channel
         total_size = samplebuffer.shape[1] - np.max(params.lags)
         for i in range(samplebuffer.shape[0]):
@@ -18,7 +20,7 @@ class ShiftCorrector(BaseCorrector):
 
     def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
-        reference = samplebuffer[0].astype(np.int64)
+        reference = samplebuffer[0]
         for i in range(1, samplebuffer.shape[0]):
             lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
 
@@ -26,7 +28,7 @@ class ShiftCorrector(BaseCorrector):
 
     def _find_lags(self, samplebuffer: np.ndarray, leading_channel, limit) -> np.ndarray:
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
-        reference = samplebuffer[leading_channel].astype(np.int64)
+        reference = samplebuffer[leading_channel]
         for i in range(samplebuffer.shape[0]):
             if i == leading_channel:
                 continue
@@ -40,7 +42,6 @@ class ShiftCorrector(BaseCorrector):
 
     @staticmethod
     def _corr(frame: np.array, reference: np.array, end: int, start: int = 0) -> np.array:
-        frame = frame.astype(np.int64)
         return start + np.argmax([reference[:len(reference) - i].dot(frame[i:]) for i in range(start, end)])
 
     @staticmethod
