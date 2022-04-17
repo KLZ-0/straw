@@ -15,8 +15,8 @@ class Signals:
 
     @staticmethod
     def get_frame_limits_by_energy(channel_data: np.array,
-                                   min_block_size: int = 1 << 11,
-                                   treshold: int = 140,
+                                   min_block_size: int = 1 << 10,
+                                   treshold: int = 60,
                                    max_block_size: int = 1 << 12):
         """
         Returns a list of indices where frames should start
