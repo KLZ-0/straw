@@ -122,21 +122,56 @@ class Decorrelator:
     ##########################
 
     @staticmethod
-    def midside_decorrelate(df: pd.DataFrame, col_name: str = "residual"):
+    def _find_closest_lower_power_of_two(x):
+        order = 1
+        while order <= x:
+            order <<= 1
+        return order >> 1
+
+    @staticmethod
+    def midside_decorrelate(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        for i in range(0, len(df.index), 2):
-            Modifiers.transform_midside(df.loc[df.index[i], col_name], x2=df.loc[df.index[i + 1], col_name])
+        if iterated:
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            indices = np.arange(order).reshape((-1, 2))
+            while order > 1:
+                indices = np.rot90(indices).reshape(-1, 2)
+                for idx1, idx2 in indices:
+                    Modifiers.transform_midside(df.loc[df.index[idx1], col_name], x2=df.loc[df.index[idx2], col_name])
+                order = order >> 1
+        else:
+            indices = np.arange((len(df) // 2) * 2).reshape((-1, 2))
+            for idx1, idx2 in indices:
+                Modifiers.transform_midside(df.loc[df.index[idx1], col_name], x2=df.loc[df.index[idx2], col_name])
 
         return df
 
     @staticmethod
-    def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual"):
+    def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        for i in range(0, len(df.index), 2):
-            Modifiers.transform_midside_reverse(df.loc[df.index[i], col_name], x2=df.loc[df.index[i + 1], col_name])
+        if iterated:
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            indices = np.arange(order).reshape((-1, 2))
+
+            while order > 1:
+                indices = np.rot90(indices).reshape(-1, 2)
+                order = order >> 1
+
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            while order > 1:
+                for idx1, idx2 in indices:
+                    Modifiers.transform_midside_reverse(df.loc[df.index[idx1], col_name],
+                                                        x2=df.loc[df.index[idx2], col_name])
+                indices = np.rot90(indices.reshape(2, -1), k=-1)
+                order = order >> 1
+        else:
+            indices = np.arange((len(df) // 2) * 2).reshape((-1, 2))
+            for idx1, idx2 in indices:
+                Modifiers.transform_midside_reverse(df.loc[df.index[idx1], col_name],
+                                                    x2=df.loc[df.index[idx2], col_name])
 
         return df
