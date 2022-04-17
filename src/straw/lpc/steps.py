@@ -125,7 +125,7 @@ def quantize_lpc(lpc_c, precision) -> (np.array, int):
     return qlp_c, shift
 
 
-def quant_alt(lpc_c, precision):
+def quant_alt(lpc_c, precision) -> (np.array, int, int):
     # drop 1 bit for sign
     precision -= 1
 
@@ -142,10 +142,10 @@ def quant_alt(lpc_c, precision):
     # Limit the quantized values
     np.clip(qlp, qmin, qmax, out=qlp)
 
-    return qlp.astype(np.int32), shift
+    return qlp.astype(np.int32), precision, shift
 
 
-def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
+def quantize_lpc_cython(lpc_c, precision) -> (np.array, int, int):
     """
     Wrapper around Cython extension for LPC coefficient quantization
     :param lpc_c: numpy array of LPC coefficients to be quantized
@@ -154,6 +154,17 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int):
     """
     shift = ext_lpc.quantize_lpc(lpc_c, precision)
     return lpc_c.astype(np.int32), precision, shift
+
+
+def simple_quantize(lpc_c, precision) -> (np.array, int, int):
+    qmax = 1 << precision - 1
+    qmin = -qmax
+    qmax -= 1
+
+    for shift in reversed(range(0, precision)):
+        vals = (lpc_c * (1 << shift)).astype(np.int32)
+        if vals.max() <= qmax and vals.min() >= qmin:
+            return vals, precision, shift
 
 
 ##############
