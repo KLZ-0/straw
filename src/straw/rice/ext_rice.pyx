@@ -48,7 +48,7 @@ cdef void update_scale(int s, short m, short *scale):
 # Encoding #
 ############
 
-def _append_n_bits(bits: bitarray, short number, short n):
+def _append_n_bits(bits: bitarray, int number, short n):
     """
     Appends the last n bits of number to the end of the current bitstream
     :param bits: bitaray to which the bits will be appended
