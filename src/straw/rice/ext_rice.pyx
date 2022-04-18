@@ -1,7 +1,6 @@
 # distutils: language = c
 # cython: language_level=3
 import cython
-from bitarray import bitarray
 
 #########################
 # Signedness correction #
@@ -48,18 +47,19 @@ cdef void update_scale(long s, short m, short *scale):
 # Encoding #
 ############
 
-def _append_n_bits(bits: bitarray, long number, short n):
-    """
-    Appends the last n bits of number to the end of the current bitstream
-    :param bits: bitaray to which the bits will be appended
-    :param number: number to append
-    :param n: number of bits to append
-    :return: None
-    """
-    bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
+@cython.cdivision(True)
+cdef void _push_bit(unsigned char[:] bits, Py_ssize_t *bit_i, char val):
+    if val == 0:
+        bit_i[0] += 1
+        return
+
+    cdef Py_ssize_t byte_i = bit_i[0] / 8
+    cdef char real_bit_i = 7 - (bit_i[0] % 8)
+    bit_i[0] += 1
+    bits[byte_i] |= 1 << real_bit_i
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, cython.integral[:] frame, short k, short resp, short adaptive):
+def encode_frame(unsigned char[:] bits, cython.integral[:] frame, short k, short resp, short adaptive):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
@@ -69,8 +69,11 @@ def encode_frame(bits: bitarray, cython.integral[:] frame, short k, short resp, 
     :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
+    cdef short j
     cdef long m, q, s
     cdef Py_ssize_t x_max, i
+    cdef Py_ssize_t bit_i = 0
+    cdef Py_ssize_t bit_i_max = bits.shape[0] * 8
     x_max = frame.shape[0]
     m = 1 << k
 
@@ -82,11 +85,14 @@ def encode_frame(bits: bitarray, cython.integral[:] frame, short k, short resp, 
         # Quotient code
         q = s / m
 
-        for _ in range(q):
-            bits.append(0)
-        bits.append(1)
+        if bit_i + q + k + 1 >= bit_i_max:
+            return -1
 
-        _append_n_bits(bits, s, k)
+        bit_i += q
+        _push_bit(bits, &bit_i, 1)
+
+        for j in range(k):
+            _push_bit(bits, &bit_i, s >> (k - j - 1) & 1)
 
         # TODO: feed-forward rice implementation
         if not adaptive:
@@ -109,6 +115,8 @@ def encode_frame(bits: bitarray, cython.integral[:] frame, short k, short resp, 
             scale = -resp
 
         update_scale(s, m, &scale)
+
+    return bit_i
 
 ############
 # Decoding #

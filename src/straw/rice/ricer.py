@@ -42,9 +42,12 @@ class Ricer:
         :param bps: expected bits per sample
         :return: encoded bitarray
         """
-        data = bitarray()
-        ext_rice.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
-        return data
+        data = np.zeros(frame.nbytes, dtype=np.uint8)
+        bits = ext_rice.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
+        if bits == -1:
+            return bitarray(buffer=frame)  # This will later fail in Encoder._ensure_compression
+        else:
+            return bitarray(buffer=data)[:bits]
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
         if df["frame_type"] != 0b11:
@@ -69,14 +72,14 @@ class Ricer:
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray,
+    def bitstream_to_frame(self, bitstream_memoryview: bytes,
                            frame_size: int, bps: int,
                            own_frame: np.array = None,
                            bitarray_pos=0):
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
-        :param bitstream: rice encoded stream
+        :param bitstream_memoryview: rice encoded stream
         :param frame_size: frame size
         :param bps: expected bits per sample
         :param own_frame: if not None, this frame will be filled
@@ -89,8 +92,8 @@ class Ricer:
         else:
             frame = own_frame[:frame_size]
 
-        if len(bitstream) > 0:
-            bits_read = ext_rice.decode_frame(frame, memoryview(bitstream).tobytes(), bps, self.responsiveness,
+        if len(bitstream_memoryview) > 0:
+            bits_read = ext_rice.decode_frame(frame, bitstream_memoryview, bps, self.responsiveness,
                                               adaptive=self.adaptive, starting_i=bitarray_pos)
 
         if own_frame is None:

@@ -173,7 +173,7 @@ class Encoder(BaseCoder):
 
     def _ensure_compression(self):
         max_allowed_bits = self._data["residual"].apply(len) * self._params.bits_per_sample
-        self._data.loc[self._data["stream_len"] > max_allowed_bits, "frame_type"] = 0b01
+        self._data.loc[self._data["stream_len"] >= max_allowed_bits, "frame_type"] = 0b01
 
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1

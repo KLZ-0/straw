@@ -67,6 +67,7 @@ class BaseReader(BaseIO):
     _ricer = Ricer()
 
     _sec: SlicedBitarray()
+    _memview: bytes
     _samplebuffer_ptr: int = 0
     _samplebuffer: np.array
 
@@ -83,6 +84,7 @@ class BaseReader(BaseIO):
         with input_file.open("rb") as f:
             m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
             self._sec = SlicedBitarray(buffer=m)
+            self._memview = memoryview(self._sec).tobytes()
             self._stream()
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
