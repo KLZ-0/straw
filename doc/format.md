@@ -78,6 +78,13 @@ One of:
 - `<n*8>` DC bias removed from each channel, n = number of channels
   - NOTE: the values are signed two's-complement
 
+- `<n*12>` Gain correction coefficients (factor) - 1.0, n = number of channels
+  - These are unsigned quantized floating point numbers with the range (1 to inf) by for storage purposes 1.0 is
+    subtracted since the coefficients are always larger than 1
+  - The strongest channel will always have a factor of 1.0 (or 0 quantized)
+
+- `<4>` Gain shift in bits
+
 - `<?>` Zero-padding to byte alignment.
 
 ### NOTES

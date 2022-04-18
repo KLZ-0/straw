@@ -12,6 +12,8 @@ class StreamParams:
     removed_samples_start = []  # removed samples for each channel from the start
     removed_samples_end = []  # removed samples for each channel from the end
     bias: np.ndarray  # length equal to number of channels, each value represents bias on a channel
+    gain: np.ndarray  # length equal to number of channels, each value represents quantized gain factor on a channel
+    gain_shift: int = None
 
 
 class FLACStreamParams(StreamParams):

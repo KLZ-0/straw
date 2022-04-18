@@ -51,6 +51,9 @@ class StrawFormatWriter(BaseWriter):
                 sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
         for val in self._params.bias:
             sec += int2ba(int(val), length=sizes.bias, signed=True)
+        for val in self._params.gain:
+            sec += int2ba(int(val), length=sizes.gain)
+        sec += int2ba(self._params.gain_shift, length=sizes.gain_shift)
         sec.fill()
         return sec
 
@@ -199,6 +202,7 @@ class StrawFormatReader(BaseReader):
         self._params.channels = self._sec.get_int_utf8() + 1
         self._params.lags = np.zeros(self._params.channels, dtype=np.int8)  # 4 bit
         self._params.bias = np.zeros(self._params.channels, dtype=np.int8)  # 8 bit signed
+        self._params.gain = np.zeros(self._params.channels, dtype=np.int64)  # 8 bit signed
         self._params.bits_per_sample = self._sec.get_int(length=sizes.bps) + 1
         expected_frames = self._sec.get_int(length=sizes.frames)
         self._params.total_samples = self._sec.get_int(length=sizes.samples)
@@ -221,6 +225,9 @@ class StrawFormatReader(BaseReader):
                 self._samplebuffer[c][e] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
         for i in range(self._params.bias.shape[0]):
             self._params.bias[i] = self._sec.get_int(length=sizes.bias, signed=True)
+        for i in range(self._params.gain.shape[0]):
+            self._params.gain[i] = self._sec.get_int(length=sizes.gain)
+        self._params.gain_shift = self._sec.get_int(length=sizes.gain_shift)
         self._sec.skip_padding()
 
         return expected_frames

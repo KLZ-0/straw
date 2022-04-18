@@ -7,7 +7,7 @@ from straw.io.params import StreamParams
 
 
 class ShiftCorrector(BaseCorrector):
-    def global_apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
+    def apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
         windowed = (samplebuffer * get_window("nuttall", samplebuffer.shape[1])).astype(np.int64)
         leading_channel = self._find_leading_channel(windowed, limit=limit)
         params.lags = self._find_lags(windowed, leading_channel, limit=limit)

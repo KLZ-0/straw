@@ -4,7 +4,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import Decorrelator
+from straw.correctors import Decorrelator, GainCorrector, BiasCorrector
 from straw.io import Formatter
 
 
@@ -50,8 +50,8 @@ class Decoder(BaseCoder):
     ###########
 
     def _revert_corrections(self):
-        for i in range(self._params.channels):
-            self._samplebuffer[i] += self._params.bias[i]
+        BiasCorrector().apply_revert(self._samplebuffer, self._params)
+        GainCorrector().apply_revert(self._samplebuffer, self._params)
 
     def _revert_decorrelate(self, col_name="residual"):
         self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate_revert, col_name=col_name)

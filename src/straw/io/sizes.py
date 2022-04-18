@@ -25,6 +25,8 @@ class StrawSizes:
         shift = 4
         removed_samples = None
         bias = 8
+        gain = 12
+        gain_shift = 4
 
     class frame_header:  # noqa
         sync_code = 14

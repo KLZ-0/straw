@@ -8,7 +8,7 @@ import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
-from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator
+from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -163,9 +163,9 @@ class Encoder(BaseCoder):
 
     def _apply_corrections(self):
         if self._do_corrections:
-            # GainCorrector().global_apply(self._samplebuffer, self._params)
-            BiasCorrector().global_apply(self._samplebuffer, self._params)
-            ShiftCorrector().global_apply(self._samplebuffer, self._params)
+            GainCorrector().apply(self._samplebuffer, self._params)
+            BiasCorrector().apply(self._samplebuffer, self._params)
+            ShiftCorrector().apply(self._samplebuffer, self._params)
 
     def _decorrelate_signals(self, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
