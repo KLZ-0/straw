@@ -1,63 +1,67 @@
-from fractions import Fraction
-
 import numpy as np
-import pandas as pd
 
 from straw.correctors.base import BaseCorrector
+from straw.io.params import StreamParams
+from straw.io.sizes import StrawSizes
 
 
 class GainCorrector(BaseCorrector):
-    def apply(self, df: pd.DataFrame, col_name: str = "frame"):
-        """
-        Takes dataframe with 1-n channels
-        TODO: deal with 1 channel
-        :param col_name:
-        :param df:
-        :return:
-        """
-        super().apply(df, col_name)
-
-        ref_idx = self.choose_idx(df[col_name])
-        for i, row in df.iterrows():
-            if i == ref_idx:
+    def apply(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
+        factors = self.find_factors(samplebuffer, StrawSizes.metadata_block_streaminfo.gain)
+        for i in range(samplebuffer.shape[0]):
+            # scaling by 1.0 is just a waste of time
+            if factors[i] == 1.0:
                 continue
-            df[col_name][i], factor = self.equalize(row[col_name], df[col_name][ref_idx])
 
-        return df
+            self.equalize(samplebuffer[i], factors[i])
+        params.gain, params.gain_shift = self.quantize_factors(factors, StrawSizes.metadata_block_streaminfo.gain)
+
+    def apply_revert(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
+        if params.gain_shift is None:
+            return
+
+        factors = self.dequantize_factors(params.gain, params.gain_shift)
+        for i in range(samplebuffer.shape[0]):
+            # scaling by 1.0 is just a waste of time
+            if factors[i] == 1.0:
+                continue
+
+            self.deequalize(samplebuffer[i], factors[i])
+
+    @staticmethod
+    def quantize_factors(factors: np.ndarray, precision: int):
+        factors -= 1.0
+        qmax = 1 << precision
+        qmin = -qmax
+        qmax -= 1
+
+        for shift in reversed(range(0, precision + 1)):
+            vals = (factors * (1 << shift)).astype(np.int64)
+            if vals.max() <= qmax and vals.min() >= qmin:
+                return vals, shift
+
+    @staticmethod
+    def dequantize_factors(factors: np.ndarray, shift: int):
+        return (factors / (1 << shift)) + 1.0
 
     @staticmethod
     def energy(frame: np.ndarray):
-        return np.sqrt(frame.var())
+        return frame.std()
 
     @staticmethod
-    def equalize(frame: np.ndarray, reference: np.ndarray):
-        """
-        Equalizes frame to match the reference
-        TODO: This is not lossless!!!
-        :param frame:
-        :param reference:
-        :return:
-        """
-        # frame: 6
-        # ref: 1
-        # expected ratio > 1.0
-        frame = frame.astype(np.float)
-        factor = Fraction((GainCorrector.energy(reference) / GainCorrector.energy(frame))).limit_denominator(1 << 12)
-        frame *= factor.numerator
-        frame /= factor.denominator
-        return frame.astype(np.int16), factor
+    def equalize(frame: np.ndarray, factor: float):
+        frame[:] = (frame * factor).round().astype(frame.dtype)
 
     @staticmethod
-    def deequalize(frame: np.ndarray, factor):
-        frame = frame.astype(np.float)
-        frame *= factor.denominator
-        frame /= factor.numerator
-        return frame.astype(np.int16)
+    def deequalize(frame: np.ndarray, factor: float):
+        frame[:] = (frame / factor).round().astype(frame.dtype)
 
-    @staticmethod
-    def choose_idx(frames: pd.Series):
-        variances = frames.apply(np.var)
-        # mid = variances.mean()
-        # mid = variances.min()
-        mid = variances.max()
-        return np.abs(variances - mid).idxmin()
+    def find_factors(self, samplebuffer: np.ndarray, precision: int):
+        energies = np.asarray([self.energy(channel_data) for channel_data in samplebuffer])
+        strongest_idx = energies.argmax()
+        factors = energies[strongest_idx] / energies
+
+        # Apply and de-apply quantization
+        factors, shift = self.quantize_factors(factors, precision)
+        factors = self.dequantize_factors(factors, shift)
+        return factors

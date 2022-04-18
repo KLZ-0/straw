@@ -20,7 +20,7 @@ def show_frame(data: pd.DataFrame,
         if isinstance(limit, int):
             ds = ds[:limit]
         elif isinstance(limit, tuple):
-            ds = ds[limit[0]:limit[1]]
+            ds = ds[limit[0]:limit[0] + limit[1]]
         df["x"] += [u for u in range(len(ds))]
         df["Channel"] += [row["channel"] for _ in ds]
         df["value"] += list(ds)

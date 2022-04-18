@@ -8,7 +8,7 @@ Pandas-lever wrappers
 """
 
 
-def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> pd.Series:
+def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.DataFrame:
     """
     Compute LPC and quantize the LPC coefficients
     :param frame: input dataframe with columns [frame]
@@ -16,6 +16,20 @@ def compute_qlp(frame, order: int, qlp_coeff_precision: int) -> pd.Series:
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
     :return: Series(qlp coefficients, qlp precision, qlp shift)
     """
+    # frame["qlp"] = None
+    # frame["qlp"] = frame["qlp"].astype(object)
+    # frame["qlp_precision"] = 0
+    # frame["shift"] = 0
+    #
+    # for idx, row in frame.iterrows():
+    #     lpc = steps.compute_lpc(row["frame"], p=order)
+    #     qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
+    #     frame["qlp_precision"][idx] = precision
+    #     frame["shift"][idx] = shift
+    #     frame["qlp"][idx] = qlp
+    #
+    # return frame
+
     df = pd.Series({
         "qlp": np.array([]),
         "qlp_precision": 0,

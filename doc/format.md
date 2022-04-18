@@ -67,16 +67,30 @@ One of:
 - `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the
   audio data even when the error does not result in an invalid bitstream.
 
-- `<8-?>` "UTF-8" coded leading channel
+- `<1>` Has shift correction
 
-- `<n*4>` Shift needed for each channel compared to the leading channel, n = number of channels
+- `<8-?>` if (Has shift correction) "UTF-8" coded leading channel
 
-- `<c*n*b>` Removed samples start + end flattened, c = number of channels, n = number of removed samples (max lag), b =
-  bits per sample
+- `<n*4>` if (Has shift correction) Shift needed for each channel compared to the leading channel, n = number of
+  channels
+
+- `<c*n*b>` if (Has shift correction) Removed samples start + end flattened, c = number of channels, n = number of
+  removed samples (max lag), b = bits per sample
   - NOTE: the values are signed two's-complement
 
-- `<n*8>` DC bias removed from each channel, n = number of channels
+- `<1>` Has bias correction
+
+- `<n*8>` if (Has bias correction) DC bias removed from each channel, n = number of channels
   - NOTE: the values are signed two's-complement
+
+- `<1>` Has gain correction
+
+- `<n*12>` if (Has gain correction == 1) Gain correction coefficients (factor) - 1.0, n = number of channels
+  - These are unsigned quantized floating point numbers with the range (1 to inf) by for storage purposes 1.0 is
+    subtracted since the coefficients are always larger than 1
+  - The strongest channel will always have a factor of 1.0 (or 0 quantized)
+
+- `<4>` if (Has gain correction == 1) Gain shift in bits
 
 - `<?>` Zero-padding to byte alignment.
 
@@ -95,10 +109,10 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 
 - `<14>` Sync code '10101010101010'
 
-- `<1>` Contains LPC subframes
+- `<1>` Reserved
     ```
-    0 : no
-    1 : yes
+    0 : mandatory value
+    1 : reserved
     ```
 
 - `<1>` Block size length:
@@ -110,17 +124,6 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 - `<0/8>` elif(Block size length bit == 0) blocksize = (2^n) samples
 
 - `<0/16>` if(Block size length bit == 1) 16 bit (blocksize-1)
-
-- `<0/5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
-
-- `<0/4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
-
-- `<0/4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
-
-- `<0/bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc
-  order) (NOTE: the coefficients are signed two's-complement).
-
-- `<?>` if(Contains LPC subframes bit == 1) Zero-padding to byte alignment.
 
 - `<8-?>`: "UTF-8" coded frame number
 
@@ -171,7 +174,24 @@ The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
 ## SUBFRAME_LPC
 
-- `<1>`  Is coded - whether a localized decorrelation was used for this specific subframe
+- `<1>` - has coefficients - can mean that this is the main channel, if not the main channel then it is coded
+  independently
+
+if (has coefficients):
+
+- `<5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
+- `<4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
+- `<4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
+- `<bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc order) (
+  NOTE: the coefficients are signed two's-complement).
+
+else:
+
+- `<0/1>`  Is decorrelated - anly applicable if the frame does not have separate LPC coefficients - whether a localized
+  decorrelation was used for this specific subframe
+
+endif
+
 - `<bps*order>` Unencoded warm-up samples (bits-per-sample * lpc order).
 - [RESIDUAL](#RESIDUAL) Encoded residual
 

@@ -3,6 +3,13 @@ import pandas as pd
 
 
 class Modifiers:
+    #############################
+    # Subtraction decorrelation #
+    #############################
+    @staticmethod
+    def indicator(x):
+        return np.mean(np.abs(x))
+
     @staticmethod
     def localized_sub(x1: np.array, x2: np.array) -> bool:
         """
@@ -18,14 +25,9 @@ class Modifiers:
         :return: True if x1 was modified, False otherwise
         """
         diff = x1 - x2
-        # too low will cause noise to be decorrelated
-        # too high will cause audio that could be decorrelated to not be decorrelated
         if diff.any():
-            limits = x2.max() >> 3
-            # return x1^x2
-            nonzero = np.nonzero(np.abs(x2) > limits)[0]
-            if nonzero.shape[0] != 0 and diff[nonzero].var() < x1[nonzero].var():
-                x1[nonzero] = diff[nonzero]
+            if Modifiers.indicator(diff) < Modifiers.indicator(x1):
+                x1[:] = diff
                 return True
             else:
                 return False
@@ -44,12 +46,32 @@ class Modifiers:
         if not was_coded:
             return
 
-        limits = x2.max() >> 3
-        nonzero = np.nonzero(np.abs(x2) > limits)[0]
-        x1[nonzero] = (x2 + x1)[nonzero]
+        x1[:] = x2 + x1
+
+    ##########################
+    # Mid-side decorrelation #
+    ##########################
+
+    @staticmethod
+    def transform_midside(x1: np.array, x2: np.array):
+        diff = x1 - x2
+        mid = (x1 + x2) // 2
+        x1[:] = diff
+        x2[:] = mid
+
+    @staticmethod
+    def transform_midside_reverse(x1: np.array, x2: np.array):
+        diff = x1.copy()
+        mid = x2.copy()
+        x1[:] = mid + np.ceil(diff / 2)
+        x2[:] = mid - np.floor(diff // 2)
 
 
 class Decorrelator:
+    #############################
+    # Subtraction decorrelation #
+    #############################
+
     @staticmethod
     def localized_decorrelate_expander(df: pd.DataFrame, reference: np.ndarray, col_name: str):
         return Modifiers.localized_sub(df[col_name], x2=reference)
@@ -92,5 +114,64 @@ class Decorrelator:
                  reference=df[col_name][df.index[0]],
                  col_name=col_name,
                  axis=1)
+
+        return df
+
+    ##########################
+    # Mid-side decorrelation #
+    ##########################
+
+    @staticmethod
+    def _find_closest_lower_power_of_two(x):
+        order = 1
+        while order <= x:
+            order <<= 1
+        return order >> 1
+
+    @staticmethod
+    def midside_decorrelate(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
+        if col_name not in df.columns:
+            raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        if iterated:
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            indices = np.arange(order).reshape((-1, 2))
+            while order > 1:
+                indices = np.rot90(indices).reshape(-1, 2)
+                for idx1, idx2 in indices:
+                    Modifiers.transform_midside(df.loc[df.index[idx1], col_name], x2=df.loc[df.index[idx2], col_name])
+                order = order >> 1
+        else:
+            indices = np.arange((len(df) // 2) * 2).reshape((-1, 2))
+            for idx1, idx2 in indices:
+                Modifiers.transform_midside(df.loc[df.index[idx1], col_name], x2=df.loc[df.index[idx2], col_name])
+
+        return df
+
+    @staticmethod
+    def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
+        if col_name not in df.columns:
+            raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        if iterated:
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            indices = np.arange(order).reshape((-1, 2))
+
+            while order > 1:
+                indices = np.rot90(indices).reshape(-1, 2)
+                order = order >> 1
+
+            order = Decorrelator._find_closest_lower_power_of_two(len(df))
+            while order > 1:
+                for idx1, idx2 in indices:
+                    Modifiers.transform_midside_reverse(df.loc[df.index[idx1], col_name],
+                                                        x2=df.loc[df.index[idx2], col_name])
+                indices = np.rot90(indices.reshape(2, -1), k=-1)
+                order = order >> 1
+        else:
+            indices = np.arange((len(df) // 2) * 2).reshape((-1, 2))
+            for idx1, idx2 in indices:
+                Modifiers.transform_midside_reverse(df.loc[df.index[idx1], col_name],
+                                                    x2=df.loc[df.index[idx2], col_name])
 
         return df

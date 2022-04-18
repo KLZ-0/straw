@@ -25,6 +25,8 @@ class StrawSizes:
         shift = 4
         removed_samples = None
         bias = 8
+        gain = 12
+        gain_shift = 4
 
     class frame_header:  # noqa
         sync_code = 14
@@ -32,10 +34,6 @@ class StrawSizes:
         block_size_length = 1
         block_size_log2 = 8
         block_size_exact = 16
-        lpc_order = 5
-        lpc_prec = 4
-        lpc_shift = 4
-        lpc_coeffs = None
         frame_num = UTF8
         frame_bytes = 32
         crc = 8
@@ -47,6 +45,11 @@ class StrawSizes:
         type = 2
 
     class subframe_lpc:  # noqa
+        contains_lpc = 1
+        lpc_order = 5
+        lpc_prec = 4
+        lpc_shift = 4
+        lpc_coeffs = None
         is_coded = 1
 
     class residual:  # noqa

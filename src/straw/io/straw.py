@@ -41,16 +41,38 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(int(len(self._data[self._data["channel"] == 0])), length=sizes.frames)
         sec += int2ba(self._params.total_samples, length=sizes.samples)
         sec.frombytes(self._params.md5)
-        sec.frombytes(self.encode_int_utf8(self._params.leading_channel))
-        for val in self._params.lags:
-            sec += int2ba(int(val), length=sizes.shift)
-        for c in range(self._params.channels):
-            for val in self._params.removed_samples_start[c]:
-                sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
-            for val in self._params.removed_samples_end[c]:
-                sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
-        for val in self._params.bias:
-            sec += int2ba(int(val), length=sizes.bias, signed=True)
+
+        # Shift
+        if self._params.lags.any():
+            sec.append(1)
+            sec.frombytes(self.encode_int_utf8(self._params.leading_channel))
+            for val in self._params.lags:
+                sec += int2ba(int(val), length=sizes.shift)
+            for c in range(self._params.channels):
+                for val in self._params.removed_samples_start[c]:
+                    sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
+                for val in self._params.removed_samples_end[c]:
+                    sec += int2ba(int(val), length=self._params.bits_per_sample, signed=True)
+        else:
+            sec.append(0)
+
+        # Bias
+        if self._params.bias.any():
+            sec.append(1)
+            for val in self._params.bias:
+                sec += int2ba(int(val), length=sizes.bias, signed=True)
+        else:
+            sec.append(0)
+
+        # Gain
+        if self._params.gain.any():
+            sec.append(1)
+            for val in self._params.gain:
+                sec += int2ba(int(val), length=sizes.gain)
+            sec += int2ba(self._params.gain_shift, length=sizes.gain_shift)
+        else:
+            sec.append(0)
+
         sec.fill()
         return sec
 
@@ -75,8 +97,7 @@ class StrawFormatWriter(BaseWriter):
         sizes = StrawSizes.frame_header
         sec = bitarray()
         sec += int2ba(0b10101010101010, length=sizes.sync_code)  # sync code
-        contains_lpc = df["qlp"].first_valid_index() is not None
-        sec.append(contains_lpc)
+        sec.append(0)
 
         # block size start
         blocksize = int(df["frame"].apply(len).max())
@@ -90,19 +111,6 @@ class StrawFormatWriter(BaseWriter):
             sec.append(1)  # get 16 bit (blocksize-1)
             sec += int2ba(blocksize - 1, length=sizes.block_size_exact)
         # block size end
-
-        # LPC
-        if contains_lpc:
-            qlp = df["qlp"][df["qlp"].first_valid_index()]
-            qlp_precision = int(df["qlp_precision"][df["qlp_precision"].first_valid_index()])
-            shift = int(df["shift"][df["shift"].first_valid_index()])
-
-            sec += int2ba(len(qlp) - 1, length=sizes.lpc_order)
-            sec += int2ba(qlp_precision - 1, length=sizes.lpc_prec)
-            sec += int2ba(shift, length=sizes.lpc_shift)
-            for coeff in qlp:
-                sec += int2ba(int(coeff), length=qlp_precision, signed=True)
-            sec.fill()
 
         sec.frombytes(self.encode_int_utf8(df.index.min()))
         sec += int2ba(frame_data_size + len(sec.tobytes()) + sizes.frame_bytes // 8 + sizes.crc // 8,
@@ -144,8 +152,26 @@ class StrawFormatWriter(BaseWriter):
         return sec
 
     def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
+        sizes = StrawSizes.subframe_lpc
         sec = bitarray()
-        sec.append(df["was_coded"])
+        contains_lpc = isinstance(df["qlp"], np.ndarray)
+        sec.append(contains_lpc)
+
+        # LPC
+        if contains_lpc:
+            qlp = df["qlp"]
+            order = len(qlp)
+            qlp_precision = int(df["qlp_precision"])
+            shift = int(df["shift"])
+
+            sec += int2ba(order - 1, length=sizes.lpc_order)
+            sec += int2ba(qlp_precision - 1, length=sizes.lpc_prec)
+            sec += int2ba(shift, length=sizes.lpc_shift)
+            for coeff in qlp:
+                sec += int2ba(int(coeff), length=qlp_precision, signed=True)
+        else:
+            sec.append(df["was_coded"])
+
         for warmup_sample in df["frame"][:order]:
             sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
         sec += self._residual(df)
@@ -193,8 +219,7 @@ class StrawFormatReader(BaseReader):
         sizes = StrawSizes.metadata_block_streaminfo
         self._params.sample_rate = self._sec.get_int(length=sizes.samplerate)
         self._params.channels = self._sec.get_int_utf8() + 1
-        self._params.lags = np.zeros(self._params.channels, dtype=np.int8)  # 4 bit
-        self._params.bias = np.zeros(self._params.channels, dtype=np.int8)  # 8 bit signed
+        self._params.alloc_arrays()
         self._params.bits_per_sample = self._sec.get_int(length=sizes.bps) + 1
         expected_frames = self._sec.get_int(length=sizes.frames)
         self._params.total_samples = self._sec.get_int(length=sizes.samples)
@@ -205,28 +230,47 @@ class StrawFormatReader(BaseReader):
                               bits_per_sample=self._params.bits_per_sample,
                               total_samples=self._params.total_samples)
 
-        self._params.leading_channel = self._sec.get_int_utf8()
-        for i in range(self._params.lags.shape[0]):
-            self._params.lags[i] = self._sec.get_int(length=sizes.shift)
-        total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
-        for c in range(self._params.channels):
-            lag = self._params.lags[c]
-            for s in range(lag):
-                self._samplebuffer[c][s] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
-            for e in range(total_size + lag, self._samplebuffer.shape[1]):
-                self._samplebuffer[c][e] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
-        for i in range(self._params.bias.shape[0]):
-            self._params.bias[i] = self._sec.get_int(length=sizes.bias, signed=True)
-        self._sec.skip_padding()
+        # Shift
+        has_shift = self._sec.get_int()
+        if has_shift:
+            self._params.leading_channel = self._sec.get_int_utf8()
+            for i in range(self._params.lags.shape[0]):
+                self._params.lags[i] = self._sec.get_int(length=sizes.shift)
+            total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
+            for c in range(self._params.channels):
+                lag = self._params.lags[c]
+                for s in range(lag):
+                    self._samplebuffer[c][s] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+                for e in range(total_size + lag, self._samplebuffer.shape[1]):
+                    self._samplebuffer[c][e] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
 
+        # Bias
+        has_bias = self._sec.get_int()
+        if has_bias:
+            for i in range(self._params.bias.shape[0]):
+                self._params.bias[i] = self._sec.get_int(length=sizes.bias, signed=True)
+
+        # Gain
+        has_gain = self._sec.get_int()
+        if has_gain:
+            for i in range(self._params.gain.shape[0]):
+                self._params.gain[i] = self._sec.get_int(length=sizes.gain)
+            self._params.gain_shift = self._sec.get_int(length=sizes.gain_shift)
+
+        self._sec.skip_padding()
         return expected_frames
 
     def _frame(self, expected_frames: int):
         start = self._sec.get_pos()
-        common, frame_size, blocksize = self._frame_header()
+        seq, frame_size, blocksize = self._frame_header()
+        last_order = 0
         for i in range(self._params.channels):
-            row = self._subframe(len(common["qlp"]) if "qlp" in common else 0, blocksize, i) | common
-            row["idx"] = i * expected_frames + common["seq"]
+            row = self._subframe(last_order, blocksize, i)
+            row["seq"] = seq
+            row["idx"] = i * expected_frames + seq
+            # we expect that the first channel will have lpc coefficients in every case
+            if isinstance(row["qlp"], np.ndarray):
+                last_order = len(row["qlp"])
             self._raw.append(row)
         self._samplebuffer_ptr += blocksize
         self._sec.skip_padding()
@@ -236,36 +280,27 @@ class StrawFormatReader(BaseReader):
         expected_crc = self.Crc.crc16(self._sec.get_from(start).tobytes())
         checksum = self._sec.get_int(length=footer_sizes.crc)
         if expected_crc != checksum:
-            raise RuntimeError(f"Inavalid frame checksum at frame {common['seq']}")
+            raise RuntimeError(f"Inavalid frame checksum at frame {seq}")
 
     def _frame_header(self) -> (dict, int, int):
         sizes = StrawSizes.frame_header
-        common = {}
         start = self._sec.get_pos()
         if self._sec.get_int(length=sizes.sync_code) != 0b10101010101010:  # sync code
             raise RuntimeError("Lost sync")
-        contains_lpc = self._sec.get_int()
+        self._sec.get_int()
         if self._sec.get_int():
             blocksize = self._sec.get_int(length=sizes.block_size_exact) + 1
         else:
             blocksize = 1 << self._sec.get_int(length=sizes.block_size_log2)
 
-        if contains_lpc:
-            order = self._sec.get_int(length=sizes.lpc_order) + 1
-            common["qlp_precision"] = self._sec.get_int(length=sizes.lpc_prec) + 1
-            common["shift"] = self._sec.get_int(length=sizes.lpc_shift)
-            common["qlp"] = np.asarray(
-                [self._sec.get_int(length=common["qlp_precision"], signed=True) for _ in range(order)], dtype=np.int32)
-            self._sec.skip_padding()
-
-        common["seq"] = self._sec.get_int_utf8()
+        seq = self._sec.get_int_utf8()
         frame_size = self._sec.get_int(length=sizes.frame_bytes)
 
         expected_crc = self.Crc.crc8(self._sec.get_from(start).tobytes())
         checksum = self._sec.get_int(length=sizes.crc)
         if expected_crc != checksum:
-            raise RuntimeError(f"Inavalid frame header checksum at frame {common['seq']}")
-        return common, frame_size, blocksize
+            raise RuntimeError(f"Inavalid frame header checksum at frame {seq}")
+        return seq, frame_size, blocksize
 
     def _subframe(self, order: int, blocksize: int, subframe_num: int) -> dict:
         subframe_type = self._subframe_header()
@@ -298,21 +333,36 @@ class StrawFormatReader(BaseReader):
         return row
 
     def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
+        sizes = StrawSizes.subframe_lpc
         row = {
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
                                                                               self._params.lags[
                                                                                   subframe_num] + blocksize],
-            "residual": self._samplebuffer[subframe_num][
-                        self._samplebuffer_ptr + self._params.lags[subframe_num] + order:self._samplebuffer_ptr +
-                                                                                         self._params.lags[
-                                                                                             subframe_num] + blocksize]
+            "qlp_precision": 0,
+            "shift": 0,
+            "qlp": np.nan,
+            "was_coded": 0,
         }
-        was_coded = self._sec.get_int()
-        row["was_coded"] = was_coded
+        contains_lpc = self._sec.get_int()
+        if contains_lpc:
+            order = self._sec.get_int(length=sizes.lpc_order) + 1
+            row["qlp_precision"] = self._sec.get_int(length=sizes.lpc_prec) + 1
+            row["shift"] = self._sec.get_int(length=sizes.lpc_shift)
+            row["qlp"] = np.asarray(
+                [self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)], dtype=np.int32)
+        else:
+            row["was_coded"] = self._sec.get_int()
+
         for i in range(order):
             row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+
+        # get the residual
+        row["residual"] = self._samplebuffer[subframe_num][
+                          self._samplebuffer_ptr + self._params.lags[subframe_num] + order:self._samplebuffer_ptr +
+                                                                                           self._params.lags[
+                                                                                               subframe_num] + blocksize]
         row["residual"], row["bps"] = self._residual(array=row["residual"])
         return row
 
