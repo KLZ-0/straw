@@ -119,7 +119,7 @@ cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
     return bits[bit_i[0] - 1]
 
 @cython.cdivision(True)
-def decode_frame(cython.integral[:] frame, bits: bitarray, short k, short resp, short adaptive):
+def decode_frame(cython.integral[:] frame, bits: bitarray, short k, short resp, short adaptive, long starting_i = 0):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
@@ -132,7 +132,7 @@ def decode_frame(cython.integral[:] frame, bits: bitarray, short k, short resp, 
     cdef short j
     cdef long m, q, s
     cdef Py_ssize_t x_max, i
-    cdef Py_ssize_t bit_i = 0
+    cdef Py_ssize_t bit_i = starting_i
     x_max = frame.shape[0]
     m = 1 << k
 
@@ -170,7 +170,7 @@ def decode_frame(cython.integral[:] frame, bits: bitarray, short k, short resp, 
 
         update_scale(s, m, &scale)
 
-    return bit_i
+    return bit_i - starting_i
 
 ###########
 # Utility #

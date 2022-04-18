@@ -368,7 +368,7 @@ class StrawFormatReader(BaseReader):
         sizes = StrawSizes.residual
         bps = self._sec.get_int(length=sizes.param)
         bits_read = self._ricer.bitstream_to_frame(
-            self._sec[self._sec.get_pos():self._sec.get_pos() + len(array) * self._params.bits_per_sample],
-            len(array), bps, own_frame=array)
+            self._sec,
+            len(array), bps, own_frame=array, bitarray_pos=self._sec.get_pos())
         self._sec.advance(bits_read)
         return array, bps
