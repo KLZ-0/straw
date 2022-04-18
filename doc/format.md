@@ -67,23 +67,30 @@ One of:
 - `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the
   audio data even when the error does not result in an invalid bitstream.
 
-- `<8-?>` "UTF-8" coded leading channel
+- `<1>` Has shift correction
 
-- `<n*4>` Shift needed for each channel compared to the leading channel, n = number of channels
+- `<8-?>` if (Has shift correction) "UTF-8" coded leading channel
 
-- `<c*n*b>` Removed samples start + end flattened, c = number of channels, n = number of removed samples (max lag), b =
-  bits per sample
+- `<n*4>` if (Has shift correction) Shift needed for each channel compared to the leading channel, n = number of
+  channels
+
+- `<c*n*b>` if (Has shift correction) Removed samples start + end flattened, c = number of channels, n = number of
+  removed samples (max lag), b = bits per sample
   - NOTE: the values are signed two's-complement
 
-- `<n*8>` DC bias removed from each channel, n = number of channels
+- `<1>` Has bias correction
+
+- `<n*8>` if (Has bias correction) DC bias removed from each channel, n = number of channels
   - NOTE: the values are signed two's-complement
 
-- `<n*12>` Gain correction coefficients (factor) - 1.0, n = number of channels
+- `<1>` Has gain correction
+
+- `<n*12>` if (Has gain correction == 1) Gain correction coefficients (factor) - 1.0, n = number of channels
   - These are unsigned quantized floating point numbers with the range (1 to inf) by for storage purposes 1.0 is
     subtracted since the coefficients are always larger than 1
   - The strongest channel will always have a factor of 1.0 (or 0 quantized)
 
-- `<4>` Gain shift in bits
+- `<4>` if (Has gain correction == 1) Gain shift in bits
 
 - `<?>` Zero-padding to byte alignment.
 

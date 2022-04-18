@@ -29,7 +29,13 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False, do_corrections=True, dynamic_blocksize=False):
+    def __init__(self, flac_mode=False, do_corrections=("bias", "shift"), dynamic_blocksize=False):
+        """
+
+        :param flac_mode:
+        :param do_corrections: an iterable containing the corrections to be done, can contain "gain", "bias" and "shift"
+        :param dynamic_blocksize:
+        """
         super(Encoder, self).__init__(flac_mode)
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
         self._do_corrections = do_corrections
@@ -51,6 +57,12 @@ class Encoder(BaseCoder):
             self._samplebuffer = data.swapaxes(1, 0)
         else:
             self._samplebuffer = data
+
+        self._params.channels = int(self._samplebuffer.shape[0])
+        self._params.total_samples = int(self._samplebuffer.shape[1])
+        # TODO: read bps from loaded file
+        self._params.bits_per_sample = self._bits_per_sample
+        self._params.alloc_arrays()
 
         self._source_size = self._samplebuffer.nbytes
         self._params.sample_rate = samplerate
@@ -138,10 +150,7 @@ class Encoder(BaseCoder):
             self._params.min_block_size = self._params.max_block_size
             self._params.min_frame_size = 0  # unknown
             self._params.max_frame_size = 0
-        self._params.channels = len(np.unique(self._data["channel"]))
-        self._params.bits_per_sample = self._bits_per_sample
         # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
-        self._params.total_samples = int(self._samplebuffer.shape[1])
 
     def _set_frame_types(self):
         # all frames are LPC frames by default
@@ -162,10 +171,15 @@ class Encoder(BaseCoder):
             self._params.max_frame_size = int(max_residual_bytes) + 1000
 
     def _apply_corrections(self):
-        if self._do_corrections:
-            GainCorrector().apply(self._samplebuffer, self._params)
-            BiasCorrector().apply(self._samplebuffer, self._params)
-            ShiftCorrector().apply(self._samplebuffer, self._params)
+        for correction in self._do_corrections:
+            if correction == "gain":
+                GainCorrector().apply(self._samplebuffer, self._params)
+            elif correction == "bias":
+                BiasCorrector().apply(self._samplebuffer, self._params)
+            elif correction == "shift":
+                ShiftCorrector().apply(self._samplebuffer, self._params)
+            else:
+                raise ValueError(f"Invalid correction name: '{correction}', must be one of ('gain', 'bias', 'shift')")
 
     def _decorrelate_signals(self, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC

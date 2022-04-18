@@ -17,6 +17,9 @@ class GainCorrector(BaseCorrector):
         params.gain, params.gain_shift = self.quantize_factors(factors, StrawSizes.metadata_block_streaminfo.gain)
 
     def apply_revert(self, samplebuffer: np.ndarray, params: StreamParams) -> (np.ndarray, np.ndarray):
+        if params.gain_shift is None:
+            return
+
         factors = self.dequantize_factors(params.gain, params.gain_shift)
         for i in range(samplebuffer.shape[0]):
             # scaling by 1.0 is just a waste of time
