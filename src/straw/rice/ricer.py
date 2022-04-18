@@ -90,8 +90,8 @@ class Ricer:
             frame = own_frame[:frame_size]
 
         if len(bitstream) > 0:
-            bits_read = ext_rice.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive,
-                                              starting_i=bitarray_pos)
+            bits_read = ext_rice.decode_frame(frame, memoryview(bitstream).tobytes(), bps, self.responsiveness,
+                                              adaptive=self.adaptive, starting_i=bitarray_pos)
 
         if own_frame is None:
             return frame

@@ -114,12 +114,15 @@ def encode_frame(bits: bitarray, cython.integral[:] frame, short k, short resp, 
 # Decoding #
 ############
 
-cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
+@cython.cdivision(True)
+cdef char _get_bit(const unsigned char[:] bits, Py_ssize_t *bit_i):
+    cdef Py_ssize_t byte_i = bit_i[0] / 8
+    cdef char real_bit_i = 7 - (bit_i[0] % 8)
     bit_i[0] += 1
-    return bits[bit_i[0] - 1]
+    return (bits[byte_i] >> real_bit_i) & 1
 
 @cython.cdivision(True)
-def decode_frame(cython.integral[:] frame, bits: bitarray, short k, short resp, short adaptive, long starting_i = 0):
+def decode_frame(cython.integral[:] frame, const unsigned char[:] bits, short k, short resp, short adaptive, long starting_i = 0):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
