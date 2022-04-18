@@ -203,14 +203,13 @@ class Encoder(BaseCoder):
         Temporary method for experiments and plots
         """
         # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
-        # self._print_var(seq=4)
+        # self._print_var(seq=5)
         # from figures import show_frame
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 1810))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1730, 1790))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, file_name="gain_shift_correction_after.png")
-        # show_frame(self._data[(self._data["seq"] == 4) & (self._data["channel"] == 0)], col_name="frame")
-        # show_frame(self._data[(self._data["seq"] == 65) & (self._data["channel"] == 0)], col_name="frame")
-
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 60))
+        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1730, 60))
+        # show_frame(self._data[self._data["seq"] == 5], terminate=False, limit=(1750, 60))
+        # show_frame(self._data[self._data["seq"] == 5], terminate=False, col_name="residual", limit=(1730, 60))
+        # exit()
         # df = self._data[(self._data["seq"] == 66) & (self._data["channel"] == 0)]
         # show_frame(df, col_name="frame", terminate=False)
         # # df["zeros"] = df["frame"].apply(self._get_zerocrossing_rate)
