@@ -187,10 +187,9 @@ class StrawFormatWriter(BaseWriter):
 
 class StrawFormatReader(BaseReader):
     def _stream(self):
-        marker = self._f.read(4)
+        marker = self._sec.get_bytes(32)
         if marker.decode("utf-8") != "sTrW":
             raise ValueError("Not a valid Straw file!")
-        self._sec.fromfile(self._f)
         expected_frames = self._metadata_block()
         pbar = tqdm(range(expected_frames))
         pbar.set_description(f"Loading frames")

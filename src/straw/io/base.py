@@ -1,3 +1,4 @@
+import mmap
 from pathlib import Path
 
 import numpy as np
@@ -65,7 +66,7 @@ class BaseReader(BaseIO):
     _raw: list
     _ricer = Ricer()
 
-    _sec = SlicedBitarray()
+    _sec: SlicedBitarray()
     _samplebuffer_ptr: int = 0
     _samplebuffer: np.array
 
@@ -80,7 +81,8 @@ class BaseReader(BaseIO):
         :return: dataframe and params
         """
         with input_file.open("rb") as f:
-            self._f = f
+            m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            self._sec = SlicedBitarray(buffer=m)
             self._stream()
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
