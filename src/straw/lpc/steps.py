@@ -195,7 +195,7 @@ def predict_compute_residusal(frame: np.array, qlp: np.array, shift: int):
     :return: frame residual with shape [order:]
     """
     predicted = predict_signal(frame, qlp, shift)
-    return frame[len(qlp):] - predicted
+    return (frame[len(qlp):] - predicted).astype(frame.dtype)
 
 
 ###############

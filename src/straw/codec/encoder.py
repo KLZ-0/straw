@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from straw import lpc
+from straw import lpc, static
 from straw.codec.base import BaseCoder
 from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
@@ -50,8 +50,9 @@ class Encoder(BaseCoder):
             if subtype not in self._supported_subtypes:
                 raise ValueError(f"Subtype '{subtype}' not supported, must be one of {self._supported_subtypes.keys()}")
             bits_per_sample = self._supported_subtypes[subtype]
-            data = wav.read(dtype=np.int32, always_2d=True)
-            data >>= 32 - bits_per_sample
+            dtype_bits = static.soundfile_dtype[bits_per_sample]
+            data = wav.read(dtype=f"int{dtype_bits}", always_2d=True)
+            data >>= dtype_bits - bits_per_sample
             sr = wav.samplerate
 
         self.load_data(data, sr, bits_per_sample)
@@ -63,7 +64,6 @@ class Encoder(BaseCoder):
             self._samplebuffer = data.swapaxes(1, 0)
         else:
             self._samplebuffer = data
-        self._samplebuffer = self._samplebuffer.astype(np.int64)
 
         self._params.channels = int(self._samplebuffer.shape[0])
         self._params.total_samples = int(self._samplebuffer.shape[1])
@@ -75,7 +75,6 @@ class Encoder(BaseCoder):
             self._source_size = self._params.bits_per_sample * self._params.total_samples * self._params.channels
 
         self._params.sample_rate = samplerate
-        # NOTE: this md5 includes zero bytes from a larger format
         self._params.md5 = self.get_md5()
         self._apply_corrections()
         self._create_dataframe()

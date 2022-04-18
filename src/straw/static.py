@@ -10,3 +10,9 @@ columns = [
     "frame_type",  # int (enum) - corresponds to one of SUBFRAME_CONSTANT, SUBFRAME_RAW, SUBFRAME_LPC
     "was_coded"
 ]
+
+soundfile_dtype = {
+    16: 16,
+    24: 32,
+    32: 32,
+}

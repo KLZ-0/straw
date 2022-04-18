@@ -89,7 +89,8 @@ class BaseReader(BaseIO):
     def _allocate_buffer(self):
         channels = self._params.channels
         total_samples = self._params.total_samples
-        self._samplebuffer = np.zeros((total_samples, channels), dtype=np.int64)
+        dtype_bits = static.soundfile_dtype[self._params.bits_per_sample]
+        self._samplebuffer = np.zeros((total_samples, channels), dtype=f"int{dtype_bits}")
         self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
     def get_buffer(self):

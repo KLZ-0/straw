@@ -1,5 +1,6 @@
 # distutils: language = c
 # cython: language_level=3
+import cython
 import numpy as np
 
 ####################
@@ -84,7 +85,7 @@ def quantize_lpc(double[:] lpc_c, int precision) -> int:
 ###############
 
 
-def restore_signal(long[:] frame, int[:] qlp, int lp_quantization):
+def restore_signal(cython.integral[:] frame, int[:] qlp, int lp_quantization):
     """
     Restores the original signal given the residual with quantized LPC coefficients
     :param frame: signal array initialized with the first samples from the original signal and the residual

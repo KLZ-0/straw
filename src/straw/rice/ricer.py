@@ -81,7 +81,7 @@ class Ricer:
         """
         bits_read = 0
         if own_frame is None:
-            frame = np.zeros(frame_size, dtype=np.short)
+            frame = np.zeros(frame_size, dtype=np.int64)
         else:
             frame = own_frame[:frame_size]
 
