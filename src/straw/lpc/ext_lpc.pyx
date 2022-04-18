@@ -84,7 +84,7 @@ def quantize_lpc(double[:] lpc_c, int precision) -> int:
 ###############
 
 
-def restore_signal(short[:] frame, int[:] qlp, int lp_quantization):
+def restore_signal(long[:] frame, int[:] qlp, int lp_quantization):
     """
     Restores the original signal given the residual with quantized LPC coefficients
     :param frame: signal array initialized with the first samples from the original signal and the residual
@@ -93,12 +93,14 @@ def restore_signal(short[:] frame, int[:] qlp, int lp_quantization):
     :return: reconstructed signal as a numpy array
     # TODO: make this function take an array of blocksize where first order samples are warmup samples and the rest is residual
     """
-    cdef int data_len = frame.shape[0]
-    cdef int order = qlp.shape[0]
+    cdef Py_ssize_t data_len = frame.shape[0]
+    cdef Py_ssize_t order = qlp.shape[0]
+    cdef Py_ssize_t  i, j
+    cdef long _sum
+
     if order <= 0:
         return None
 
-    cdef int _sum, i, j
     for i in range(order, data_len):
         _sum = 0
         for j in range(order):

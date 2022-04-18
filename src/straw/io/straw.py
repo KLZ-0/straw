@@ -226,9 +226,7 @@ class StrawFormatReader(BaseReader):
         self._params.md5 = self._sec.get_bytes(length=sizes.md5)
 
         # Allocate sample buffer
-        self._allocate_buffer(channels=self._params.channels,
-                              bits_per_sample=self._params.bits_per_sample,
-                              total_samples=self._params.total_samples)
+        self._allocate_buffer()
 
         # Shift
         has_shift = self._sec.get_int()

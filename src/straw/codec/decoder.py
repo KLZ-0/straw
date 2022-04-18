@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 import soundfile
 
 from straw import lpc
@@ -43,7 +44,13 @@ class Decoder(BaseCoder):
         :param output_file: target file
         :return: None
         """
-        soundfile.write(output_file, self._samplebuffer.swapaxes(1, 0), samplerate=self._params.sample_rate)
+        with soundfile.SoundFile(output_file, "w",
+                                 subtype=self._subtype_pattern.format(self._params.bits_per_sample),
+                                 samplerate=self._params.sample_rate,
+                                 channels=self._params.channels) as wav:
+            shift = 32 - self._params.bits_per_sample
+            data = (self._samplebuffer.swapaxes(1, 0) << shift).astype(np.int32)
+            wav.write(data)
 
     ###########
     # Private #

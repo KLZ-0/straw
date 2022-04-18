@@ -22,9 +22,6 @@ class Encoder(BaseCoder):
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
     _params = StreamParams()
 
-    # TODO: make the coders accept other sizes
-    _bits_per_sample = 16  # stored in StreamParams once per group
-
     ##########
     # Public #
     ##########
@@ -47,25 +44,38 @@ class Encoder(BaseCoder):
         :param file: str or int or file-like object - anything that soundfile accepts
         :return: None
         """
-        data, sr = soundfile.read(file, dtype=f"int{self._bits_per_sample}", always_2d=True)
-        self.load_data(data, sr)
+        self._source_size = file.stat().st_size
+        with soundfile.SoundFile(file, "r") as wav:
+            subtype = wav.subtype
+            if subtype not in self._supported_subtypes:
+                raise ValueError(f"Subtype '{subtype}' not supported, must be one of {self._supported_subtypes.keys()}")
+            bits_per_sample = self._supported_subtypes[subtype]
+            data = wav.read(dtype=np.int32, always_2d=True)
+            data >>= 32 - bits_per_sample
+            sr = wav.samplerate
 
-    def load_data(self, data: np.array, samplerate: int):
+        self.load_data(data, sr, bits_per_sample)
+
+    def load_data(self, data: np.array, samplerate: int, bits_per_sample: int):
         if len(data.shape) == 1:
             self._samplebuffer = data.reshape((1, -1))
         elif data.shape[0] > data.shape[1]:
             self._samplebuffer = data.swapaxes(1, 0)
         else:
             self._samplebuffer = data
+        self._samplebuffer = self._samplebuffer.astype(np.int64)
 
         self._params.channels = int(self._samplebuffer.shape[0])
         self._params.total_samples = int(self._samplebuffer.shape[1])
-        # TODO: read bps from loaded file
-        self._params.bits_per_sample = self._bits_per_sample
+        self._params.bits_per_sample = bits_per_sample
         self._params.alloc_arrays()
 
-        self._source_size = self._samplebuffer.nbytes
+        # If file size not available, use raw sample size
+        if not hasattr(self, "_source_size"):
+            self._source_size = self._params.bits_per_sample * self._params.total_samples * self._params.channels
+
         self._params.sample_rate = samplerate
+        # NOTE: this md5 includes zero bytes from a larger format
         self._params.md5 = self.get_md5()
         self._apply_corrections()
         self._create_dataframe()

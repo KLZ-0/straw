@@ -86,8 +86,10 @@ class BaseReader(BaseIO):
         self._raw.sort(key=lambda x: x["idx"])
         self._data = pd.DataFrame(self._raw, columns=static.columns)
 
-    def _allocate_buffer(self, total_samples: int, channels: int, bits_per_sample: int):
-        self._samplebuffer = np.zeros((total_samples, channels), dtype=f"int{bits_per_sample}")
+    def _allocate_buffer(self):
+        channels = self._params.channels
+        total_samples = self._params.total_samples
+        self._samplebuffer = np.zeros((total_samples, channels), dtype=np.int64)
         self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
     def get_buffer(self):

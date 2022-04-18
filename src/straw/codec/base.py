@@ -19,6 +19,14 @@ class BaseCoder:
     # TODO: these things should be in params
     _source_size: int
 
+    _supported_subtypes = {
+        "PCM_16": 16,
+        "PCM_24": 24,
+        "PCM_32": 32,
+    }
+
+    _subtype_pattern = "PCM_{}"
+
     def __init__(self, flac_mode=False):
         self._flac_mode = flac_mode
 
