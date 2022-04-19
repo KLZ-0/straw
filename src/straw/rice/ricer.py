@@ -19,7 +19,7 @@ class Ricer:
 
     def __init__(self, adaptive=True, responsiveness: int = 16):
         self.adaptive = adaptive
-        self.parallel = ParallelCompute()
+        self.parallel = ParallelCompute.get_instance()
         self.responsiveness = responsiveness
 
     ##########################

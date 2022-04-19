@@ -11,15 +11,28 @@ and https://stackoverflow.com/a/27027632
 
 
 class ParallelCompute:
-    cpus = None
-    _apply_args = None
-    _apply_kwargs = None
+    __instance = None
+
+    cpus: int
+    _apply_args: tuple
+    _apply_kwargs: dict
+
+    @staticmethod
+    def get_instance():
+        """ Static access method. """
+        if ParallelCompute.__instance is None:
+            ParallelCompute()
+        return ParallelCompute.__instance
 
     def __init__(self, cpus=cpu_count()):
         """
         Initialize the compute class
         :param cpus: number of CPUs to use when parallel is True, None means use all
         """
+        if ParallelCompute.__instance is not None:
+            raise RuntimeError("This class is a singleton!")
+        else:
+            ParallelCompute.__instance = self
         self.cpus = cpus
 
     def _parallelize(self, data, func):
@@ -46,17 +59,15 @@ class ParallelCompute:
         self._apply_kwargs = kwargs
         return self._parallelize(data, partial(self._run_on_subset, func))
 
-
-class GroupedParallelCompute(ParallelCompute):
-    def _parallelize(self, data, func):
+    def _group_parallelize(self, data, func):
         with Pool(self.cpus) as p:
             ret_list = p.map(func, [group for name, group in data])
         return pd.concat(ret_list)
 
-    def _run_on_subset(self, func, data_subset):
+    def _group_run_on_subset(self, func, data_subset):
         return func(data_subset, *self._apply_args, **self._apply_kwargs)
 
-    def apply(self, data, func, args=(), **kwargs) -> pd.DataFrame:
+    def group_apply(self, data, func, args=(), **kwargs) -> pd.DataFrame:
         self._apply_args = args
         self._apply_kwargs = kwargs
-        return self._parallelize(data, partial(self._run_on_subset, func))
+        return self._group_parallelize(data, partial(self._group_run_on_subset, func))
