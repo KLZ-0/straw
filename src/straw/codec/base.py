@@ -21,8 +21,8 @@ class BaseCoder:
 
     _supported_subtypes = {
         "PCM_16": 16,
-        "PCM_24": 24,
-        "PCM_32": 32,
+        # "PCM_24": 24,
+        # "PCM_32": 32,
     }
 
     _subtype_pattern = "PCM_{}"
