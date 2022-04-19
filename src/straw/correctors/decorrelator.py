@@ -133,6 +133,9 @@ class Decorrelator:
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
+        if not (df["frame_type"] == 0b11).all():
+            return df
+
         if iterated:
             order = Decorrelator._find_closest_lower_power_of_two(len(df))
             indices = np.arange(order).reshape((-1, 2))
@@ -152,6 +155,9 @@ class Decorrelator:
     def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
+
+        if not (df["frame_type"] == 0b11).all():
+            return df
 
         if iterated:
             order = Decorrelator._find_closest_lower_power_of_two(len(df))

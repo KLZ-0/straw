@@ -79,6 +79,9 @@ def compute_original(data: pd.DataFrame, inplace=False):
     :param inplace: whether the restoring should be done in place (faster)
     :return: residual as a numpy array
     """
+    if not (data["frame_type"] == 0b11).all():
+        return data
+
     qlp = data["qlp"][data["qlp"].first_valid_index()]
     shift = int(data["shift"][data["shift"].first_valid_index()])
 
