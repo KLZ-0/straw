@@ -172,7 +172,8 @@ class StrawFormatWriter(BaseWriter):
         else:
             sec.append(df["was_coded"])
 
-        for warmup_sample in df["frame"][:order]:
+        warmup_samples = df["frame"][:order] + self._params.bias[df["channel"]]
+        for warmup_sample in warmup_samples:
             sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
         sec += self._residual(df)
         return sec
@@ -367,7 +368,8 @@ class StrawFormatReader(BaseReader):
             row["was_coded"] = self._sec.get_int()
 
         for i in range(order):
-            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            warmup_sample = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            row["frame"][i] = warmup_sample - self._params.bias[subframe_num]
 
         # get the residual
         row["residual"] = self._samplebuffer[subframe_num][
