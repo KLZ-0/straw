@@ -46,7 +46,7 @@ class ParallelCompute:
     def _run_on_subset(self, func, data_subset):
         return data_subset.apply(func, args=self._apply_args, **self._apply_kwargs)
 
-    def apply(self, data, func, args=(), **kwargs) -> pd.Series:
+    def map(self, data, func, args=(), **kwargs) -> pd.Series:
         """
         Apply the functiom to the given DataFrame or Series in parallel
         :param data: DataFrame or Series to which func will be applied
@@ -67,7 +67,7 @@ class ParallelCompute:
     def _group_run_on_subset(self, func, data_subset):
         return func(data_subset, *self._apply_args, **self._apply_kwargs)
 
-    def group_apply(self, data, func, args=(), **kwargs) -> pd.DataFrame:
+    def map_group(self, data, func, args=(), **kwargs) -> pd.DataFrame:
         self._apply_args = args
         self._apply_kwargs = kwargs
         return self._group_parallelize(data, partial(self._group_run_on_subset, func))

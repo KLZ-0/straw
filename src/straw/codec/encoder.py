@@ -92,15 +92,15 @@ class Encoder(BaseCoder):
 
         # Compute LPC & quantize coeffs
         p = ParallelCompute.get_instance()
-        tmp = p.group_apply(self._data.groupby("seq"), lpc.compute_qlp,
-                            order=self._lpc_order,
-                            qlp_coeff_precision=self._lpc_precision)
+        tmp = p.map_group(self._data.groupby("seq"), lpc.compute_qlp,
+                          order=self._lpc_order,
+                          qlp_coeff_precision=self._lpc_precision)
         # tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._data = tmp
 
         # Create residuals
-        self._data = p.group_apply(self._data.groupby("seq"), lpc.compute_residual)
+        self._data = p.map_group(self._data.groupby("seq"), lpc.compute_residual)
         # self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         # self._data = self._data.apply(lpc.compute_residual, axis=1)
         self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)

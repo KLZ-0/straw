@@ -69,7 +69,7 @@ class Ricer:
         if not parallel:
             return df.apply(self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
-        return self.parallel.apply(df, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
+        return self.parallel.map(df, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
     ############
     # Decoding #
@@ -123,7 +123,7 @@ class Ricer:
         if not parallel:
             return comp.apply(self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
-        return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
+        return self.parallel.map(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
     ###########
     # Utility #
