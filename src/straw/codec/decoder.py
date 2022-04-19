@@ -1,13 +1,11 @@
 from pathlib import Path
 
-import pandas as pd
 import soundfile
 
 from straw import lpc
 from straw.codec.base import BaseCoder
 from straw.correctors import Decorrelator, GainCorrector, BiasCorrector
 from straw.io import Formatter
-from straw.static import SubframeType
 
 
 class Decoder(BaseCoder):
@@ -25,7 +23,6 @@ class Decoder(BaseCoder):
         self._data = reader.get_data()
         self._params = reader.get_params()
         self._samplebuffer = reader.get_buffer()
-        self._add_biascorr_to_raw_frames()
 
     def decode(self):
         """
@@ -58,18 +55,6 @@ class Decoder(BaseCoder):
     ###########
     # Private #
     ###########
-
-    def _add_biascorr_to_raw_frames(self):
-        """
-        This is done because the bias correction can result in samples outside of the valid dtype range
-        when saved to a straw file, thus it is safer to just remove the correction in this section
-        :return:
-        """
-
-        def _correct_bias(df: pd.Series):
-            df["frame"] += self._params.bias[df["channel"]]
-
-        self._data[self._data["frame_type"] == SubframeType.RAW].apply(_correct_bias, axis=1)
 
     def _revert_corrections(self):
         BiasCorrector().apply_revert(self._samplebuffer, self._params)

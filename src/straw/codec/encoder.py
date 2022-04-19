@@ -120,7 +120,6 @@ class Encoder(BaseCoder):
         # new_lens = self._data[["stream_len"]]
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
-        self._remove_biascorr_from_raw_frames()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -206,18 +205,6 @@ class Encoder(BaseCoder):
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
         self._data["was_coded"] = 0
-
-    def _remove_biascorr_from_raw_frames(self):
-        """
-        This is done because the bias correction can result in samples outside of the valid dtype range
-        when saved to a straw file, thus it is safer to just remove the correction in this section
-        :return:
-        """
-
-        def _correct_bias(df: pd.Series):
-            df["frame"] += self._params.bias[df["channel"]]
-
-        self._data[self._data["frame_type"] == SubframeType.RAW].apply(_correct_bias, axis=1)
 
     #########
     # Other #

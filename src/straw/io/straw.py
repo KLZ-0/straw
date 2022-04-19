@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pyximport
 from bitarray import bitarray
 from bitarray.util import int2ba
 from tqdm import tqdm
@@ -7,6 +8,9 @@ from tqdm import tqdm
 from straw.io.base import BaseWriter, BaseReader
 from straw.io.sizes import StrawSizes
 from straw.static import SubframeType
+
+pyximport.install()
+from . import ext_io
 
 
 class StrawFormatWriter(BaseWriter):
@@ -147,9 +151,9 @@ class StrawFormatWriter(BaseWriter):
         return sec
 
     def _subframe_raw(self, df: pd.Series) -> bitarray:
-        sec = bitarray()
-        for sample in df["frame"]:
-            sec += int2ba(int(sample), length=self._params.bits_per_sample, signed=True)
+        buffer = np.zeros(df["frame"].shape[0] * (self._params.bits_per_sample // 8), dtype=np.uint8)
+        ext_io.write_frame(buffer, df["frame"] + self._params.bias[df["channel"]], self._params.bits_per_sample)
+        sec = bitarray(buffer=buffer)
         return sec
 
     def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
@@ -340,8 +344,9 @@ class StrawFormatReader(BaseReader):
                                                                               self._params.lags[
                                                                                   subframe_num] + blocksize]
         }
-        for i in range(blocksize):
-            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        bitbytes = self._sec.get_bytes(length=self._params.bits_per_sample * blocksize)
+        ext_io.read_frame(row["frame"], bitbytes, self._params.bits_per_sample, 1)
+        row["frame"] -= self._params.bias[subframe_num]
         return row
 
     def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
