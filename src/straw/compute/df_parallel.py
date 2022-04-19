@@ -6,6 +6,7 @@ import pandas as pd
 
 """
 based on https://stackoverflow.com/a/53135031
+and https://stackoverflow.com/a/27027632
 """
 
 
@@ -32,7 +33,7 @@ class ParallelCompute:
     def _run_on_subset(self, func, data_subset):
         return data_subset.apply(func, args=self._apply_args, **self._apply_kwargs)
 
-    def apply(self, data, func, args=None, **kwargs) -> pd.Series:
+    def apply(self, data, func, args=(), **kwargs) -> pd.Series:
         """
         Apply the functiom to the given DataFrame or Series in parallel
         :param data: DataFrame or Series to which func will be applied
@@ -41,6 +42,21 @@ class ParallelCompute:
         :param kwargs: kwargs to use in apply
         :return: DataFrame or Series with applied data
         """
+        self._apply_args = args
+        self._apply_kwargs = kwargs
+        return self._parallelize(data, partial(self._run_on_subset, func))
+
+
+class GroupedParallelCompute(ParallelCompute):
+    def _parallelize(self, data, func):
+        with Pool(self.cpus) as p:
+            ret_list = p.map(func, [group for name, group in data])
+        return pd.concat(ret_list)
+
+    def _run_on_subset(self, func, data_subset):
+        return func(data_subset, *self._apply_args, **self._apply_kwargs)
+
+    def apply(self, data, func, args=(), **kwargs) -> pd.DataFrame:
         self._apply_args = args
         self._apply_kwargs = kwargs
         return self._parallelize(data, partial(self._run_on_subset, func))

@@ -21,7 +21,9 @@ class StrawFormatWriter(BaseWriter):
     def _stream(self):
         self._f.write("sTrW".encode("utf-8"))
         self._metadata_block()
-        self._data.groupby("seq").apply(self._frame)
+        secs = self._data.groupby("seq").apply(self._frame)
+        for sec in secs:
+            sec.tofile(self._f)
 
     def _metadata_block(self):
         sec = self._metadata_block_header()
@@ -96,7 +98,7 @@ class StrawFormatWriter(BaseWriter):
 
         # Footer
         sec += int2ba(self.Crc.crc16(sec.tobytes()), length=footer_sizes.crc)
-        sec.tofile(self._f)
+        return sec
 
     def _frame_header(self, df: pd.DataFrame, frame_data_size: int) -> bitarray:
         sizes = StrawSizes.frame_header

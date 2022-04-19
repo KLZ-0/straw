@@ -8,6 +8,7 @@ import soundfile
 
 from straw import lpc, static
 from straw.codec.base import BaseCoder
+from straw.compute.df_parallel import GroupedParallelCompute
 from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
@@ -90,12 +91,17 @@ class Encoder(BaseCoder):
         lpc_frames = self._set_frame_types()
 
         # Compute LPC & quantize coeffs
-        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
+        p = GroupedParallelCompute()
+        tmp = p.apply(self._data.groupby("seq"), lpc.compute_qlp,
+                      order=self._lpc_order,
+                      qlp_coeff_precision=self._lpc_precision)
+        # tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._data = tmp
 
         # Create residuals
-        self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        self._data = p.apply(self._data.groupby("seq"), lpc.compute_residual)
+        # self._data = self._data.groupby("seq").apply(lpc.compute_residual)
         # self._data = self._data.apply(lpc.compute_residual, axis=1)
         self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
 

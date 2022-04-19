@@ -42,13 +42,13 @@ def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd
 
     lpc = steps.compute_lpc(frame["frame"], order)
     if lpc is None:
-        return df
+        return pd.DataFrame([df], index=[frame.index[0]], copy=False)
 
     qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
     df["qlp"] = qlp
     df["qlp_precision"] = precision
     df["shift"] = shift
-    return df
+    return pd.DataFrame([df], index=[frame.index[0]], copy=False)
 
 
 def compute_residual(data: pd.DataFrame):
