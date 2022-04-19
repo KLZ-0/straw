@@ -95,6 +95,7 @@ class Encoder(BaseCoder):
 
         # Create residuals
         self._data = self._data.groupby("seq").apply(lpc.compute_residual)
+        self._ensure_compression_check_frame_residual_equality()
         # self._data = self._data.apply(lpc.compute_residual, axis=1)
         self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
 
@@ -171,13 +172,23 @@ class Encoder(BaseCoder):
 
         return ~const_frames
 
+    def _check_if_should_be_constant(self, df: pd.Series) -> bool:
+        if df["frame_type"] != 0b11:
+            return False
+
+        max_allowed_bits = df["residual"].shape[0] * self._params.bits_per_sample
+        return df["stream_len"] >= max_allowed_bits
+
     def _ensure_compression(self):
-        max_allowed_bits = self._data["residual"].apply(len) * self._params.bits_per_sample
-        self._data.loc[self._data["stream_len"] >= max_allowed_bits, "frame_type"] = 0b01
+        should_be_constant = self._data.apply(self._check_if_should_be_constant, axis=1)
+        self._data.loc[should_be_constant, "frame_type"] = 0b01
 
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
             self._params.max_frame_size = int(max_residual_bytes) + 1000
+
+    def _ensure_compression_check_frame_residual_equality(self):
+        self._data.loc[(self._data["frame_type"] == 0b11) & self._data["residual"].isna(), "frame_type"] = 0b01
 
     def _apply_corrections(self):
         for correction in self._do_corrections:

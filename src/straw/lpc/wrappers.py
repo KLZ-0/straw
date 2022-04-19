@@ -59,9 +59,9 @@ def compute_residual(data: pd.DataFrame):
     if qlp_idx is None:
         data["residual"] = data["frame"].apply(lambda x: x[[0]])
     elif isinstance(data["frame"], np.ndarray):
-        data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
+        data["residual"] = steps.predict_compute_residual(data["frame"], data["qlp"], data["shift"])
     else:
-        data["residual"] = data["frame"].apply(steps.predict_compute_residusal,
+        data["residual"] = data["frame"].apply(steps.predict_compute_residual,
                                                qlp=data["qlp"][qlp_idx],
                                                shift=int(data["shift"][shift_idx]))
 

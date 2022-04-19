@@ -26,6 +26,8 @@ class Ricer:
     ##########################
 
     def guess_parameter(self, frame_residual: np.array) -> np.int8:
+        if frame_residual is None:
+            return np.int8(0)
         smallframe = frame_residual[:self.responsiveness].astype(np.int64)
         ext_rice.interleave_frame(smallframe)
         param = np.clip(np.log2(smallframe.mean()), 0, (1 << StrawSizes.residual.param) - 1)

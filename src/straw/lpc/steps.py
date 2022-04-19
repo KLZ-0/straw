@@ -186,7 +186,7 @@ def predict_signal(frame: np.array, qlp: np.array, shift):
     return np.convolve(frame, qlp, mode="full")[len(qlp) - 1:-len(qlp)] >> shift
 
 
-def predict_compute_residusal(frame: np.array, qlp: np.array, shift: int):
+def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     """
     Executes LPC prediction and returns the residual by subtracting the original frame from the predicted signal
     :param frame: signal frame
@@ -195,7 +195,11 @@ def predict_compute_residusal(frame: np.array, qlp: np.array, shift: int):
     :return: frame residual with shape [order:]
     """
     predicted = predict_signal(frame, qlp, shift)
-    return (frame[len(qlp):] - predicted).astype(frame.dtype)
+    tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
+    if tmp.var() < frame.var():
+        return tmp
+    else:
+        return None
 
 
 ###############
