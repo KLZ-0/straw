@@ -18,7 +18,7 @@ class Rice(unittest.TestCase):
         frame = np.arange(20, dtype=np.int16)
 
         bits = self.r.frame_to_bitstream(frame, self.k)
-        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
+        decoded = self.r.bitstream_to_frame(memoryview(bits).tobytes(), len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 
@@ -26,7 +26,7 @@ class Rice(unittest.TestCase):
         frame = resources.get_signal()[0]
 
         bits = self.r.frame_to_bitstream(frame, self.k)
-        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
+        decoded = self.r.bitstream_to_frame(memoryview(bits).tobytes(), len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 
@@ -34,7 +34,7 @@ class Rice(unittest.TestCase):
         frame = resources.get_problematic_residual1()
 
         bits = self.r.frame_to_bitstream(frame, self.k)
-        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
+        decoded = self.r.bitstream_to_frame(memoryview(bits).tobytes(), len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 
@@ -42,7 +42,7 @@ class Rice(unittest.TestCase):
         frame = resources.get_problematic_residual2()
 
         bits = self.r.frame_to_bitstream(frame, self.k)
-        decoded = self.r.bitstream_to_frame(bits, len(frame), self.k)
+        decoded = self.r.bitstream_to_frame(memoryview(bits).tobytes(), len(frame), self.k)
 
         self.assertListEqual(frame.tolist(), decoded.tolist())
 

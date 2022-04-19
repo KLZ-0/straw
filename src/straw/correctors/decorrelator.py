@@ -136,8 +136,11 @@ class Decorrelator:
         if not (df["frame_type"] == 0b11).all():
             return df
 
+        order = Decorrelator._find_closest_lower_power_of_two(len(df))
+        if order != len(df):
+            iterated = False
+
         if iterated:
-            order = Decorrelator._find_closest_lower_power_of_two(len(df))
             indices = np.arange(order).reshape((-1, 2))
             while order > 1:
                 indices = np.rot90(indices).reshape(-1, 2)

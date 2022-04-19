@@ -67,6 +67,8 @@ def compute_residual(data: pd.DataFrame):
         data["residual"] = data["frame"].apply(steps.predict_compute_residual,
                                                qlp=data["qlp"][qlp_idx],
                                                shift=int(data["shift"][shift_idx]))
+        if data["residual"].isna().any():
+            data["frame_type"] = 0b01
 
     return data
 
