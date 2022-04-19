@@ -89,7 +89,7 @@ class Encoder(BaseCoder):
         lpc_frames = self._set_frame_types()
 
         # Compute LPC & quantize coeffs
-        tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
+        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._data = tmp
 
@@ -120,6 +120,7 @@ class Encoder(BaseCoder):
         # new_lens = self._data[["stream_len"]]
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
+        self._remove_biascorr_from_raw_frames()
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
 
     ###########
@@ -172,16 +173,17 @@ class Encoder(BaseCoder):
 
         return ~const_frames
 
-    def _check_if_should_be_constant(self, df: pd.Series) -> bool:
-        if df["frame_type"] != 0b11:
-            return False
+    def _check_if_should_be_constant(self, df: pd.DataFrame):
+        if not (df["frame_type"] == 0b11).all():
+            return
 
-        max_allowed_bits = df["residual"].shape[0] * self._params.bits_per_sample
-        return df["stream_len"] >= max_allowed_bits
+        max_allowed_bits = df.loc[df.index[0], "residual"].shape[0] * self._params.bits_per_sample
+        if (df["stream_len"] >= max_allowed_bits).any():
+            df.loc[:, "frame_type"] = 0b01
 
     def _ensure_compression(self):
-        should_be_constant = self._data.apply(self._check_if_should_be_constant, axis=1)
-        self._data.loc[should_be_constant, "frame_type"] = 0b01
+        # NOTE: has to be done in groupby or else this can cause problems such as mixing LPC and non-LPC frames
+        self._data.groupby("seq").apply(self._check_if_should_be_constant)
 
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
@@ -206,6 +208,18 @@ class Encoder(BaseCoder):
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
         self._data["was_coded"] = 0
+
+    def _remove_biascorr_from_raw_frames(self):
+        """
+        This is done because the bias correction can result in samples outside of the valid dtype range
+        when saved to a straw file, thus it is safer to just remove the correction in this section
+        :return:
+        """
+
+        def _correct_bias(df: pd.Series):
+            df["frame"] += self._params.bias[df["channel"]]
+
+        self._data[self._data["frame_type"] == 0b01].apply(_correct_bias, axis=1)
 
     #########
     # Other #

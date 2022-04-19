@@ -30,6 +30,9 @@ def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd
     #
     # return frame
 
+    if not (frame["frame_type"] == 0b11).all():
+        return None
+
     df = pd.Series({
         "qlp": np.array([]),
         "qlp_precision": 0,
