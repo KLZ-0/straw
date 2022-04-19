@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 from straw.io.base import BaseWriter, BaseReader
 from straw.io.sizes import StrawSizes
+from straw.static import SubframeType
 
 
 class StrawFormatWriter(BaseWriter):
@@ -131,11 +132,11 @@ class StrawFormatWriter(BaseWriter):
 
     def _subframe_data(self, df: pd.Series, qlp: np.array) -> bitarray:
         subframe_type = df["frame_type"]
-        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
+        if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
             return self._subframe_constant(df)
-        elif subframe_type == 0b01:  # SUBFRAME_RAW
+        elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(df)
-        elif subframe_type == 0b11:  # SUBFRAME_LPC
+        elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
             return self._subframe_lpc(df, len(qlp))
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
@@ -309,18 +310,18 @@ class StrawFormatReader(BaseReader):
         return self._sec.get_int(length=sizes.type)
 
     def _subframe_data(self, subframe_type: int, order: int, blocksize: int, subframe_num: int) -> dict:
-        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
+        if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
             return self._subframe_constant(blocksize, subframe_num)
-        elif subframe_type == 0b01:  # SUBFRAME_RAW
+        elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(blocksize, subframe_num)
-        elif subframe_type == 0b11:  # SUBFRAME_LPC
+        elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
             return self._subframe_lpc(order, blocksize, subframe_num)
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
 
     def _subframe_constant(self, blocksize: int, subframe_num: int):
         row = {
-            "frame_type": 0b00,
+            "frame_type": SubframeType.CONSTANT,
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
@@ -332,7 +333,7 @@ class StrawFormatReader(BaseReader):
 
     def _subframe_raw(self, blocksize: int, subframe_num: int) -> dict:
         row = {
-            "frame_type": 0b01,
+            "frame_type": SubframeType.RAW,
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
@@ -346,7 +347,7 @@ class StrawFormatReader(BaseReader):
     def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
         sizes = StrawSizes.subframe_lpc
         row = {
-            "frame_type": 0b11,
+            "frame_type": SubframeType.LPC,
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +

@@ -12,6 +12,7 @@ from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCo
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
+from straw.static import SubframeType
 from straw.util import Signals
 
 
@@ -164,26 +165,26 @@ class Encoder(BaseCoder):
 
     def _set_frame_types(self):
         # all frames are LPC frames by default
-        self._data["frame_type"] = np.full(len(self._data["frame"]), 0b11, dtype="B")
+        self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
 
         # Constant frames
         const_frames = self._data["frame"].apply(lambda x: not (x - x[0]).any())
-        self._data.loc[const_frames, "frame_type"] = 0b00
+        self._data.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
 
         return ~const_frames
 
-    def _check_if_should_be_constant_maxbytes(self, df: pd.DataFrame):
-        if not (df["frame_type"] == 0b11).all():
+    def _check_if_should_be_raw_maxbytes(self, df: pd.DataFrame):
+        if not (df["frame_type"] == SubframeType.LPC).all():
             return df
 
         max_allowed_bits = df.loc[df.index[0], "residual"].shape[0] * self._params.bits_per_sample
         if (df["stream_len"] >= max_allowed_bits).any():
-            df["frame_type"] = 0b01
+            df["frame_type"] = SubframeType.RAW
         return df
 
     def _ensure_compression(self):
         # NOTE: has to be done in groupby or else this can cause problems such as mixing LPC and non-LPC frames
-        self._data = self._data.groupby("seq").apply(self._check_if_should_be_constant_maxbytes)
+        self._data = self._data.groupby("seq").apply(self._check_if_should_be_raw_maxbytes)
 
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
@@ -216,7 +217,7 @@ class Encoder(BaseCoder):
         def _correct_bias(df: pd.Series):
             df["frame"] += self._params.bias[df["channel"]]
 
-        self._data[self._data["frame_type"] == 0b01].apply(_correct_bias, axis=1)
+        self._data[self._data["frame_type"] == SubframeType.RAW].apply(_correct_bias, axis=1)
 
     #########
     # Other #

@@ -5,6 +5,7 @@ import pandas as pd
 
 from straw import lpc
 from straw.lpc.steps import restore_signal
+from straw.static import SubframeType
 from . import resources
 
 
@@ -16,7 +17,7 @@ class LPCSignalIntegrity(unittest.TestCase):
     signal_zeros = np.zeros(2 ** 12)
 
     def test_reconstruction(self):
-        df = pd.DataFrame({"frame": [self.signal], "frame_type": 0b11})
+        df = pd.DataFrame({"frame": [self.signal], "frame_type": SubframeType.LPC})
         qlp, precision, shift = lpc.compute_qlp(df.loc[0], self.lpc_order, self.lpc_precision)
         df["qlp"] = [qlp]
         df["shift"] = [shift]
@@ -27,7 +28,7 @@ class LPCSignalIntegrity(unittest.TestCase):
         self.assertEqual((self.signal - restored).any(), False)
 
     def test_zeroframe_qlp(self):
-        df = pd.DataFrame({"frame": [self.signal_zeros], "frame_type": 0b11})
+        df = pd.DataFrame({"frame": [self.signal_zeros], "frame_type": SubframeType.LPC})
         qlp, precision, shift = lpc.compute_qlp(df.loc[0], self.lpc_order, self.lpc_precision)
         self.assertEqual(shift, 0)
         self.assertEqual(precision, 0)
@@ -35,7 +36,7 @@ class LPCSignalIntegrity(unittest.TestCase):
     def test_zeroframe_residual(self):
         df = pd.Series({
             "frame": self.signal_zeros,
-            "frame_type": 0b11,
+            "frame_type": SubframeType.LPC,
             "qlp": None,
             "shift": 0,
         })

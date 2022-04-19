@@ -1,3 +1,9 @@
+class SubframeType:
+    CONSTANT = 0b00
+    RAW = 0b01
+    LPC = 0b11
+
+
 columns = [
     "seq",  # int - frame number, if grouped by this then represents a slice across all channels
     "frame",  # np.array - raw audio samples (and warmup samples when decoding)

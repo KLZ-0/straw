@@ -5,6 +5,7 @@ from bitarray import bitarray
 
 from ..compute import ParallelCompute
 from ..io.sizes import StrawSizes
+from ..static import SubframeType
 
 pyximport.install()
 from . import ext_rice
@@ -52,7 +53,7 @@ class Ricer:
             return bitarray(buffer=data)[:bits]
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
-        if df["frame_type"] != 0b11:
+        if df["frame_type"] != SubframeType.LPC:
             return bitarray()
 
         return self.frame_to_bitstream(df["residual"], df["bps"])

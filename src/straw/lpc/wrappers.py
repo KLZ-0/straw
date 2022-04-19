@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from straw.lpc import steps
+from straw.static import SubframeType
 
 """
 Pandas-lever wrappers
@@ -30,7 +31,7 @@ def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd
     #
     # return frame
 
-    if not (frame["frame_type"] == 0b11).all():
+    if not (frame["frame_type"] == SubframeType.LPC).all():
         return None
 
     df = pd.Series({
@@ -68,7 +69,7 @@ def compute_residual(data: pd.DataFrame):
                                                qlp=data["qlp"][qlp_idx],
                                                shift=int(data["shift"][shift_idx]))
         if data["residual"].isna().any():
-            data["frame_type"] = 0b01
+            data["frame_type"] = SubframeType.RAW
 
     return data
 
@@ -84,7 +85,7 @@ def compute_original(data: pd.DataFrame, inplace=False):
     :param inplace: whether the restoring should be done in place (faster)
     :return: residual as a numpy array
     """
-    if not (data["frame_type"] == 0b11).all():
+    if not (data["frame_type"] == SubframeType.LPC).all():
         return data
 
     qlp = data["qlp"][data["qlp"].first_valid_index()]
