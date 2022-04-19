@@ -36,12 +36,9 @@ class ParallelCompute:
         self.cpus = cpus
 
     def _parallelize(self, data, func):
-        data_split = np.array_split(data, self.cpus)
-        pool = Pool(self.cpus)
-        data = pd.concat(pool.map(func, data_split))
-        pool.close()
-        pool.join()
-        return data
+        with Pool(self.cpus) as pool:
+            data = pool.map(func, np.array_split(data, self.cpus))
+        return pd.concat(data)
 
     def _run_on_subset(self, func, data_subset):
         return data_subset.apply(func, args=self._apply_args, **self._apply_kwargs)
@@ -61,7 +58,7 @@ class ParallelCompute:
 
     def _group_parallelize(self, data, func):
         with Pool(self.cpus) as p:
-            ret_list = p.map(func, [group for name, group in data])
+            ret_list = p.map(func, [group for name, group in data], chunksize=16)
         return pd.concat(ret_list)
 
     def _group_run_on_subset(self, func, data_subset):
