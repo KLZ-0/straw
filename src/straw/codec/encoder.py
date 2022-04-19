@@ -209,7 +209,9 @@ class Encoder(BaseCoder):
     def _decorrelate_signals(self, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
-        self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
+        self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
+                                                              Decorrelator().midside_decorrelate, col_name=col_name)
+        # self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
         self._data["was_coded"] = 0
 
     #########
