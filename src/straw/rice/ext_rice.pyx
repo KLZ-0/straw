@@ -1,13 +1,12 @@
 # distutils: language = c
 # cython: language_level=3
 import cython
-from bitarray import bitarray
 
 #########################
 # Signedness correction #
 #########################
 
-cdef int _interleave(short x):
+cdef long _interleave(long x):
     """
     Implementation of the overlap and interleave scheme from https://en.wikipedia.org/wiki/Golomb_coding
     :param x: signed integer to be remaped
@@ -22,7 +21,7 @@ cdef int _interleave(short x):
         return -2 * x - 1
 
 @cython.cdivision(True)
-cdef short _deinterleave(int x):
+cdef long _deinterleave(long x):
     """
     Reverse of _interleave(short x)
     :param x: positive interleaved integer
@@ -36,7 +35,7 @@ cdef short _deinterleave(int x):
     else:
         return (x + 1) / -2
 
-cdef void update_scale(int s, short m, short *scale):
+cdef void update_scale(long s, short m, short *scale):
     if s > m:
         scale[0] += 1
     elif s < m:
@@ -48,18 +47,19 @@ cdef void update_scale(int s, short m, short *scale):
 # Encoding #
 ############
 
-def _append_n_bits(bits: bitarray, int number, short n):
-    """
-    Appends the last n bits of number to the end of the current bitstream
-    :param bits: bitaray to which the bits will be appended
-    :param number: number to append
-    :param n: number of bits to append
-    :return: None
-    """
-    bits.extend([number >> (n - i - 1) & 1 for i in range(n)])
+@cython.cdivision(True)
+cdef void _push_bit(unsigned char[:] bits, Py_ssize_t *bit_i, char val):
+    if val == 0:
+        bit_i[0] += 1
+        return
+
+    cdef Py_ssize_t byte_i = bit_i[0] / 8
+    cdef char real_bit_i = 7 - (bit_i[0] % 8)
+    bit_i[0] += 1
+    bits[byte_i] |= 1 << real_bit_i
 
 @cython.cdivision(True)
-def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adaptive):
+def encode_frame(unsigned char[:] bits, cython.integral[:] frame, short k, short resp, short adaptive):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param bits: bitaray to which the bits will be appended
@@ -69,9 +69,11 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
     :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
-    cdef short m, q
-    cdef int s  # int because of interleaving
+    cdef short j
+    cdef long m, q, s
     cdef Py_ssize_t x_max, i
+    cdef Py_ssize_t bit_i = 0
+    cdef Py_ssize_t bit_i_max = bits.shape[0] * 8
     x_max = frame.shape[0]
     m = 1 << k
 
@@ -83,11 +85,14 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
         # Quotient code
         q = s / m
 
-        for _ in range(q):
-            bits.append(0)
-        bits.append(1)
+        if bit_i + q + k + 1 >= bit_i_max:
+            return -1
 
-        _append_n_bits(bits, s, k)
+        bit_i += q
+        _push_bit(bits, &bit_i, 1)
+
+        for j in range(k):
+            _push_bit(bits, &bit_i, s >> (k - j - 1) & 1)
 
         # TODO: feed-forward rice implementation
         if not adaptive:
@@ -106,19 +111,26 @@ def encode_frame(bits: bitarray, short[:] frame, short k, short resp, short adap
             m = 1 << k
             # print("e switched down:\t ", i, s, m)
             continue
+        elif scale < -resp:
+            scale = -resp
 
         update_scale(s, m, &scale)
+
+    return bit_i
 
 ############
 # Decoding #
 ############
 
-cdef char _get_bit(bits: bitarray, Py_ssize_t *bit_i):
+@cython.cdivision(True)
+cdef char _get_bit(const unsigned char[:] bits, Py_ssize_t *bit_i):
+    cdef Py_ssize_t byte_i = bit_i[0] / 8
+    cdef char real_bit_i = 7 - (bit_i[0] % 8)
     bit_i[0] += 1
-    return bits[bit_i[0] - 1]
+    return (bits[byte_i] >> real_bit_i) & 1
 
 @cython.cdivision(True)
-def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adaptive):
+def decode_frame(cython.integral[:] frame, const unsigned char[:] bits, short k, short resp, short adaptive, long starting_i = 0):
     """
     Decodes a whole residual frame from the given bitstream
     :param frame: numpy array where the decoded frame should be stored
@@ -128,10 +140,10 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
     :param adaptive: if True do adaptive rice coding by varying the parameter
     :return: None
     """
-    cdef short m, q, j
-    cdef int s  # int because of interleaving
+    cdef short j
+    cdef long m, q, s
     cdef Py_ssize_t x_max, i
-    cdef Py_ssize_t bit_i = 0
+    cdef Py_ssize_t bit_i = starting_i
     x_max = frame.shape[0]
     m = 1 << k
 
@@ -164,17 +176,19 @@ def decode_frame(short[:] frame, bits: bitarray, short k, short resp, short adap
             m = 1 << k
             # print("dec switched down:\t ", i, s, m)
             continue
+        elif scale < -resp:
+            scale = -resp
 
         update_scale(s, m, &scale)
 
-    return bit_i
+    return bit_i - starting_i
 
 ###########
 # Utility #
 ###########
 
 @cython.cdivision(True)
-def kparams(short[:] frame, short k, short resp):
+def kparams(cython.integral[:] frame, short k, short resp):
     """
     Encodes a whole residual frame and appends it to the end of the given bitstream
     :param frame: the frame to be encoded
@@ -182,7 +196,7 @@ def kparams(short[:] frame, short k, short resp):
     :param resp: rice parameter responsiveness
     :return: None
     """
-    cdef int s
+    cdef long s
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
     m = 1 << k
@@ -206,7 +220,7 @@ def kparams(short[:] frame, short k, short resp):
 
         update_scale(s, m, &scale)
 
-def interleave_frame(int[:] frame):
+def interleave_frame(cython.integral[:] frame):
     cdef Py_ssize_t x_max, i
     x_max = frame.shape[0]
     for i in range(x_max):

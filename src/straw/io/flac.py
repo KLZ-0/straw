@@ -174,9 +174,7 @@ class FLACFormatReader(BaseReader):
         self._params.md5 = self._sec.get_bytes(length=128)
 
         # Allocate sample buffer
-        self._allocate_buffer(channels=self._params.channels,
-                              bits_per_sample=self._params.bits_per_sample,
-                              total_samples=self._params.total_samples)
+        self._allocate_buffer()
         return self._params.total_samples // self._params.max_block_size + 1
 
     def _frame(self, expected_frames: int):

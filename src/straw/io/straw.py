@@ -1,11 +1,16 @@
 import numpy as np
 import pandas as pd
+import pyximport
 from bitarray import bitarray
 from bitarray.util import int2ba
 from tqdm import tqdm
 
 from straw.io.base import BaseWriter, BaseReader
 from straw.io.sizes import StrawSizes
+from straw.static import SubframeType
+
+pyximport.install()
+from . import ext_io
 
 
 class StrawFormatWriter(BaseWriter):
@@ -131,11 +136,11 @@ class StrawFormatWriter(BaseWriter):
 
     def _subframe_data(self, df: pd.Series, qlp: np.array) -> bitarray:
         subframe_type = df["frame_type"]
-        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
+        if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
             return self._subframe_constant(df)
-        elif subframe_type == 0b01:  # SUBFRAME_RAW
+        elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(df)
-        elif subframe_type == 0b11:  # SUBFRAME_LPC
+        elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
             return self._subframe_lpc(df, len(qlp))
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
@@ -146,9 +151,9 @@ class StrawFormatWriter(BaseWriter):
         return sec
 
     def _subframe_raw(self, df: pd.Series) -> bitarray:
-        sec = bitarray()
-        for sample in df["frame"]:
-            sec += int2ba(int(sample), length=self._params.bits_per_sample, signed=True)
+        buffer = np.zeros(df["frame"].shape[0] * (self._params.bits_per_sample // 8), dtype=np.uint8)
+        ext_io.write_frame(buffer, df["frame"] + self._params.bias[df["channel"]], self._params.bits_per_sample)
+        sec = bitarray(buffer=buffer)
         return sec
 
     def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
@@ -172,7 +177,8 @@ class StrawFormatWriter(BaseWriter):
         else:
             sec.append(df["was_coded"])
 
-        for warmup_sample in df["frame"][:order]:
+        warmup_samples = df["frame"][:order] + self._params.bias[df["channel"]]
+        for warmup_sample in warmup_samples:
             sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
         sec += self._residual(df)
         return sec
@@ -187,10 +193,9 @@ class StrawFormatWriter(BaseWriter):
 
 class StrawFormatReader(BaseReader):
     def _stream(self):
-        marker = self._f.read(4)
+        marker = self._sec.get_bytes(32)
         if marker.decode("utf-8") != "sTrW":
             raise ValueError("Not a valid Straw file!")
-        self._sec.fromfile(self._f)
         expected_frames = self._metadata_block()
         pbar = tqdm(range(expected_frames))
         pbar.set_description(f"Loading frames")
@@ -226,9 +231,7 @@ class StrawFormatReader(BaseReader):
         self._params.md5 = self._sec.get_bytes(length=sizes.md5)
 
         # Allocate sample buffer
-        self._allocate_buffer(channels=self._params.channels,
-                              bits_per_sample=self._params.bits_per_sample,
-                              total_samples=self._params.total_samples)
+        self._allocate_buffer()
 
         # Shift
         has_shift = self._sec.get_int()
@@ -269,7 +272,7 @@ class StrawFormatReader(BaseReader):
             row["seq"] = seq
             row["idx"] = i * expected_frames + seq
             # we expect that the first channel will have lpc coefficients in every case
-            if isinstance(row["qlp"], np.ndarray):
+            if "qlp" in row and isinstance(row["qlp"], np.ndarray):
                 last_order = len(row["qlp"])
             self._raw.append(row)
         self._samplebuffer_ptr += blocksize
@@ -311,30 +314,45 @@ class StrawFormatReader(BaseReader):
         return self._sec.get_int(length=sizes.type)
 
     def _subframe_data(self, subframe_type: int, order: int, blocksize: int, subframe_num: int) -> dict:
-        if subframe_type == 0b00:  # SUBFRAME_CONSTANT
-            raise NotImplementedError("Decoding SUBFRAME_CONSTANT not yet implemented")
-        elif subframe_type == 0b01:  # SUBFRAME_RAW
+        if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
+            return self._subframe_constant(blocksize, subframe_num)
+        elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(blocksize, subframe_num)
-        elif subframe_type == 0b11:  # SUBFRAME_LPC
+        elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
             return self._subframe_lpc(order, blocksize, subframe_num)
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
 
-    def _subframe_raw(self, blocksize: int, subframe_num: int) -> dict:
+    def _subframe_constant(self, blocksize: int, subframe_num: int):
         row = {
+            "frame_type": SubframeType.CONSTANT,
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
                                                                               self._params.lags[
                                                                                   subframe_num] + blocksize]
         }
-        for i in range(blocksize):
-            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        row["frame"][:] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+        return row
+
+    def _subframe_raw(self, blocksize: int, subframe_num: int) -> dict:
+        row = {
+            "frame_type": SubframeType.RAW,
+            "channel": subframe_num,
+            "frame": self._samplebuffer[subframe_num][
+                     self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
+                                                                              self._params.lags[
+                                                                                  subframe_num] + blocksize]
+        }
+        bitbytes = self._sec.get_bytes(length=self._params.bits_per_sample * blocksize)
+        ext_io.read_frame(row["frame"], bitbytes, self._params.bits_per_sample, 1)
+        row["frame"] -= self._params.bias[subframe_num]
         return row
 
     def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
         sizes = StrawSizes.subframe_lpc
         row = {
+            "frame_type": SubframeType.LPC,
             "channel": subframe_num,
             "frame": self._samplebuffer[subframe_num][
                      self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
@@ -356,7 +374,8 @@ class StrawFormatReader(BaseReader):
             row["was_coded"] = self._sec.get_int()
 
         for i in range(order):
-            row["frame"][i] = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            warmup_sample = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            row["frame"][i] = warmup_sample - self._params.bias[subframe_num]
 
         # get the residual
         row["residual"] = self._samplebuffer[subframe_num][
@@ -370,7 +389,7 @@ class StrawFormatReader(BaseReader):
         sizes = StrawSizes.residual
         bps = self._sec.get_int(length=sizes.param)
         bits_read = self._ricer.bitstream_to_frame(
-            self._sec[self._sec.get_pos():self._sec.get_pos() + len(array) * self._params.bits_per_sample],
-            len(array), bps, own_frame=array)
+            self._memview,
+            len(array), bps, own_frame=array, bitarray_pos=self._sec.get_pos())
         self._sec.advance(bits_read)
         return array, bps

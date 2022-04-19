@@ -1,3 +1,4 @@
+import mmap
 from pathlib import Path
 
 import numpy as np
@@ -65,7 +66,8 @@ class BaseReader(BaseIO):
     _raw: list
     _ricer = Ricer()
 
-    _sec = SlicedBitarray()
+    _sec: SlicedBitarray()
+    _memview: bytes
     _samplebuffer_ptr: int = 0
     _samplebuffer: np.array
 
@@ -80,14 +82,19 @@ class BaseReader(BaseIO):
         :return: dataframe and params
         """
         with input_file.open("rb") as f:
-            self._f = f
+            m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+            self._sec = SlicedBitarray(buffer=m)
+            self._memview = memoryview(self._sec).tobytes()
             self._stream()
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
         self._data = pd.DataFrame(self._raw, columns=static.columns)
 
-    def _allocate_buffer(self, total_samples: int, channels: int, bits_per_sample: int):
-        self._samplebuffer = np.zeros((total_samples, channels), dtype=f"int{bits_per_sample}")
+    def _allocate_buffer(self):
+        channels = self._params.channels
+        total_samples = self._params.total_samples
+        dtype_bits = static.soundfile_dtype[self._params.bits_per_sample]
+        self._samplebuffer = np.zeros((total_samples, channels), dtype=f"int{dtype_bits}")
         self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
     def get_buffer(self):

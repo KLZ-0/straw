@@ -62,7 +62,8 @@ def _decode(args):
     stop = timeit.default_timer()
     print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
 
-    d.test()
+    if Path(args.input_files[0]).stem == "1min":
+        d.test()
 
     print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
 

@@ -6,12 +6,13 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from straw import lpc
+from straw import lpc, static
 from straw.codec.base import BaseCoder
 from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
+from straw.static import SubframeType
 from straw.util import Signals
 
 
@@ -21,9 +22,6 @@ class Encoder(BaseCoder):
     _lpc_order = 20  # can be sourced from len(df["qlp"]) once per group
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
     _params = StreamParams()
-
-    # TODO: make the coders accept other sizes
-    _bits_per_sample = 16  # stored in StreamParams once per group
 
     ##########
     # Public #
@@ -47,10 +45,20 @@ class Encoder(BaseCoder):
         :param file: str or int or file-like object - anything that soundfile accepts
         :return: None
         """
-        data, sr = soundfile.read(file, dtype=f"int{self._bits_per_sample}", always_2d=True)
-        self.load_data(data, sr)
+        self._source_size = file.stat().st_size
+        with soundfile.SoundFile(file, "r") as wav:
+            subtype = wav.subtype
+            if subtype not in self._supported_subtypes:
+                raise ValueError(f"Subtype '{subtype}' not supported, must be one of {self._supported_subtypes.keys()}")
+            bits_per_sample = self._supported_subtypes[subtype]
+            dtype_bits = static.soundfile_dtype[bits_per_sample]
+            data = wav.read(dtype=f"int{dtype_bits}", always_2d=True)
+            data >>= dtype_bits - bits_per_sample
+            sr = wav.samplerate
 
-    def load_data(self, data: np.array, samplerate: int):
+        self.load_data(data, sr, bits_per_sample)
+
+    def load_data(self, data: np.array, samplerate: int, bits_per_sample: int):
         if len(data.shape) == 1:
             self._samplebuffer = data.reshape((1, -1))
         elif data.shape[0] > data.shape[1]:
@@ -60,11 +68,13 @@ class Encoder(BaseCoder):
 
         self._params.channels = int(self._samplebuffer.shape[0])
         self._params.total_samples = int(self._samplebuffer.shape[1])
-        # TODO: read bps from loaded file
-        self._params.bits_per_sample = self._bits_per_sample
+        self._params.bits_per_sample = bits_per_sample
         self._params.alloc_arrays()
 
-        self._source_size = self._samplebuffer.nbytes
+        # If file size not available, use raw sample size
+        if not hasattr(self, "_source_size"):
+            self._source_size = self._params.bits_per_sample * self._params.total_samples * self._params.channels
+
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
         self._apply_corrections()
@@ -80,7 +90,7 @@ class Encoder(BaseCoder):
         lpc_frames = self._set_frame_types()
 
         # Compute LPC & quantize coeffs
-        tmp = self._data[lpc_frames].groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
+        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
         self._data[["qlp", "qlp_precision", "shift"]] = tmp
         # self._data = tmp
 
@@ -154,17 +164,26 @@ class Encoder(BaseCoder):
 
     def _set_frame_types(self):
         # all frames are LPC frames by default
-        self._data["frame_type"] = np.full(len(self._data["frame"]), 0b11, dtype="B")
+        self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
 
         # Constant frames
         const_frames = self._data["frame"].apply(lambda x: not (x - x[0]).any())
-        self._data.loc[const_frames, "frame_type"] = 0b00
+        self._data.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
 
         return ~const_frames
 
+    def _check_if_should_be_raw_maxbytes(self, df: pd.DataFrame):
+        if not (df["frame_type"] == SubframeType.LPC).all():
+            return df
+
+        max_allowed_bits = df.loc[df.index[0], "residual"].shape[0] * self._params.bits_per_sample
+        if (df["stream_len"] >= max_allowed_bits).any():
+            df["frame_type"] = SubframeType.RAW
+        return df
+
     def _ensure_compression(self):
-        max_allowed_bits = self._data["residual"].apply(len) * self._params.bits_per_sample
-        self._data.loc[self._data["stream_len"] > max_allowed_bits, "frame_type"] = 0b01
+        # NOTE: has to be done in groupby or else this can cause problems such as mixing LPC and non-LPC frames
+        self._data = self._data.groupby("seq").apply(self._check_if_should_be_raw_maxbytes)
 
         if self._flac_mode:
             max_residual_bytes = (self._data["stream_len"].max() // 8) + 1

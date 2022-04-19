@@ -5,6 +5,7 @@ from bitarray import bitarray
 
 from ..compute import ParallelCompute
 from ..io.sizes import StrawSizes
+from ..static import SubframeType
 
 pyximport.install()
 from . import ext_rice
@@ -26,7 +27,9 @@ class Ricer:
     ##########################
 
     def guess_parameter(self, frame_residual: np.array) -> np.int8:
-        smallframe = frame_residual[:self.responsiveness].astype(np.int32)
+        if frame_residual is None:
+            return np.int8(0)
+        smallframe = frame_residual[:self.responsiveness].astype(np.int64)
         ext_rice.interleave_frame(smallframe)
         param = np.clip(np.log2(smallframe.mean()), 0, (1 << StrawSizes.residual.param) - 1)
         return np.round(param).astype(np.int8)
@@ -42,12 +45,15 @@ class Ricer:
         :param bps: expected bits per sample
         :return: encoded bitarray
         """
-        data = bitarray()
-        ext_rice.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
-        return data
+        data = np.zeros(frame.nbytes, dtype=np.uint8)
+        bits = ext_rice.encode_frame(data, frame, bps, self.responsiveness, adaptive=self.adaptive)
+        if bits == -1:
+            return bitarray(buffer=frame)  # This will later fail in Encoder._ensure_compression
+        else:
+            return bitarray(buffer=data)[:bits]
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
-        if df["frame_type"] != 0b11:
+        if df["frame_type"] != SubframeType.LPC:
             return bitarray()
 
         return self.frame_to_bitstream(df["residual"], df["bps"])
@@ -69,24 +75,29 @@ class Ricer:
     # Decoding #
     ############
 
-    def bitstream_to_frame(self, bitstream: bitarray, frame_size: int, bps: int, own_frame: np.array = None):
+    def bitstream_to_frame(self, bitstream_memoryview: bytes,
+                           frame_size: int, bps: int,
+                           own_frame: np.array = None,
+                           bitarray_pos=0):
         """
         Decode a single frame from a given bitstream
         WARNING: The given bitstream is destroyed to prevent unnecessary memory duplication
-        :param bitstream: rice encoded stream
+        :param bitstream_memoryview: rice encoded stream
         :param frame_size: frame size
         :param bps: expected bits per sample
         :param own_frame: if not None, this frame will be filled
+        :param bitarray_pos: starting position within the bitarray - use this to avoid slicing
         :return: decoded frame or number of bits read if own_frame is not None
         """
         bits_read = 0
         if own_frame is None:
-            frame = np.zeros(frame_size, dtype=np.short)
+            frame = np.zeros(frame_size, dtype=np.int64)
         else:
             frame = own_frame[:frame_size]
 
-        if len(bitstream) > 0:
-            bits_read = ext_rice.decode_frame(frame, bitstream, bps, self.responsiveness, adaptive=self.adaptive)
+        if len(bitstream_memoryview) > 0:
+            bits_read = ext_rice.decode_frame(frame, bitstream_memoryview, bps, self.responsiveness,
+                                              adaptive=self.adaptive, starting_i=bitarray_pos)
 
         if own_frame is None:
             return frame

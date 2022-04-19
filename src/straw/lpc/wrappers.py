@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from straw.lpc import steps
+from straw.static import SubframeType
 
 """
 Pandas-lever wrappers
@@ -29,6 +30,9 @@ def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd
     #     frame["qlp"][idx] = qlp
     #
     # return frame
+
+    if not (frame["frame_type"] == SubframeType.LPC).all():
+        return None
 
     df = pd.Series({
         "qlp": np.array([]),
@@ -59,11 +63,13 @@ def compute_residual(data: pd.DataFrame):
     if qlp_idx is None:
         data["residual"] = data["frame"].apply(lambda x: x[[0]])
     elif isinstance(data["frame"], np.ndarray):
-        data["residual"] = steps.predict_compute_residusal(data["frame"], data["qlp"], data["shift"])
+        data["residual"] = steps.predict_compute_residual(data["frame"], data["qlp"], data["shift"])
     else:
-        data["residual"] = data["frame"].apply(steps.predict_compute_residusal,
+        data["residual"] = data["frame"].apply(steps.predict_compute_residual,
                                                qlp=data["qlp"][qlp_idx],
                                                shift=int(data["shift"][shift_idx]))
+        if data["residual"].isna().any():
+            data["frame_type"] = SubframeType.RAW
 
     return data
 
@@ -79,6 +85,9 @@ def compute_original(data: pd.DataFrame, inplace=False):
     :param inplace: whether the restoring should be done in place (faster)
     :return: residual as a numpy array
     """
+    if not (data["frame_type"] == SubframeType.LPC).all():
+        return data
+
     qlp = data["qlp"][data["qlp"].first_valid_index()]
     shift = int(data["shift"][data["shift"].first_valid_index()])
 
