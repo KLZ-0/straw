@@ -73,3 +73,13 @@ class ParallelCompute:
         self._apply_args = args
         self._apply_kwargs = kwargs
         return self._group_parallelize(data, partial(self._group_run_on_subset, func))
+
+    def _ndarray_parallelize(self, data, func):
+        with Pool(self.cpus) as p:
+            ret_list = p.map(func, data)
+        return ret_list
+
+    def map_ndarray(self, data, func, args=(), **kwargs):
+        self._apply_args = args
+        self._apply_kwargs = kwargs
+        return self._ndarray_parallelize(data, partial(self._group_run_on_subset, func))
