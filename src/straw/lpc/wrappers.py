@@ -71,8 +71,6 @@ def compute_residual(data: pd.DataFrame):
         if data["residual"].isna().any():
             data["frame_type"] = SubframeType.RAW
 
-    return data
-
 
 def _compute_original_df_expander(data: pd.DataFrame, qlp, shift, inplace):
     return steps.restore_signal_cython(data["frame"], qlp, shift, inplace)
