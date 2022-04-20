@@ -57,8 +57,9 @@ class ParallelCompute:
         return self._parallelize(data, partial(self._run_on_subset, func))
 
     def _group_parallelize(self, data, func):
-        with Pool(self.cpus) as p:
-            ret_list = p.map(func, [group for name, group in data], chunksize=64)
+        chunksize = int(len(data) / self.cpus) * 2
+        with Pool(self.cpus + 1) as p:
+            ret_list = p.map(func, [group for name, group in data], chunksize=chunksize)
         if not ret_list:
             return None
         elif isinstance(ret_list[0], (pd.Series, pd.DataFrame)):
