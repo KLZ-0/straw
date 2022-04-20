@@ -91,14 +91,15 @@ class Encoder(BaseCoder):
         self._set_frame_types()
 
         groups = self._data.groupby("seq")
-        self._data = ParallelCompute.get_instance().map_group(groups, self._do_lpc)
+        # self._data = groups.apply(self._encode_frame)
+        self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
 
-    def _do_lpc(self, data_slice: pd.DataFrame):
+    def _encode_frame(self, data_slice: pd.DataFrame):
         data_slice[["qlp", "qlp_precision", "shift"]] = lpc.compute_qlp(data_slice, order=self._lpc_order,
                                                                         qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
         data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
-        data_slice = data_slice.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name="residual")
+        data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
         data_slice["was_coded"] = 0
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
         data_slice["stream_len"] = data_slice["stream"].apply(len)
