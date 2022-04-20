@@ -197,6 +197,9 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     predicted = predict_signal(frame, qlp, shift)
     tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
     if tmp.var() < frame.var():
+        # TODO: we could use the same memory space but this would prevent us from using the raw signal after
+        # frame[len(qlp):] = tmp
+        # return frame[len(qlp):]
         return tmp
     else:
         return None
