@@ -86,9 +86,7 @@ class StrawFormatWriter(BaseWriter):
     def _frame(self, df: pd.DataFrame):
         footer_sizes = StrawSizes.frame_footer
         sec = bitarray()
-        qlp_idx = df["qlp"].first_valid_index()
-        qlp = None if qlp_idx is None else df["qlp"][qlp_idx]
-        tmp = df.apply(self._subframe, axis=1, qlp=qlp)
+        tmp = df.apply(self._subframe, axis=1)
         for subframe_bitstream in tmp:
             sec += subframe_bitstream
         sec.fill()  # zero-padding to byte alignment
@@ -125,9 +123,9 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self.Crc.crc8(sec.tobytes()), length=sizes.crc)
         return sec
 
-    def _subframe(self, df: pd.Series, qlp: np.array) -> bitarray:
+    def _subframe(self, df: pd.Series) -> bitarray:
         sec = self._subframe_header(df)
-        sec += self._subframe_data(df, qlp)
+        sec += self._subframe_data(df)
         return sec
 
     def _subframe_header(self, df: pd.Series) -> bitarray:
@@ -136,14 +134,19 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(df["frame_type"], length=sizes.type)
         return sec
 
-    def _subframe_data(self, df: pd.Series, qlp: np.array) -> bitarray:
+    def _subframe_data(self, df: pd.Series) -> bitarray:
         subframe_type = df["frame_type"]
         if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
             return self._subframe_constant(df)
         elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(df)
         elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
-            return self._subframe_lpc(df, len(qlp))
+            return self._subframe_lpc(df)
+        elif subframe_type == SubframeType.LPC_COMMON:  # SUBFRAME_LPC_COMMON
+            if df["channel"] == 0:
+                return self._subframe_lpc(df)
+            else:
+                return self._subframe_lpc_common(df)
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
 
@@ -158,28 +161,27 @@ class StrawFormatWriter(BaseWriter):
         sec = bitarray(buffer=buffer)
         return sec
 
-    def _subframe_lpc(self, df: pd.Series, order: int) -> bitarray:
+    def _subframe_lpc(self, df: pd.Series) -> bitarray:
         sizes = StrawSizes.subframe_lpc
         sec = bitarray()
-        contains_lpc = isinstance(df["qlp"], np.ndarray)
-        sec.append(contains_lpc)
 
-        # LPC
-        if contains_lpc:
-            qlp = df["qlp"]
-            order = len(qlp)
-            qlp_precision = int(df["qlp_precision"])
-            shift = int(df["shift"])
+        qlp = df["qlp"]
+        order = len(qlp)
+        qlp_precision = int(df["qlp_precision"])
+        shift = int(df["shift"])
 
-            sec += int2ba(order - 1, length=sizes.lpc_order)
-            sec += int2ba(qlp_precision - 1, length=sizes.lpc_prec)
-            sec += int2ba(shift, length=sizes.lpc_shift)
-            for coeff in qlp:
-                sec += int2ba(int(coeff), length=qlp_precision, signed=True)
-        else:
-            sec.append(df["was_coded"])
+        sec += int2ba(order - 1, length=sizes.lpc_order)
+        sec += int2ba(qlp_precision - 1, length=sizes.lpc_prec)
+        sec += int2ba(shift, length=sizes.lpc_shift)
+        for coeff in qlp:
+            sec += int2ba(int(coeff), length=qlp_precision, signed=True)
 
-        warmup_samples = df["frame"][:order] + self._params.bias[df["channel"]]
+        sec += self._subframe_lpc_common(df)
+        return sec
+
+    def _subframe_lpc_common(self, df: pd.Series):
+        sec = bitarray()
+        warmup_samples = df["frame"][:len(df["qlp"])] + self._params.bias[df["channel"]]
         for warmup_sample in warmup_samples:
             sec += int2ba(int(warmup_sample), length=self._params.bits_per_sample, signed=True)
         sec += self._residual(df)
@@ -268,14 +270,14 @@ class StrawFormatReader(BaseReader):
     def _frame(self, expected_frames: int):
         start = self._sec.get_pos()
         seq, frame_size, blocksize = self._frame_header()
-        last_order = 0
+        last_lpc_frame = 0
         for i in range(self._params.channels):
-            row = self._subframe(last_order, blocksize, i)
+            row = self._subframe(last_lpc_frame, blocksize, i)
             row["seq"] = seq
             row["idx"] = i * expected_frames + seq
             # we expect that the first channel will have lpc coefficients in every case
             if "qlp" in row and isinstance(row["qlp"], np.ndarray):
-                last_order = len(row["qlp"])
+                last_lpc_frame = row
             self._raw.append(row)
         self._samplebuffer_ptr += blocksize
         self._sec.skip_padding()
@@ -307,21 +309,26 @@ class StrawFormatReader(BaseReader):
             raise RuntimeError(f"Inavalid frame header checksum at frame {seq}")
         return seq, frame_size, blocksize
 
-    def _subframe(self, order: int, blocksize: int, subframe_num: int) -> dict:
+    def _subframe(self, last_lpc: dict, blocksize: int, subframe_num: int) -> dict:
         subframe_type = self._subframe_header()
-        return self._subframe_data(subframe_type, order, blocksize, subframe_num)
+        return self._subframe_data(subframe_type, last_lpc, blocksize, subframe_num)
 
     def _subframe_header(self) -> int:
         sizes = StrawSizes.subframe_header
         return self._sec.get_int(length=sizes.type)
 
-    def _subframe_data(self, subframe_type: int, order: int, blocksize: int, subframe_num: int) -> dict:
+    def _subframe_data(self, subframe_type: int, last_lpc: dict, blocksize: int, subframe_num: int) -> dict:
         if subframe_type == SubframeType.CONSTANT:  # SUBFRAME_CONSTANT
             return self._subframe_constant(blocksize, subframe_num)
         elif subframe_type == SubframeType.RAW:  # SUBFRAME_RAW
             return self._subframe_raw(blocksize, subframe_num)
         elif subframe_type == SubframeType.LPC:  # SUBFRAME_LPC
-            return self._subframe_lpc(order, blocksize, subframe_num)
+            return self._subframe_lpc(blocksize, subframe_num)
+        elif subframe_type == SubframeType.LPC_COMMON:  # SUBFRAME_LPC
+            if subframe_num == 0:
+                return self._subframe_lpc(blocksize, subframe_num)
+            else:
+                return self._subframe_lpc_common(last_lpc, blocksize, subframe_num)
         else:
             raise ValueError(f"Invalid frame type: {subframe_type}")
 
@@ -351,7 +358,7 @@ class StrawFormatReader(BaseReader):
         row["frame"] -= self._params.bias[subframe_num]
         return row
 
-    def _subframe_lpc(self, order: int, blocksize: int, subframe_num: int) -> dict:
+    def _subframe_lpc(self, blocksize: int, subframe_num: int) -> dict:
         sizes = StrawSizes.subframe_lpc
         row = {
             "frame_type": SubframeType.LPC,
@@ -362,19 +369,42 @@ class StrawFormatReader(BaseReader):
                                                                                   subframe_num] + blocksize],
             "qlp_precision": 0,
             "shift": 0,
-            "qlp": np.nan,
-            "was_coded": 0,
+            "qlp": None,
         }
-        contains_lpc = self._sec.get_int()
-        if contains_lpc:
-            order = self._sec.get_int(length=sizes.lpc_order) + 1
-            row["qlp_precision"] = self._sec.get_int(length=sizes.lpc_prec) + 1
-            row["shift"] = self._sec.get_int(length=sizes.lpc_shift)
-            row["qlp"] = np.asarray(
-                [self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)], dtype=np.int32)
-        else:
-            row["was_coded"] = self._sec.get_int()
 
+        order = self._sec.get_int(length=sizes.lpc_order) + 1
+        row["qlp_precision"] = self._sec.get_int(length=sizes.lpc_prec) + 1
+        row["shift"] = self._sec.get_int(length=sizes.lpc_shift)
+        row["qlp"] = np.asarray(
+            [self._sec.get_int(length=row["qlp_precision"], signed=True) for _ in range(order)], dtype=np.int32)
+
+        for i in range(order):
+            warmup_sample = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
+            row["frame"][i] = warmup_sample - self._params.bias[subframe_num]
+
+        # get the residual
+        row["residual"] = self._samplebuffer[subframe_num][
+                          self._samplebuffer_ptr + self._params.lags[subframe_num] + order:self._samplebuffer_ptr +
+                                                                                           self._params.lags[
+                                                                                               subframe_num] + blocksize]
+        row["residual"], row["bps"] = self._residual(array=row["residual"])
+        return row
+
+    def _subframe_lpc_common(self, last_lpc: dict, blocksize: int, subframe_num: int) -> dict:
+        row = {
+            "frame_type": SubframeType.LPC_COMMON,
+            "channel": subframe_num,
+            "frame": self._samplebuffer[subframe_num][
+                     self._samplebuffer_ptr + self._params.lags[subframe_num]:self._samplebuffer_ptr +
+                                                                              self._params.lags[
+                                                                                  subframe_num] + blocksize],
+            "qlp_precision": last_lpc["qlp_precision"],
+            "shift": last_lpc["shift"],
+            "qlp": last_lpc["qlp"],
+        }
+
+        last_lpc["frame_type"] = SubframeType.LPC_COMMON
+        order = len(last_lpc["qlp"])
         for i in range(order):
             warmup_sample = self._sec.get_int(length=self._params.bits_per_sample, signed=True)
             row["frame"][i] = warmup_sample - self._params.bias[subframe_num]

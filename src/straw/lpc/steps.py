@@ -194,6 +194,7 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     :param shift: coefficient quantization shift
     :return: frame residual with shape [order:]
     """
+    shift = int(shift)
     predicted = predict_signal(frame, qlp, shift)
     tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
     if tmp.var() < frame.var():

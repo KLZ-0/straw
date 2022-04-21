@@ -1,7 +1,8 @@
 class SubframeType:
     CONSTANT = 0b00
     RAW = 0b01
-    LPC = 0b11
+    LPC = 0b10
+    LPC_COMMON = 0b11
 
 
 col_types = {
@@ -14,7 +15,6 @@ col_types = {
     "residual": object,  # pd.array - the signal residual
     "bps": int,  # int - bits per sample or also the k parameter of rice coding
     "frame_type": int,  # int (enum) - corresponds to one of SUBFRAME_CONSTANT, SUBFRAME_RAW, SUBFRAME_LPC
-    "was_coded": int
 }
 
 columns = list(col_types.keys())

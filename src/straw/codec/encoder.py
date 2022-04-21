@@ -8,7 +8,7 @@ import soundfile
 
 from straw import lpc, static
 from straw.codec.base import BaseCoder
-from straw.compute.df_parallel import ParallelCompute
+from straw.compute import ParallelCompute
 from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
@@ -95,12 +95,10 @@ class Encoder(BaseCoder):
         self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
-        data_slice[["qlp", "qlp_precision", "shift"]] = lpc.compute_qlp(data_slice, order=self._lpc_order,
-                                                                        qlp_coeff_precision=self._lpc_precision)
+        lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
         data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
         data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
-        data_slice["was_coded"] = 0
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
         data_slice["stream_len"] = data_slice["stream"].apply(len)
         data_slice["frame_type"] = self._should_be_raw_maxbytes(data_slice)
@@ -113,8 +111,8 @@ class Encoder(BaseCoder):
         :return: None
         """
         self._tmp()
-        # self._data[["stream_len"]].to_pickle("/tmp/old_streamlen.pkl.gz")
-        # new_lens = self._data[["stream_len"]]
+        # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
+        # new_lens = self._data
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
@@ -168,7 +166,7 @@ class Encoder(BaseCoder):
         self._data.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
 
     def _should_be_raw_maxbytes(self, df: pd.DataFrame):
-        if not (df["frame_type"] == SubframeType.LPC).all():
+        if not (df["frame_type"].isin((SubframeType.LPC, SubframeType.LPC_COMMON))).all():
             return df["frame_type"]
 
         max_allowed_bits = df.loc[df.index[0], "residual"].shape[0] * self._params.bits_per_sample

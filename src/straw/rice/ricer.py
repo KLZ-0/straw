@@ -53,7 +53,7 @@ class Ricer:
             return bitarray(buffer=data)[:bits]
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
-        if df["frame_type"] != SubframeType.LPC:
+        if df["frame_type"] not in (SubframeType.LPC, SubframeType.LPC_COMMON):
             return bitarray()
 
         return self.frame_to_bitstream(df["residual"], df["bps"])

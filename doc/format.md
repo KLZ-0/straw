@@ -161,6 +161,7 @@ One of:
 - [SUBFRAME_CONSTANT](#SUBFRAME_CONSTANT)
 - [SUBFRAME_RAW](#SUBFRAME_RAW)
 - [SUBFRAME_LPC](#SUBFRAME_LPC)
+- [SUBFRAME_LPC_COMMON](#SUBFRAME_LPC_COMMON)
 
 The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
@@ -174,23 +175,14 @@ The [SUBFRAME_HEADER](#SUBFRAME_HEADER) specifies which one.
 
 ## SUBFRAME_LPC
 
-- `<1>` - has coefficients - can mean that this is the main channel, if not the main channel then it is coded
-  independently
-
-if (has coefficients):
-
-- `<5>` if(Contains LPC subframes bit == 1) (LPC order) - 1
-- `<4>` if(Contains LPC subframes bit == 1) (Quantized linear predictor coefficients' precision in bits)-1.
-- `<4>` if(Contains LPC subframes bit == 1) Quantized linear predictor coefficient shift needed in bits
-- `<bpc*order>` if(Contains LPC subframes bit == 1) Unencoded predictor coefficients (qlp coeff precision * lpc order) (
+- `<5>` (LPC order) - 1
+- `<4>` (Quantized linear predictor coefficients' precision in bits)-1.
+- `<4>` Quantized linear predictor coefficient shift needed in bits
+- `<bpc*order>` Unencoded predictor coefficients (qlp coeff precision * lpc order) (
   NOTE: the coefficients are signed two's-complement).
+- [SUBFRAME_LPC_COMMON](#SUBFRAME_LPC_COMMON)
 
-else:
-
-- `<0/1>`  Is decorrelated - anly applicable if the frame does not have separate LPC coefficients - whether a localized
-  decorrelation was used for this specific subframe
-
-endif
+## SUBFRAME_LPC_COMMON
 
 - `<bps*order>` Unencoded warm-up samples (bits-per-sample * lpc order).
 - [RESIDUAL](#RESIDUAL) Encoded residual
