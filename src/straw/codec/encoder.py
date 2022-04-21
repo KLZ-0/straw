@@ -88,7 +88,7 @@ class Encoder(BaseCoder):
         """
         # Extract stream parameters & initialize frame types
         self._parametrize()
-        self._set_frame_types()
+        self._init_frame_types()
 
         groups = self._data.groupby("seq")
         # self._data = groups.apply(self._encode_frame)
@@ -157,13 +157,9 @@ class Encoder(BaseCoder):
             self._params.max_frame_size = 0
         # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
 
-    def _set_frame_types(self):
+    def _init_frame_types(self):
         # all frames are LPC frames by default
         self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
-
-        # Constant frames
-        const_frames = self._data["frame"].apply(lambda x: not (x - x[0]).any())
-        self._data.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
 
     def _should_be_raw_maxbytes(self, df: pd.DataFrame):
         if not (df["frame_type"].isin((SubframeType.LPC, SubframeType.LPC_COMMON))).all():
