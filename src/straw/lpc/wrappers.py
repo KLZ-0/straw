@@ -70,18 +70,27 @@ def compute_residual(df: pd.DataFrame):
         (SubframeType.LPC, SubframeType.LPC_COMMON)), "frame_type"] = SubframeType.RAW
 
 
-def compute_original(df: pd.Series, inplace=False):
+def compute_original(df: (pd.Series, pd.DataFrame), inplace=False):
     """
     Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
     :param df: input dfframe with columns [frame, qlp, shift]
     :param inplace: whether the restoring should be done in place (faster)
+    this ignores the residual column and expects the residual to be stored after the warmup samples in the frame column
     :return: residual as a numpy array
     """
+    if isinstance(df, pd.DataFrame):
+        return df.apply(compute_original, inplace=inplace, axis=1)
+
     if not (df["frame_type"] in (SubframeType.LPC, SubframeType.LPC_COMMON)):
         return df
 
-    tmp = steps.restore_signal_cython(df["frame"], df["qlp"], df["shift"], inplace=inplace)
+    if inplace:
+        frame = df["frame"]
+    else:
+        frame = df["frame"].copy()
+        frame[len(df["qlp"]):] = df["residual"]
+        df["restored"] = frame
 
-    if not inplace:
-        df["restored"] = tmp
-        return df
+    steps.restore_signal_cython(frame, df["qlp"], df["shift"], inplace=inplace)
+
+    return df

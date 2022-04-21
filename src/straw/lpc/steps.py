@@ -247,7 +247,4 @@ def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int, 
     :return: reconstructed signal as a numpy array
     """
     # TODO: make this a proper wrapper without the need for duplicated lines
-    if not inplace:
-        frame = frame.copy()
     ext_lpc.restore_signal(frame, qlp, lp_quantization)
-    return frame
