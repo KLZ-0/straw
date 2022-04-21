@@ -30,7 +30,7 @@ class Decoder(BaseCoder):
         :return: None
         """
         self._revert_decorrelate("residual")
-        self._data.groupby("seq").apply(lpc.compute_original, inplace=True)
+        self._data.apply(lpc.compute_original, axis=1, inplace=True)
         self._revert_corrections()
         if self.get_md5() != self._params.md5:
             print(f"md5 restored: {self.get_md5().hex(' ')}")

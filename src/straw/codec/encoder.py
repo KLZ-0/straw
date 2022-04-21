@@ -8,6 +8,7 @@ import soundfile
 
 from straw import lpc, static
 from straw.codec.base import BaseCoder
+from straw.compute import ParallelCompute
 from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
@@ -87,27 +88,21 @@ class Encoder(BaseCoder):
         """
         # Extract stream parameters & initialize frame types
         self._parametrize()
-        lpc_frames = self._set_frame_types()
+        self._init_frame_types()
 
-        # Compute LPC & quantize coeffs
-        tmp = self._data.groupby("seq").apply(lpc.compute_qlp, self._lpc_order, self._lpc_precision)
-        self._data[["qlp", "qlp_precision", "shift"]] = tmp
-        # self._data = tmp
+        groups = self._data.groupby("seq")
+        # self._data = groups.apply(self._encode_frame)
+        self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
 
-        # Create residuals
-        self._data = self._data.groupby("seq").apply(lpc.compute_residual)
-        # self._data = self._data.apply(lpc.compute_residual, axis=1)
-        self._data["bps"] = self._data["residual"].apply(self._ricer.guess_parameter)
-
-        # Decorrelation
-        self._decorrelate_signals("residual")
-
-        # Rice encoding
-        self._data["stream"] = self._ricer.frames_to_bitstreams(self._data, parallel=True)
-        self._data["stream_len"] = self._data["stream"].apply(len)
-
-        # Recheck frame types
-        self._ensure_compression()
+    def _encode_frame(self, data_slice: pd.DataFrame):
+        lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
+        lpc.compute_residual(data_slice)
+        data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
+        data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
+        data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
+        data_slice["stream_len"] = data_slice["stream"].apply(len)
+        data_slice["frame_type"] = self._should_be_raw_maxbytes(data_slice)
+        return data_slice
 
     def save_file(self, output_file: Path):
         """
@@ -116,8 +111,8 @@ class Encoder(BaseCoder):
         :return: None
         """
         self._tmp()
-        # self._data[["stream_len"]].to_pickle("/tmp/old_streamlen.pkl.gz")
-        # new_lens = self._data[["stream_len"]]
+        # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
+        # new_lens = self._data
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
@@ -162,32 +157,18 @@ class Encoder(BaseCoder):
             self._params.max_frame_size = 0
         # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
 
-    def _set_frame_types(self):
+    def _init_frame_types(self):
         # all frames are LPC frames by default
         self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
 
-        # Constant frames
-        const_frames = self._data["frame"].apply(lambda x: not (x - x[0]).any())
-        self._data.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
-
-        return ~const_frames
-
-    def _check_if_should_be_raw_maxbytes(self, df: pd.DataFrame):
-        if not (df["frame_type"] == SubframeType.LPC).all():
-            return df
+    def _should_be_raw_maxbytes(self, df: pd.DataFrame):
+        if not (df["frame_type"].isin((SubframeType.LPC, SubframeType.LPC_COMMON))).all():
+            return df["frame_type"]
 
         max_allowed_bits = df.loc[df.index[0], "residual"].shape[0] * self._params.bits_per_sample
         if (df["stream_len"] >= max_allowed_bits).any():
             df["frame_type"] = SubframeType.RAW
-        return df
-
-    def _ensure_compression(self):
-        # NOTE: has to be done in groupby or else this can cause problems such as mixing LPC and non-LPC frames
-        self._data = self._data.groupby("seq").apply(self._check_if_should_be_raw_maxbytes)
-
-        if self._flac_mode:
-            max_residual_bytes = (self._data["stream_len"].max() // 8) + 1
-            self._params.max_frame_size = int(max_residual_bytes) + 1000
+        return df["frame_type"]
 
     def _apply_corrections(self):
         for correction in self._do_corrections:
@@ -200,11 +181,13 @@ class Encoder(BaseCoder):
             else:
                 raise ValueError(f"Invalid correction name: '{correction}', must be one of ('gain', 'bias', 'shift')")
 
-    def _decorrelate_signals(self, col_name="residual"):
+    def _decorrelate_signals(self, data_slice, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
-        self._data = self._data.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
-        self._data["was_coded"] = 0
+        # self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
+        #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
+        data_slice = data_slice.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
+        data_slice["was_coded"] = 0
 
     #########
     # Other #

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import get_window
 
+from straw.compute import ParallelCompute
 from straw.correctors.base import BaseCorrector
 from straw.io.params import StreamParams
 
@@ -21,14 +22,19 @@ class ShiftCorrector(BaseCorrector):
     def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
         reference = samplebuffer[0]
-        for i in range(1, samplebuffer.shape[0]):
-            lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
+        lags[:] = ParallelCompute.get_instance().map_ndarray(samplebuffer, self._double_sided_corr, reference=reference,
+                                                             limit=limit)
+        # for i in range(1, samplebuffer.shape[0]):
+        #     lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
 
         return np.argmin(lags)
 
     def _find_lags(self, samplebuffer: np.ndarray, leading_channel, limit) -> np.ndarray:
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
         reference = samplebuffer[leading_channel]
+        # lags[:] = ParallelCompute.get_instance().map_ndarray(samplebuffer, self._corr, reference=reference,
+        #                                                      end=limit-1)
+        # lags[leading_channel] = 0
         for i in range(samplebuffer.shape[0]):
             if i == leading_channel:
                 continue

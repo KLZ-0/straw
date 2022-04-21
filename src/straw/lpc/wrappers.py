@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 from straw.lpc import steps
@@ -9,10 +8,10 @@ Pandas-lever wrappers
 """
 
 
-def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.DataFrame:
+def compute_qlp(df: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.DataFrame:
     """
     Compute LPC and quantize the LPC coefficients
-    :param frame: input dataframe with columns [frame]
+    :param df: input dataframe with columns [frame]
     :param order: maximal LPC order
     :param qlp_coeff_precision: Bit precision for storing the quantized LPC coefficients
     :return: Series(qlp coefficients, qlp precision, qlp shift)
@@ -31,68 +30,67 @@ def compute_qlp(frame: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd
     #
     # return frame
 
-    if not (frame["frame_type"] == SubframeType.LPC).all():
-        return None
+    df["qlp"] = None
+    df["qlp_precision"] = 0
+    df["shift"] = 0
 
-    df = pd.Series({
-        "qlp": np.array([]),
-        "qlp_precision": 0,
-        "shift": 0,
-    })
+    # Constant frames
+    const_frames = df["frame"].apply(lambda x: not (x - x[0]).any())
+    if const_frames.any():
+        df.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
+        return df
 
-    lpc = steps.compute_lpc(frame["frame"], order)
+    lpc = steps.compute_lpc(df["frame"], order)
     if lpc is None:
+        df["frame_type"] = SubframeType.RAW
         return df
 
     qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
-    df["qlp"] = qlp
+    df["frame_type"] = SubframeType.LPC_COMMON
+    df["qlp"] = [qlp for _ in range(len(df["qlp"]))]
     df["qlp_precision"] = precision
     df["shift"] = shift
     return df
 
 
-def compute_residual(data: pd.DataFrame):
+def compute_residual(df: pd.DataFrame):
     """
     Computes the residual from the given signal with quantized LPC coefficients
-    :param data: input dataframe slice with columns [frame, qlp, shift]
-    :return: the input dataframe slice with a [residual] column added
+    :param df: input dfframe slice with columns [frame, qlp, shift]
+    :return: the input dfframe slice with a [residual] column added
     """
-    qlp_idx = data[["qlp"]].first_valid_index()
-    shift_idx = data[["shift"]].first_valid_index()
 
-    if qlp_idx is None:
-        data["residual"] = data["frame"].apply(lambda x: x[[0]])
-    elif isinstance(data["frame"], np.ndarray):
-        data["residual"] = steps.predict_compute_residual(data["frame"], data["qlp"], data["shift"])
-    else:
-        data["residual"] = data["frame"].apply(steps.predict_compute_residual,
-                                               qlp=data["qlp"][qlp_idx],
-                                               shift=int(data["shift"][shift_idx]))
-        if data["residual"].isna().any():
-            data["frame_type"] = SubframeType.RAW
+    def wrap(dt: pd.DataFrame):
+        if not (dt["frame_type"] in (SubframeType.LPC, SubframeType.LPC_COMMON)):
+            return None
+        return steps.predict_compute_residual(dt["frame"], dt["qlp"], dt["shift"])
 
-    return data
+    df["residual"] = df.apply(wrap, axis=1)
+    df.loc[df["residual"].isna() & df["frame_type"].isin(
+        (SubframeType.LPC, SubframeType.LPC_COMMON)), "frame_type"] = SubframeType.RAW
 
 
-def _compute_original_df_expander(data: pd.DataFrame, qlp, shift, inplace):
-    return steps.restore_signal_cython(data["frame"], qlp, shift, inplace)
-
-
-def compute_original(data: pd.DataFrame, inplace=False):
+def compute_original(df: (pd.Series, pd.DataFrame), inplace=False):
     """
     Computes the original from the given residual signal with quantized LPC coefficients and warmup samples
-    :param data: input dataframe with columns [frame, qlp, shift]
+    :param df: input dfframe with columns [frame, qlp, shift]
     :param inplace: whether the restoring should be done in place (faster)
+    this ignores the residual column and expects the residual to be stored after the warmup samples in the frame column
     :return: residual as a numpy array
     """
-    if not (data["frame_type"] == SubframeType.LPC).all():
-        return data
+    if isinstance(df, pd.DataFrame):
+        return df.apply(compute_original, inplace=inplace, axis=1)
 
-    qlp = data["qlp"][data["qlp"].first_valid_index()]
-    shift = int(data["shift"][data["shift"].first_valid_index()])
+    if not (df["frame_type"] in (SubframeType.LPC, SubframeType.LPC_COMMON)):
+        return df
 
-    tmp = data.apply(_compute_original_df_expander, qlp=qlp, shift=shift, axis=1, result_type="reduce", inplace=inplace)
+    if inplace:
+        frame = df["frame"]
+    else:
+        frame = df["frame"].copy()
+        frame[len(df["qlp"]):] = df["residual"]
+        df["restored"] = frame
 
-    if not inplace:
-        data["restored"] = tmp
-        return data
+    steps.restore_signal_cython(frame, df["qlp"], df["shift"], inplace=inplace)
+
+    return df

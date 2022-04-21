@@ -19,7 +19,7 @@ class Ricer:
 
     def __init__(self, adaptive=True, responsiveness: int = 16):
         self.adaptive = adaptive
-        self.parallel = ParallelCompute()
+        self.parallel = ParallelCompute.get_instance()
         self.responsiveness = responsiveness
 
     ##########################
@@ -53,7 +53,7 @@ class Ricer:
             return bitarray(buffer=data)[:bits]
 
     def _frame_to_bitstream_df_expander(self, df: pd.DataFrame) -> np.array:
-        if df["frame_type"] != SubframeType.LPC:
+        if df["frame_type"] not in (SubframeType.LPC, SubframeType.LPC_COMMON):
             return bitarray()
 
         return self.frame_to_bitstream(df["residual"], df["bps"])
@@ -69,7 +69,7 @@ class Ricer:
         if not parallel:
             return df.apply(self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
-        return self.parallel.apply(df, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
+        return self.parallel.map(df, self._frame_to_bitstream_df_expander, axis=1, result_type="reduce")
 
     ############
     # Decoding #
@@ -123,7 +123,7 @@ class Ricer:
         if not parallel:
             return comp.apply(self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
-        return self.parallel.apply(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
+        return self.parallel.map(comp, self._bitstream_to_frame_df_expander, axis=1, result_type="reduce")
 
     ###########
     # Utility #
