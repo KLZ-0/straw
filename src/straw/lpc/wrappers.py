@@ -58,11 +58,13 @@ def compute_residual(df: pd.DataFrame):
     """
 
     def wrap(dt: pd.DataFrame):
+        if not (dt["frame_type"] in (SubframeType.LPC, SubframeType.LPC_COMMON)):
+            return None
         return steps.predict_compute_residual(dt["frame"], dt["qlp"], dt["shift"])
 
     df["residual"] = df.apply(wrap, axis=1)
-    if df["residual"].isna().any():
-        df["frame_type"] = SubframeType.RAW
+    df.loc[df["residual"].isna() & df["frame_type"].isin(
+        (SubframeType.LPC, SubframeType.LPC_COMMON)), "frame_type"] = SubframeType.RAW
 
 
 def compute_original(df: pd.Series, inplace=False):
