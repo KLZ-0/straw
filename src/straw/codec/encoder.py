@@ -97,8 +97,8 @@ class Encoder(BaseCoder):
     def _encode_frame(self, data_slice: pd.DataFrame):
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
-        data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
         data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
+        data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
         data_slice["stream_len"] = data_slice["stream"].apply(len)
         data_slice["frame_type"] = self._should_be_raw_maxbytes(data_slice)
