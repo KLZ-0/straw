@@ -57,7 +57,7 @@ class Modifiers:
     @staticmethod
     def transform_midside(x1: np.array, x2: np.array):
         diff = x1 - x2
-        mid = (x1 + x2) // 2
+        mid = (x1 + x2) >> 1
         x1[:] = diff
         x2[:] = mid
 
@@ -65,8 +65,8 @@ class Modifiers:
     def transform_midside_reverse(x1: np.array, x2: np.array):
         diff = x1.copy()
         mid = x2.copy()
-        x1[:] = mid + np.ceil(diff / 2)
-        x2[:] = mid - np.floor(diff // 2)
+        x1[:] = mid + (diff >> 1) + (diff & 1)
+        x2[:] = mid - (diff >> 1)
 
 
 class Decorrelator:
