@@ -236,7 +236,7 @@ def restore_signal(residual, qlp, lp_quantization, warmup_samples):
     return data
 
 
-def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int, inplace: bool = False) -> np.array:
+def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int) -> np.array:
     """
     Restores the original signal given the residual with quantized LPC coefficients
     Wrapper around Cython extension for signal restoration

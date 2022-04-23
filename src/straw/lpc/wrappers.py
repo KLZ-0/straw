@@ -91,6 +91,6 @@ def compute_original(df: (pd.Series, pd.DataFrame), inplace=False):
         frame[len(df["qlp"]):] = df["residual"]
         df["restored"] = frame
 
-    steps.restore_signal_cython(frame, df["qlp"], df["shift"], inplace=inplace)
+    steps.restore_signal_cython(frame, df["qlp"], df["shift"])
 
     return df
