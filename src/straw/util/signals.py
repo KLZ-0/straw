@@ -26,11 +26,13 @@ class Signals:
         lst = []
         for i in range(0, data.shape[0], min_block_size):
             fr = data[i:i + min_block_size]
+            # shorttime_energy = Signals.signaltonoise(fr)
             shorttime_energy = np.sum(fr * fr) / fr.shape[0]
             lst.append(shorttime_energy)
         energies = np.asarray(lst)
         # Find indices where energy crosses a treshold
         # a crossing up means a high energy frame, crossing down a low energy frame
+        # borders = librosa.zero_crossings(energies)
         borders = librosa.zero_crossings(energies - treshold)
         indices = []
         last_indice = 0
@@ -41,3 +43,10 @@ class Signals:
         indices += Signals._add_indice(channel_data.shape[0], last_indice, max_block_size)
 
         return np.asarray(indices)
+
+    @staticmethod
+    def signaltonoise(a, axis=0, ddof=0):
+        a = np.asanyarray(a)
+        m = a.mean(axis)
+        sd = a.std(axis=axis, ddof=ddof)
+        return 20 * np.log10(abs(np.where(sd == 0, 0, m / sd)))
