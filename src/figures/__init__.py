@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from .static import show_frame
 
 
@@ -9,7 +11,7 @@ def plot_all(args=None):
     from .rice import RicePlot
 
     e = Encoder()
-    e.load_file(args.input_files[0])
+    e.load_file(Path(args.input_files[0]))
     e.encode()
 
     LPCPlot(e, args).print_lpc_and_qlp()
