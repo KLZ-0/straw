@@ -135,7 +135,7 @@ class Decorrelator:
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        if not (df["frame_type"] == SubframeType.LPC_COMMON).all():
+        if not (df["frame_type"] == SubframeType.LPC_COMMON).all() or len(df) == 1:
             return df
 
         order = Decorrelator._find_closest_lower_power_of_two(len(df))
