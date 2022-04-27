@@ -6,6 +6,7 @@ import pandas as pd
 import pyximport
 from scipy.linalg import solve_toeplitz
 from scipy.signal import get_window
+from spectrum import poly2lsf, lsf2poly
 
 pyximport.install()
 from . import ext_lpc
@@ -150,8 +151,12 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int, int):
     :param precision: target precition in bits
     :return: tuple(QLP, precision, shift)
     """
-    shift = ext_lpc.quantize_lpc(lpc_c, precision)
-    return lpc_c.astype(np.int32), precision, shift
+    lpc_inv = np.zeros(lpc_c.shape[0] + 1)
+    lpc_inv[0] = 1
+    lpc_inv[1:] = -lpc_c
+    lsf = np.asarray(poly2lsf(lpc_inv))
+    shift = ext_lpc.quantize_lpc(lsf, precision)
+    return lsf.astype(np.int32), precision, shift
 
 
 def simple_quantize(lpc_c, precision) -> (np.array, int, int):
@@ -196,7 +201,10 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     """
     shift = int(shift)
     residual = frame.copy()
-    ext_lpc.compute_residual(frame, residual, qlp, shift)
+    lpc = qlp.astype(np.double) / (2 ** shift)
+    lpc = -np.asarray(lsf2poly(lpc))[1:]
+    requantized_qlp = (lpc * (2 ** 32)).astype(np.int64)
+    ext_lpc.compute_residual(frame, residual, requantized_qlp, 32)
     tmp = residual[len(qlp):]
     # predicted = predict_signal(frame, qlp, shift)
     # tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
