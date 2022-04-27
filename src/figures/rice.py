@@ -18,7 +18,7 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_interleave.png")
+        self.save("rice_interleave.pdf")
 
     def static_m(self):
         frame = self._e.sample_frame()
@@ -31,7 +31,7 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_static_m.png")
+        self.save("rice_static_m.pdf")
 
     def dynamic_m(self):
         frame = self._e.sample_frame()
@@ -44,7 +44,7 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_dynamic_m.png")
+        self.save("rice_dynamic_m.pdf")
 
     def k_diff(self):
         frame = self._e.sample_frame()
@@ -57,7 +57,7 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_k_diff.png")
+        self.save("rice_k_diff.pdf")
 
     def rand_comparison(self):
         from numpy.random import default_rng
@@ -94,7 +94,7 @@ class RicePlot(BasePlot):
         s.set_ylabels("Bitstream size [kb]")
         s.tight_layout()
 
-        self.save("rice_rand_comparison.png")
+        self.save("rice_rand_comparison.pdf")
 
     @staticmethod
     def _get_params_static(frame: np.ndarray) -> np.ndarray:
