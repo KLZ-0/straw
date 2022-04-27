@@ -68,7 +68,7 @@ class RicePlot(BasePlot):
         df = {
             "spike_width": [],
             "value": [],
-            "type": [],
+            "Parameter type": [],
         }
 
         limit = 1000
@@ -76,20 +76,20 @@ class RicePlot(BasePlot):
         base_dataset = np.clip(rng.normal(0, limit / 5, size=4096), -limit, limit).astype(np.int64)
         full_window = np.zeros(4096, dtype=np.int64)
         for window_width in range(1, 512, 10):
-            window = np.clip(rng.normal(0, spike / 5, size=4096), -spike, spike).astype(np.int64)
+            window = np.clip(rng.normal(0, spike / 5, size=window_width), -spike, spike).astype(np.int64)
             start_idx = full_window.shape[0] // 2 - window.shape[0] // 2
             full_window[start_idx:start_idx + window.shape[0]] = window
             dataset = base_dataset + full_window
             bps = dynamic.guess_parameter(dataset)
             df["spike_width"].append(window_width)
             df["value"].append(len(dynamic.frame_to_bitstream(dataset, bps)) / 1000)
-            df["type"].append("dynamic")
+            df["Parameter type"].append("dynamic")
             df["spike_width"].append(window_width)
             df["value"].append(len(static.frame_to_bitstream(dataset, bps)) / 1000)
-            df["type"].append("static")
+            df["Parameter type"].append("static")
 
         df = pd.DataFrame(df)
-        s = sns.relplot(data=df, kind="line", x="spike_width", y="value", hue="type", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", x="spike_width", y="value", hue="Parameter type", height=2.5, aspect=3)
         s.set_xlabels("Spike width")
         s.set_ylabels("Bitstream size [kb]")
         s.tight_layout()
