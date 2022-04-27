@@ -195,8 +195,11 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     :return: frame residual with shape [order:]
     """
     shift = int(shift)
-    predicted = predict_signal(frame, qlp, shift)
-    tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
+    residual = frame.copy()
+    ext_lpc.compute_residual(frame, residual, qlp, shift)
+    tmp = residual[len(qlp):]
+    # predicted = predict_signal(frame, qlp, shift)
+    # tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
     if tmp.var() < frame.var():
         # TODO: we could use the same memory space but this would prevent us from using the raw signal after
         # frame[len(qlp):] = tmp
