@@ -27,3 +27,4 @@ def plot_all(args=None):
     RicePlot(e, args).static_m()
     RicePlot(e, args).dynamic_m()
     RicePlot(e, args).k_diff()
+    RicePlot(e, args).rand_comparison()
