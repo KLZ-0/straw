@@ -27,7 +27,7 @@ class RicePlot(BasePlot):
         df = pd.DataFrame({
             "sample": [i for i in range(len(signal))] + [i for i in range(len(signal))],
             "value": list(self._get_interleaved_signal(signal)) + list(self._get_params_static(signal)),
-            "type": ["interleaved signal" for _ in range(len(signal))] + ["m parameter" for _ in range(len(signal))],
+            " ": ["interleaved signal" for _ in range(len(signal))] + ["m parameter" for _ in range(len(signal))],
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
@@ -40,10 +40,13 @@ class RicePlot(BasePlot):
         df = pd.DataFrame({
             "sample": [i for i in range(len(signal))] + [i for i in range(len(signal))],
             "value": list(self._get_interleaved_signal(signal)) + list(self._get_params_variable(signal)),
-            "type": ["signal" for _ in range(len(signal))] + ["static m" for _ in range(len(signal))],
+            " ": ["Signal" for _ in range(len(signal))] + ["Parameter (m)" for _ in range(len(signal))],
         })
 
-        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue=" ", height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Value (16-bit)")
+        s.tight_layout()
         self.save("rice_dynamic_m.pdf")
 
     def k_diff(self):
@@ -83,10 +86,10 @@ class RicePlot(BasePlot):
             bps = dynamic.guess_parameter(dataset)
             df["spike_width"].append(window_width)
             df["value"].append(len(dynamic.frame_to_bitstream(dataset, bps)) / 1000)
-            df["Parameter type"].append("dynamic")
+            df["Parameter type"].append("Adaptive")
             df["spike_width"].append(window_width)
             df["value"].append(len(static.frame_to_bitstream(dataset, bps)) / 1000)
-            df["Parameter type"].append("static")
+            df["Parameter type"].append("Static")
 
         df = pd.DataFrame(df)
         s = sns.relplot(data=df, kind="line", x="spike_width", y="value", hue="Parameter type", height=2.5, aspect=3)
