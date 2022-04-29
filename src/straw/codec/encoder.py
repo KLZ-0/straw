@@ -6,10 +6,9 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from straw import lpc, static
+from straw import lpc, static, correctors
 from straw.codec.base import BaseCoder
 from straw.compute import ParallelCompute
-from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
@@ -28,7 +27,7 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False, do_corrections=("bias", "shift"), dynamic_blocksize=False):
+    def __init__(self, flac_mode=False, do_corrections=("shift", "bias"), dynamic_blocksize=False):
         """
 
         :param flac_mode:
@@ -78,7 +77,7 @@ class Encoder(BaseCoder):
 
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
-        self._apply_corrections()
+        correctors.apply(self._do_corrections, self._samplebuffer, self._params)
         self._create_dataframe()
 
     def encode(self):
@@ -97,7 +96,7 @@ class Encoder(BaseCoder):
     def _encode_frame(self, data_slice: pd.DataFrame):
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
-        data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
+        data_slice = correctors.Decorrelator().midside_decorrelate(data_slice, "residual")
         data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
         data_slice["stream_len"] = data_slice["stream"].apply(len)
@@ -170,23 +169,12 @@ class Encoder(BaseCoder):
             df["frame_type"] = SubframeType.RAW
         return df["frame_type"]
 
-    def _apply_corrections(self):
-        for correction in self._do_corrections:
-            if correction == "gain":
-                GainCorrector().apply(self._samplebuffer, self._params)
-            elif correction == "bias":
-                BiasCorrector().apply(self._samplebuffer, self._params)
-            elif correction == "shift":
-                ShiftCorrector().apply(self._samplebuffer, self._params)
-            else:
-                raise ValueError(f"Invalid correction name: '{correction}', must be one of ('gain', 'bias', 'shift')")
-
     def _decorrelate_signals(self, data_slice, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         # self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
         #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
-        data_slice = data_slice.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
+        data_slice = data_slice.groupby("seq").apply(correctors.Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice["was_coded"] = 0
 
     #########
