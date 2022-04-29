@@ -3,6 +3,8 @@ import pandas as pd
 import seaborn as sns
 
 from figures.base import BasePlot
+from straw.correctors import ShiftCorrector
+from straw.io.params import StreamParams
 
 
 class CorrectionsPlot(BasePlot):
@@ -24,6 +26,42 @@ class CorrectionsPlot(BasePlot):
         s.tight_layout()
 
         self.save("shift.pdf")
+
+    @staticmethod
+    def _make_multichannel_df(frame: np.array, limits: tuple = None) -> pd.DataFrame:
+        if limits is not None:
+            frame = frame[:, limits[0]:limits[0] + limits[1]]
+
+        df = {
+            "sample": [],
+            "value": [],
+            "Channel": [],
+        }
+        for i, subframe in enumerate(frame):
+            df["sample"] += [u for u in range(subframe.shape[0])]
+            df["value"] += subframe.tolist()
+            df["Channel"] += [i for _ in range(subframe.shape[0])]
+
+        return pd.DataFrame(df, copy=False)
+
+    def shift_real(self, corrected):
+        frame = self._e.samplebuffer_frame_multichannel(seq=4)
+        if corrected:
+            sc = ShiftCorrector()
+            sc.apply(frame, params=StreamParams())
+            sc.apply_to_ndarray(frame)
+
+        df = self._make_multichannel_df(frame, limits=(1750, 80))
+
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="Channel", dashes=False, height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
+        if corrected:
+            self.save("shift_real_after.pdf")
+        else:
+            self.save("shift_real_before.pdf")
 
     def gain(self):
         frame = self._e.sample_frame()

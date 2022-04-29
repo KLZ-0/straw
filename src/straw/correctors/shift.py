@@ -8,6 +8,8 @@ from straw.io.params import StreamParams
 
 
 class ShiftCorrector(BaseCorrector):
+    _lags: np.array = None
+
     def apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
         windowed = (samplebuffer * get_window("nuttall", samplebuffer.shape[1])).astype(np.int64)
         leading_channel = self._find_leading_channel(windowed, limit=limit)
@@ -18,6 +20,17 @@ class ShiftCorrector(BaseCorrector):
             lag = params.lags[i]
             params.removed_samples_start.append(samplebuffer[i][:lag])
             params.removed_samples_end.append(samplebuffer[i][total_size + lag:])
+        self._lags = params.lags
+
+    def apply_to_ndarray(self, data):
+        """
+        Performs shift inplace by rewriting each sample by a rolled array
+        NOTE: this is very inefficient and this operation is normally performed at framing/blocking
+         and this method is used only in figures where it needs to be done explicitly
+        """
+        for channel in range(data.shape[0]):
+            lag = self._lags[channel]
+            data[channel] = np.roll(data[channel], -lag)
 
     def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
