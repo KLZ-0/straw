@@ -3,7 +3,7 @@ import pandas as pd
 import seaborn as sns
 
 from figures.base import BasePlot
-from straw.correctors import ShiftCorrector
+from straw import correctors
 from straw.io.params import StreamParams
 
 
@@ -101,12 +101,10 @@ class CorrectionsPlot(BasePlot):
 
         self.save(filename)
 
-    def shift_real(self, filename, corrected):
+    def real(self, filename, corrected=()):
         frame = self._e.samplebuffer_frame_multichannel(seq=4)
         if corrected:
-            sc = ShiftCorrector()
-            sc.apply(frame, params=StreamParams())
-            sc.apply_to_ndarray(frame)
+            correctors.apply(corrected, frame, StreamParams(), force_inplace=True)
 
         df = self._make_multichannel_df(frame, limits=(1750, 80))
 
