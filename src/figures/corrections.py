@@ -8,7 +8,7 @@ from straw.io.params import StreamParams
 
 
 class CorrectionsPlot(BasePlot):
-    def shift(self):
+    def shift(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -25,7 +25,7 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("shift.pdf")
+        self.save(filename)
 
     @staticmethod
     def _make_multichannel_df(frame: np.array, limits: tuple = None) -> pd.DataFrame:
@@ -44,26 +44,7 @@ class CorrectionsPlot(BasePlot):
 
         return pd.DataFrame(df, copy=False)
 
-    def shift_real(self, corrected):
-        frame = self._e.samplebuffer_frame_multichannel(seq=4)
-        if corrected:
-            sc = ShiftCorrector()
-            sc.apply(frame, params=StreamParams())
-            sc.apply_to_ndarray(frame)
-
-        df = self._make_multichannel_df(frame, limits=(1750, 80))
-
-        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="Channel", dashes=False, height=2.5, aspect=3)
-        s.set_xlabels("Sample")
-        s.set_ylabels("Sample value (16-bit)")
-        s.tight_layout()
-
-        if corrected:
-            self.save("shift_real_after.pdf")
-        else:
-            self.save("shift_real_before.pdf")
-
-    def gain(self):
+    def gain(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -80,9 +61,9 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("gain.pdf")
+        self.save(filename)
 
-    def offset(self):
+    def offset(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -99,9 +80,9 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("offset.pdf")
+        self.save(filename)
 
-    def all(self):
+    def all(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -118,4 +99,23 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("all.pdf")
+        self.save(filename)
+
+    def shift_real(self, filename, corrected):
+        frame = self._e.samplebuffer_frame_multichannel(seq=4)
+        if corrected:
+            sc = ShiftCorrector()
+            sc.apply(frame, params=StreamParams())
+            sc.apply_to_ndarray(frame)
+
+        df = self._make_multichannel_df(frame, limits=(1750, 80))
+
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="Channel", dashes=False, height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
+        if corrected:
+            self.save(filename)
+        else:
+            self.save(filename)

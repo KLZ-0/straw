@@ -7,7 +7,7 @@ from straw.rice import Ricer
 
 
 class RicePlot(BasePlot):
-    def interleave(self):
+    def interleave(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -18,9 +18,9 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_interleave.pdf")
+        self.save(filename)
 
-    def static_m(self):
+    def static_m(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -31,9 +31,9 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_static_m.pdf")
+        self.save(filename)
 
-    def dynamic_m(self):
+    def dynamic_m(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -47,9 +47,9 @@ class RicePlot(BasePlot):
         s.set_xlabels("Sample")
         s.set_ylabels("Value (16-bit)")
         s.tight_layout()
-        self.save("rice_dynamic_m.pdf")
+        self.save(filename)
 
-    def k_diff(self):
+    def k_diff(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -60,9 +60,9 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_k_diff.pdf")
+        self.save(filename)
 
-    def rand_comparison(self):
+    def rand_comparison(self, filename):
         from numpy.random import default_rng
         rng = default_rng()
         static = Ricer(adaptive=False)
@@ -97,7 +97,7 @@ class RicePlot(BasePlot):
         s.set_ylabels("Bitstream size [kb]")
         s.tight_layout()
 
-        self.save("rice_rand_comparison.pdf")
+        self.save(filename)
 
     @staticmethod
     def _get_params_static(frame: np.ndarray) -> np.ndarray:

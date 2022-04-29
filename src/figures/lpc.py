@@ -32,7 +32,7 @@ class LPCPlot(BasePlot):
               , end="")
         print("%%%%%%%% INSERT TABLE %%%%%%%%")
 
-    def prediction_comparison(self):
+    def prediction_comparison(self, filename):
         """
         Shows the original frame and a predicted frame
         """
@@ -54,9 +54,9 @@ class LPCPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("prediction_comparison.pdf")
+        self.save(filename)
 
-    def residual(self):
+    def residual(self, filename):
         """
         Shows a residual frame
         :return:
@@ -78,9 +78,9 @@ class LPCPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("residual.pdf")
+        self.save(filename)
 
-    def common_lpc_autoc_averaging(self):
+    def common_lpc_autoc_averaging(self, filename):
         """
         Shows the residuals after using common LPC coefficients across all channels
         """
@@ -99,7 +99,7 @@ class LPCPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("lpc_averaged.png")
+        self.save(filename)
 
         # Also print variances...
 
@@ -114,7 +114,7 @@ class LPCPlot(BasePlot):
                                position="H", float_format="{:0.3f}".format, escape=False))
         # print("\n".join([f"{f:.3f}" for f in data["residual"].apply(np.var)]))
 
-    def common_lpc_variances(self):
+    def common_lpc_variances(self, filename):
         """
         Show variances across all frames across for all channels
         """
@@ -129,4 +129,4 @@ class LPCPlot(BasePlot):
         s.set_ylabels("Variance")
         s.tight_layout()
 
-        self.save("lpc_averaged_variances.png")
+        self.save(filename)
