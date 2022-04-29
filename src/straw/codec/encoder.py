@@ -77,7 +77,7 @@ class Encoder(BaseCoder):
 
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
-        correctors.apply(self._do_corrections, self._samplebuffer, self._params)
+        correctors.apply_corrections(self._samplebuffer, self._do_corrections, self._params)
         self._create_dataframe()
 
     def encode(self):

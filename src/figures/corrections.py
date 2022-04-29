@@ -4,7 +4,6 @@ import seaborn as sns
 
 from figures.base import BasePlot
 from straw import correctors
-from straw.io.params import StreamParams
 
 
 class CorrectionsPlot(BasePlot):
@@ -104,7 +103,7 @@ class CorrectionsPlot(BasePlot):
     def real(self, filename, corrected=()):
         frame = self._e.samplebuffer_frame_multichannel(seq=4)
         if corrected:
-            correctors.apply(corrected, frame, StreamParams(), force_inplace=True)
+            correctors.apply_corrections(frame, corrected, force_inplace=True)
 
         df = self._make_multichannel_df(frame, limits=(1750, 80))
 

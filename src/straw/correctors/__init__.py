@@ -1,10 +1,16 @@
+import numpy as np
+
+from straw.io.params import StreamParams
 from .bias import BiasCorrector
 from .decorrelator import Decorrelator
 from .gain import GainCorrector
 from .shift import ShiftCorrector
 
 
-def apply(corrections, data, target_params, force_inplace=False):
+def apply_corrections(data: np.array,
+                      corrections: tuple,
+                      target_params: StreamParams = StreamParams(),
+                      force_inplace: bool = False):
     for correction in corrections:
         if correction == "gain":
             GainCorrector().apply(data, target_params)
