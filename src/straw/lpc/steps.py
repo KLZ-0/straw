@@ -39,6 +39,10 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         window = get_window("tukey", signal[signal.index[0]].shape[0])
         r = np.asarray([_autocorr((s.astype(float) / (1 << 15)) * window, p + 1) for s in signal])
         r = np.mean(r, axis=0)
+        # lpc_c = np.zeros(p)
+        # for i in range(r.shape[0]):
+        #     lpc_c += solve_toeplitz(r[i, :-1], r[i, 1:], check_finite=False)
+        # return lpc_c / r.shape[0]
     else:
         if not signal.any():
             return None
