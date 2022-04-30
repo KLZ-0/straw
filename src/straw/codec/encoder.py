@@ -94,8 +94,12 @@ class Encoder(BaseCoder):
         self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
+        # correctors.ShiftCorrector().df_wrap_apply(data_slice["frame"])
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
+        # correctors.GainCorrector().df_wrap_apply(data_slice["residual"])
+        # correctors.ShiftCorrector().df_wrap_apply(data_slice["residual"])
+        # correctors.BiasCorrector().df_wrap_apply(data_slice["residual"])
         data_slice = correctors.Decorrelator().midside_decorrelate(data_slice, "residual")
         data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
