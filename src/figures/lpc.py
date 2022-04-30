@@ -42,12 +42,9 @@ class LPCPlot(BasePlot):
         poly[1:] = -lpc
         poles = roots(poly)
 
-        # for x in poles:
-        #     plt.polar([0, np.angle(x)], [0, np.abs(x)], marker='o')
-
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
         for x in poles:
-            ax.plot([np.angle(x), np.angle(x)], [np.abs(x), np.abs(x)], marker='o')
+            ax.plot([np.angle(x), np.angle(x)], [np.abs(x), np.abs(x)], marker="x")
 
         ax.set_rmax(1)
         ax.set_rticks([0.25, 0.5, 0.75, 1])
