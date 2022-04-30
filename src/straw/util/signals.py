@@ -2,23 +2,30 @@ import librosa
 import numpy as np
 
 
-class Signals:
-    @staticmethod
-    def _add_indice(indice: int, last_indice: int, max_block_size: int):
-        lst = []
-        while True:
-            if indice - last_indice <= max_block_size:
-                return lst + [indice]
-            else:
-                last_indice = last_indice + max_block_size
-                lst.append(last_indice)
+def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
+    indices = [0]
+    currect_size = 0
+    for i in range(1, raw_indices.shape[0]):
+        currect_size += raw_indices[i] - raw_indices[i - 1]
+        if min_block_size <= currect_size <= max_block_size:
+            indices.append(raw_indices[i])
+            currect_size = 0
 
+        while currect_size > max_block_size:
+            indices.append(indices[-1] + max_block_size)
+            currect_size -= max_block_size
+
+    indices[-1] = raw_indices[-1]
+    return np.asarray(indices)
+
+
+class Signals:
     @staticmethod
     def get_frame_limits_by_energy(channel_data: np.array,
                                    min_block_size: int = 1 << 10,
                                    treshold: int = 62000,
                                    max_block_size: int = 1 << 12,
-                                   resolution: int = None):
+                                   resolution: int = 10):
         """
         Returns a list of indices where frames should start
         """
@@ -31,22 +38,18 @@ class Signals:
             # shorttime_energy = Signals.signaltonoise(fr)
             shorttime_energy = np.sum(fr * fr) / fr.shape[0]
             lst.append(shorttime_energy)
+        lst.append(treshold)
         energies = np.asarray(lst)
         # Find indices where energy crosses a treshold
         # a crossing up means a high energy frame, crossing down a low energy frame
         # borders = librosa.zero_crossings(energies)
-        borders = librosa.zero_crossings(energies - treshold)
-        indices = []
-        last_indice = 0
-        for indice in borders.nonzero()[0]:
-            indice *= resolution
-            if indice != 0 and last_indice + min_block_size > indice:
-                continue
-            indices += Signals._add_indice(indice, last_indice, max_block_size)
-            last_indice = indice
-        indices += Signals._add_indice(channel_data.shape[0], last_indice, max_block_size)
+        borders = librosa.zero_crossings(energies - treshold, zero_pos=False)
+        all_indices = borders.nonzero()[0] * resolution
+        all_indices[-1] = channel_data.shape[0]
 
-        return np.asarray(indices)
+        indices = resample_indices(all_indices, min_block_size, max_block_size)
+
+        return indices
 
     @staticmethod
     def signaltonoise(a, axis=0, ddof=0):
