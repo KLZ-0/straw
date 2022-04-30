@@ -41,7 +41,7 @@ def compute_qlp(df: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.Da
         return df
 
     lpc = steps.compute_lpc(df["frame"], order)
-    if lpc is None:
+    if lpc is None or not steps.lpc_is_stable(lpc):
         df["frame_type"] = SubframeType.RAW
         return df
 

@@ -4,12 +4,12 @@ import sys
 import numpy as np
 import pandas as pd
 import pyximport
+from numpy.lib.polynomial import roots
 from scipy.linalg import solve_toeplitz
 from scipy.signal import get_window
 
 pyximport.install()
 from . import ext_lpc
-
 
 ####################
 # LPC coefficients #
@@ -51,6 +51,13 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         r = _autocorr((signal.astype(float) / (1 << 15)) * window, p + 1)
 
     return solve_toeplitz(r[:-1], r[1:], check_finite=False)
+
+
+def lpc_is_stable(lpc_c) -> bool:
+    poly = np.zeros(lpc_c.shape[0] + 1)
+    poly[0] = 1
+    poly[1:] = -lpc_c
+    return np.max(np.abs(roots(poly))) < 1.0
 
 
 ################
