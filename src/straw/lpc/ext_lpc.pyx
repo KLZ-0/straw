@@ -94,7 +94,7 @@ def compute_residual(cython.integral[:] frame, cython.integral[:] residual, int[
         _sum = 0
         for j in range(order):
             _sum += qlp[j] * frame[i - j - 1]
-        residual[i] = frame[i] - (_sum >> lp_quantization)
+        residual[i] = frame[i] + (_sum >> lp_quantization)
 
 ###############
 # Restoration #
@@ -122,4 +122,4 @@ def restore_signal(cython.integral[:] frame, int[:] qlp, int lp_quantization):
         _sum = 0
         for j in range(order):
             _sum += qlp[j] * frame[i - j - 1]
-        frame[i] = frame[i] + (_sum >> lp_quantization)
+        frame[i] = frame[i] - (_sum >> lp_quantization)

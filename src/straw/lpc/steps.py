@@ -50,7 +50,7 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         window = get_window("tukey", signal.shape[0])
         r = _autocorr((signal.astype(float) / (1 << 15)) * window, p + 1)
 
-    return solve_toeplitz(r[:-1], r[1:], check_finite=False)
+    return -solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
 
 ################
