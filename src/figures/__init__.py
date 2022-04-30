@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from .blocking import FrameBlockingPlot
 from .static import show_frame
 
 
@@ -27,7 +28,7 @@ def plot_all(args=None):
     # CorrectionsPlot(e, args).real("corrected_gain.pdf", corrected=("gain",))
     # CorrectionsPlot(e, args).real("corrected_bias.pdf", corrected=("bias",))
     # CorrectionsPlot(e, args).real("corrected_all.pdf", corrected=("gain", "shift", "bias"))
-    LPCPlot(e, args).lpc_unit_circle("lpc_unit_circle.pdf")
+    # LPCPlot(e, args).lpc_unit_circle("lpc_unit_circle.pdf")
 
     ####################
     # With corrections #
@@ -46,14 +47,15 @@ def plot_all(args=None):
     # RicePlot(e, args).static_m("rice_static_m.pdf")
     # RicePlot(e, args).dynamic_m("rice_dynamic_m.pdf")
     # RicePlot(e, args).k_diff("rice_k_diff.pdf")
-    RicePlot(e, args).rand_comparison("rice_rand_comparison.pdf")
+    # RicePlot(e, args).rand_comparison("rice_rand_comparison.pdf")
+    FrameBlockingPlot(e, args).frame_limits("blocking_dynamic.pdf")
 
     ###########################
     # With corrections + gain #
     ###########################
 
-    e = Encoder(do_corrections=("gain", "shift", "bias"))
-    e.load_file(Path(args.input_files[0]))
-    e.encode()
+    # e = Encoder(do_corrections=("gain", "shift", "bias"))
+    # e.load_file(Path(args.input_files[0]))
+    # e.encode()
 
     # CorrectionsPlot(e, args).real("corrected_all_global.pdf")
