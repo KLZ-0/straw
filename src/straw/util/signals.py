@@ -22,7 +22,7 @@ def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size:
 class Signals:
     @staticmethod
     def get_frame_limits_by_energy(channel_data: np.array,
-                                   min_block_size: int = 1 << 10,
+                                   min_block_size: int = 1 << 11,
                                    treshold: int = 62000,
                                    max_block_size: int = 1 << 12,
                                    resolution: int = 10):
