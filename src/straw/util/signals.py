@@ -24,7 +24,7 @@ class Signals:
     def get_frame_limits_by_energy(cls,
                                    channel_data: np.array,
                                    min_block_size: int = 1 << 11,
-                                   treshold: int = 62000,
+                                   treshold: int = 20000,
                                    max_block_size: int = 1 << 12,
                                    resolution: int = 10):
         """
