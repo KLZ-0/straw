@@ -32,8 +32,7 @@ class Signals:
         """
         if resolution is None:
             resolution = min_block_size
-        data = channel_data.astype(np.int64)
-        energies = cls.get_energies(data, resolution, treshold)
+        energies = cls.get_energies(channel_data, resolution, treshold)
         # Find indices where energy crosses a treshold
         # a crossing up means a high energy frame, crossing down a low energy frame
         # borders = librosa.zero_crossings(energies)
@@ -54,8 +53,9 @@ class Signals:
 
     @staticmethod
     def get_energies(data: np.array,
-                     resolution: int = 62000,
-                     treshold: int = 10):
+                     resolution: int = 10,
+                     treshold: int = 20000):
+        data = data.astype(np.int64)
         lst = []
         for i in range(0, data.shape[0], resolution):
             fr = data[i:i + resolution]
