@@ -4,8 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
 # NOTE: Do not import this without checking for args -> seaborn and mpl should be optional dependencies
+from numpy.lib.polynomial import roots
+
 from figures.base import BasePlot
 from straw.lpc import steps
 
@@ -31,6 +32,30 @@ class LPCPlot(BasePlot):
                             header=[f"$a_{i + 1}$" for i in range(len(lpc))], escape=False)
               , end="")
         print("%%%%%%%% INSERT TABLE %%%%%%%%")
+
+    def lpc_unit_circle(self, filename):
+        frame = self._e.sample_frame()
+        lpc = steps.compute_lpc(frame["frame"], 8)
+
+        poly = np.zeros(lpc.shape[0] + 1)
+        poly[0] = 1
+        poly[1:] = -lpc
+        poles = roots(poly)
+
+        # for x in poles:
+        #     plt.polar([0, np.angle(x)], [0, np.abs(x)], marker='o')
+
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        for x in poles:
+            ax.plot([np.angle(x), np.angle(x)], [np.abs(x), np.abs(x)], marker='o')
+
+        ax.set_rmax(1)
+        ax.set_rticks([0.25, 0.5, 0.75, 1])
+        # ax.set_rlabel_position(-25)
+        ax.grid(True)
+        fig.tight_layout()
+
+        self.save(filename)
 
     def prediction_comparison(self, filename):
         """

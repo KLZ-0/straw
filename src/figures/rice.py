@@ -64,7 +64,7 @@ class RicePlot(BasePlot):
 
     def rand_comparison(self, filename):
         from numpy.random import default_rng
-        rng = default_rng()
+        rng = default_rng(seed=[2444, 1248, 5685])
         static = Ricer(adaptive=False)
         dynamic = Ricer(adaptive=True)
 
