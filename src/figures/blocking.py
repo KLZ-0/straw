@@ -27,3 +27,29 @@ class FrameBlockingPlot(BasePlot):
 
         self.save(filename)
         print(limits)
+
+    def frame_energy(self, filename):
+        frame = self._e.samplebuffer_frame_multichannel(seq=4)
+
+        resolution = 10
+        limits = Signals.get_frame_limits_by_energy(frame[0], min_block_size=1 << 10, resolution=resolution)
+        energy = Signals.get_energies(frame[0], resolution=resolution)
+        treshold = energy[-1]
+        energy = energy[:-1]
+
+        df = pd.DataFrame({
+            "sample": [i for i in range(energy.shape[0])],
+            "value": energy
+        })
+
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", height=2.5, aspect=3)
+
+        for limit_x in limits:
+            plt.axvline(x=limit_x / resolution, ymin=0, ymax=1, color="red")
+        plt.axhline(y=treshold, xmin=0, xmax=1, color="green")
+
+        s.set_xlabels("Sample group (precision = 10)")
+        s.set_ylabels("Energy")
+        s.tight_layout()
+
+        self.save(filename)
