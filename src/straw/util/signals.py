@@ -16,16 +16,18 @@ class Signals:
     @staticmethod
     def get_frame_limits_by_energy(channel_data: np.array,
                                    min_block_size: int = 1 << 10,
-                                   treshold: int = 60,
-                                   max_block_size: int = 1 << 12):
+                                   treshold: int = 62000,
+                                   max_block_size: int = 1 << 12,
+                                   resolution: int = None):
         """
         Returns a list of indices where frames should start
         """
-        treshold *= min_block_size
+        if resolution is None:
+            resolution = min_block_size
         data = channel_data.astype(np.int64)
         lst = []
-        for i in range(0, data.shape[0], min_block_size):
-            fr = data[i:i + min_block_size]
+        for i in range(0, data.shape[0], resolution):
+            fr = data[i:i + resolution]
             # shorttime_energy = Signals.signaltonoise(fr)
             shorttime_energy = np.sum(fr * fr) / fr.shape[0]
             lst.append(shorttime_energy)
@@ -37,7 +39,9 @@ class Signals:
         indices = []
         last_indice = 0
         for indice in borders.nonzero()[0]:
-            indice *= min_block_size
+            indice *= resolution
+            if indice != 0 and last_indice + min_block_size > indice:
+                continue
             indices += Signals._add_indice(indice, last_indice, max_block_size)
             last_indice = indice
         indices += Signals._add_indice(channel_data.shape[0], last_indice, max_block_size)
