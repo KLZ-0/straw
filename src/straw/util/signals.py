@@ -20,8 +20,9 @@ def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size:
 
 
 class Signals:
-    @staticmethod
-    def get_frame_limits_by_energy(channel_data: np.array,
+    @classmethod
+    def get_frame_limits_by_energy(cls,
+                                   channel_data: np.array,
                                    min_block_size: int = 1 << 11,
                                    treshold: int = 62000,
                                    max_block_size: int = 1 << 12,
@@ -32,14 +33,7 @@ class Signals:
         if resolution is None:
             resolution = min_block_size
         data = channel_data.astype(np.int64)
-        lst = []
-        for i in range(0, data.shape[0], resolution):
-            fr = data[i:i + resolution]
-            # shorttime_energy = Signals.signaltonoise(fr)
-            shorttime_energy = np.sum(fr * fr) / fr.shape[0]
-            lst.append(shorttime_energy)
-        lst.append(treshold)
-        energies = np.asarray(lst)
+        energies = cls.get_energies(data, resolution, treshold)
         # Find indices where energy crosses a treshold
         # a crossing up means a high energy frame, crossing down a low energy frame
         # borders = librosa.zero_crossings(energies)
@@ -57,3 +51,16 @@ class Signals:
         m = a.mean(axis)
         sd = a.std(axis=axis, ddof=ddof)
         return 20 * np.log10(abs(np.where(sd == 0, 0, m / sd)))
+
+    @staticmethod
+    def get_energies(data: np.array,
+                     resolution: int = 62000,
+                     treshold: int = 10):
+        lst = []
+        for i in range(0, data.shape[0], resolution):
+            fr = data[i:i + resolution]
+            # shorttime_energy = Signals.signaltonoise(fr)
+            shorttime_energy = np.sum(fr * fr) / fr.shape[0]
+            lst.append(shorttime_energy)
+        lst.append(treshold)
+        return np.asarray(lst)
