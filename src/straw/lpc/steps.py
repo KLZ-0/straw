@@ -257,7 +257,6 @@ def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int) 
     :param frame: signal array initialized with the first samples from the original signal and the residual
     :param qlp: quantized LPC coefficients
     :param lp_quantization: quantization shift
-    :param inplace: whether the restoring should be done in place (faster)
     :return: reconstructed signal as a numpy array
     """
     # TODO: make this a proper wrapper without the need for duplicated lines
