@@ -21,5 +21,9 @@ class FrameBlockingPlot(BasePlot):
         for limit_x in limits:
             plt.axvline(x=limit_x, ymin=0, ymax=1, color="red")
 
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
         self.save(filename)
         print(limits)
