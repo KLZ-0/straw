@@ -29,3 +29,5 @@ soundfile_dtype = {
 class Default:
     min_frame_size = 1 << 11
     max_frame_size = 1 << 13
+    framing_treshold = 20000
+    framing_resolution = 10

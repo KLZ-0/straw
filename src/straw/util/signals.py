@@ -26,9 +26,9 @@ class Signals:
     def get_frame_limits_by_energy(cls,
                                    channel_data: np.array,
                                    min_block_size: int = Default.min_frame_size,
-                                   treshold: int = 20000,
+                                   treshold: int = Default.framing_treshold,
                                    max_block_size: int = Default.max_frame_size,
-                                   resolution: int = 10):
+                                   resolution: int = Default.framing_resolution):
         """
         Returns a list of indices where frames should start
         """
@@ -55,8 +55,8 @@ class Signals:
 
     @staticmethod
     def get_energies(data: np.array,
-                     resolution: int = 10,
-                     treshold: int = 20000):
+                     resolution: int = Default.framing_resolution,
+                     treshold: int = Default.framing_treshold):
         data = data.astype(np.int64)
         lst = []
         for i in range(0, data.shape[0], resolution):

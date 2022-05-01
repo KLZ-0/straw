@@ -16,6 +16,12 @@ from straw.static import SubframeType, Default
 from straw.util import Signals
 
 
+class EncoderStats:
+    frames: int = 0
+    file_size: int = 0
+    ratio: int = 0
+
+
 class Encoder(BaseCoder):
     # Values which should be parametrized
     # TODO: find the best values for these
@@ -32,7 +38,8 @@ class Encoder(BaseCoder):
                  do_corrections=("shift", "bias"),
                  dynamic_blocksize=False,
                  min_block_size=Default.min_frame_size,
-                 max_block_size=Default.max_frame_size):
+                 max_block_size=Default.max_frame_size,
+                 framing_treshold=Default.framing_treshold):
         """
 
         :param flac_mode:
@@ -45,12 +52,16 @@ class Encoder(BaseCoder):
         self._do_dynamic_blocking = dynamic_blocksize
         self._min_block_size = min_block_size
         self._max_block_size = max_block_size
+        self._framing_treshold = framing_treshold
 
     def set_blocksizes(self, min_block_size: int = None, max_block_size: int = None):
         if min_block_size is not None:
             self._min_block_size = min_block_size
         if max_block_size is not None:
             self._max_block_size = max_block_size
+
+    def set_framing_treshold(self, framing_treshold):
+        self._framing_treshold = framing_treshold
 
     def load_file(self, file):
         """
@@ -157,7 +168,8 @@ class Encoder(BaseCoder):
             lag = self._params.lags[0]
             limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag],
                                                         min_block_size=self._min_block_size,
-                                                        max_block_size=self._max_block_size)
+                                                        max_block_size=self._max_block_size,
+                                                        treshold=self._framing_treshold)
         else:
             limits = None
 
@@ -253,9 +265,12 @@ class Encoder(BaseCoder):
     # Utility #
     ###########
 
-    def get_stats(self, output_file: Path):
-        return output_file.stat().st_size, output_file.stat().st_size / self._source_size, len(
-            self._data.groupby('seq').groups)
+    def get_stats(self, output_file: Path) -> EncoderStats:
+        stats = EncoderStats()
+        stats.file_size = output_file.stat().st_size
+        stats.ratio = output_file.stat().st_size / self._source_size
+        stats.frames = len(self._data.groupby('seq').groups)
+        return stats
 
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         """
