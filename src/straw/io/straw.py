@@ -45,6 +45,7 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self._params.total_frames, length=sizes.frames)
         sec += int2ba(self._params.total_samples, length=sizes.samples)
         sec.frombytes(self._params.md5)
+        sec += int2ba(self._params.responsiveness, length=sizes.responsiveness)
 
         # Shift
         if self._params.lags.any():
@@ -230,6 +231,8 @@ class StrawFormatReader(BaseReader):
         expected_frames = self._sec.get_int(length=sizes.frames)
         self._params.total_samples = self._sec.get_int(length=sizes.samples)
         self._params.md5 = self._sec.get_bytes(length=sizes.md5)
+        self._params.responsiveness = self._sec.get_int(length=sizes.responsiveness)
+        self._ricer.responsiveness = self._params.responsiveness
 
         # Allocate sample buffer
         self._allocate_buffer()

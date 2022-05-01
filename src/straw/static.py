@@ -31,3 +31,4 @@ class Default:
     max_frame_size = 1 << 13
     framing_treshold = 20000
     framing_resolution = 10
+    rice_responsiveness = 16

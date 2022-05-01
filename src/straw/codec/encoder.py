@@ -40,7 +40,8 @@ class Encoder(BaseCoder):
                  min_block_size=Default.min_frame_size,
                  max_block_size=Default.max_frame_size,
                  framing_treshold=Default.framing_treshold,
-                 framing_resolution=Default.framing_resolution):
+                 framing_resolution=Default.framing_resolution,
+                 responsiveness=Default.rice_responsiveness):
         """
 
         :param flac_mode:
@@ -48,7 +49,8 @@ class Encoder(BaseCoder):
         :param dynamic_blocksize:
         """
         super(Encoder, self).__init__(flac_mode)
-        self._ricer = Ricer(adaptive=True if not flac_mode else False)
+        self._ricer = Ricer(adaptive=True if not flac_mode else False, responsiveness=responsiveness)
+        self._params.responsiveness = responsiveness
         self._do_corrections = do_corrections
         self._do_dynamic_blocking = dynamic_blocksize
         self.min_block_size = min_block_size

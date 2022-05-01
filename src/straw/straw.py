@@ -27,7 +27,8 @@ def _encode(args):
                 min_block_size=args.min_frame_size,
                 max_block_size=args.max_frame_size,
                 framing_treshold=args.framing_treshold,
-                framing_resolution=args.framing_resolution)
+                framing_resolution=args.framing_resolution,
+                responsiveness=args.rice_responsiveness)
 
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))

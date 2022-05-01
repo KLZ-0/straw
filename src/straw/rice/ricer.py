@@ -3,9 +3,9 @@ import pandas as pd
 import pyximport
 from bitarray import bitarray
 
-from ..compute import ParallelCompute
-from ..io.sizes import StrawSizes
-from ..static import SubframeType
+from straw.compute import ParallelCompute
+from straw.io.sizes import StrawSizes
+from straw.static import SubframeType, Default
 
 pyximport.install()
 from . import ext_rice
@@ -17,7 +17,7 @@ class Ricer:
     Currently only supports memory for for memory efficiency comparisons and benchmarks
     """
 
-    def __init__(self, adaptive=True, responsiveness: int = 16):
+    def __init__(self, adaptive=True, responsiveness: int = Default.framing_resolution):
         self.adaptive = adaptive
         self.parallel = ParallelCompute.get_instance()
         self.responsiveness = responsiveness

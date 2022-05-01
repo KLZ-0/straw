@@ -30,6 +30,8 @@ if __name__ == '__main__':
                         default=Default.framing_treshold, help="Override framing treshold")
     parser.add_argument("--framing-resolution", dest="framing_resolution", metavar="RESOLUTION", type=int,
                         default=Default.framing_resolution, help="Override framing resolution")
+    parser.add_argument("--rice-responsiveness", dest="rice_responsiveness", metavar="RESPONSIVENESS", type=int,
+                        default=Default.rice_responsiveness, help="Override Rice codding responsiveness")
 
     args = parser.parse_args()
 
