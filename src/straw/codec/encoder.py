@@ -46,6 +46,12 @@ class Encoder(BaseCoder):
         self._min_block_size = min_block_size
         self._max_block_size = max_block_size
 
+    def set_blocksizes(self, min_block_size: int = None, max_block_size: int = None):
+        if min_block_size is not None:
+            self._min_block_size = min_block_size
+        if max_block_size is not None:
+            self._max_block_size = max_block_size
+
     def load_file(self, file):
         """
         Load the specified file into memory
@@ -246,6 +252,10 @@ class Encoder(BaseCoder):
     ###########
     # Utility #
     ###########
+
+    def get_stats(self, output_file: Path):
+        return output_file.stat().st_size, output_file.stat().st_size / self._source_size, len(
+            self._data.groupby('seq').groups)
 
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         """

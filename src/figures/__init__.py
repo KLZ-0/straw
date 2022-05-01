@@ -11,6 +11,14 @@ def plot_all(args=None):
     from .lpc import LPCPlot
     from .rice import RicePlot
 
+    ###########
+    # Special #
+    ###########
+
+    e = Encoder(dynamic_blocksize=True)
+    FrameBlockingPlot(e, args).frame_sizes("blocking_dynamic_energy.pdf")
+    exit()
+
     #######################
     # Without corrections #
     #######################

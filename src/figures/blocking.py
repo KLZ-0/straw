@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -53,3 +56,23 @@ class FrameBlockingPlot(BasePlot):
         s.tight_layout()
 
         self.save(filename)
+
+    def frame_sizes(self, output_file):
+        file_sizes = [
+            (1 << 12, 1 << 12),
+            (1 << 10, 1 << 12),
+            (1 << 11, 1 << 12),
+            (1 << 11, 1 << 13),
+            (1 << 11, 1 << 14),
+        ]
+
+        for sizes in file_sizes:
+            self._e.set_blocksizes(*sizes)
+            self._e.load_file(self._args.input_files[0])
+            self._e.encode()
+            tmpfile = tempfile.NamedTemporaryFile(delete=True)
+            with open(tmpfile.name, "w+b") as f:
+                self._e.save_file(f)
+                file_size, ratio, frames = self._e.get_stats(Path(f.name))
+                print(
+                    f"{sizes[0]} & {sizes[1]} & {frames} & {file_size / 2 ** 20:.2f}\\,MiB & {ratio * 100:.2f}\\,\\% \\\\")
