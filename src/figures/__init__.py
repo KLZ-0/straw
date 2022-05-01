@@ -16,7 +16,8 @@ def plot_all(args=None):
     ###########
 
     e = Encoder(dynamic_blocksize=True)
-    FrameBlockingPlot(e, args).frame_sizes("blocking_dynamic_energy.pdf")
+    # FrameBlockingPlot(e, args).print_sizes()
+    FrameBlockingPlot(e, args).plot_tresholds("blocking_dynamic_tresholds.pdf")
     exit()
 
     #######################
