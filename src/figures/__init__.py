@@ -18,6 +18,7 @@ def plot_all(args=None):
     e = Encoder(dynamic_blocksize=True)
     # FrameBlockingPlot(e, args).print_sizes()
     # FrameBlockingPlot(e, args).plot_tresholds("blocking_dynamic_tresholds.pdf")
+    RicePlot(e, args).plot_responsiveness("rice_responsiveness.pdf")
 
     #######################
     # Without corrections #

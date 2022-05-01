@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -110,3 +113,36 @@ class RicePlot(BasePlot):
     @staticmethod
     def _get_interleaved_signal(frame: np.ndarray) -> np.ndarray:
         return Ricer.frame_to_interleaved(frame)
+
+    def _get_stats_for_responsiveness(self, resps: list):
+        for resp in resps:
+            self._e.set_rice_responsiveness(resp)
+            self._e.load_file(self._args.input_files[0])
+            self._e.encode()
+            tmpfile = tempfile.NamedTemporaryFile(delete=True)
+            with open(tmpfile.name, "w+b") as f:
+                self._e.save_file(f)
+                yield resp, self._e.get_stats(Path(f.name))
+
+    def plot_responsiveness(self, filename):
+        size = []
+        responsiveness = []
+        resps = [10, 15, 18, 19, 20, 21, 22, 23, 24, 26, 30]
+        for i, (resp, stats) in enumerate(self._get_stats_for_responsiveness(resps)):
+            print(f"Processing {i} / {len(resps) - 1}")
+            size.append(stats.file_size / 2 ** 20)
+            responsiveness.append(resp)
+
+        df = pd.DataFrame({
+            "size": size,
+            "responsiveness": responsiveness
+        })
+
+        s = sns.relplot(data=df, kind="line", x="responsiveness", y="size", height=2.5, aspect=3)
+
+        s.set_xlabels("Responsiveness")
+        s.set_ylabels("File size [MiB]")
+        s.tight_layout()
+
+        self.save(filename)
+        print(size)

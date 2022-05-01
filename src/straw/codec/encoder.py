@@ -58,6 +58,10 @@ class Encoder(BaseCoder):
         self.framing_treshold = framing_treshold
         self.framing_resolution = framing_resolution
 
+    def set_rice_responsiveness(self, responsiveness):
+        self._ricer.responsiveness = responsiveness
+        self._params.responsiveness = responsiveness
+
     def load_file(self, file):
         """
         Load the specified file into memory

@@ -87,7 +87,7 @@ class FrameBlockingPlot(BasePlot):
         (1 << 11, 1 << 14),
     ]
 
-    def get_stats_for_treshold(self, treshold=Default.framing_treshold):
+    def _get_stats_for_treshold(self, treshold=Default.framing_treshold):
         self._e.framing_treshold = treshold
         for sizes in self.frame_sizes:
             self._e.min_block_size = sizes[0]
@@ -100,7 +100,7 @@ class FrameBlockingPlot(BasePlot):
                 yield sizes, self._e.get_stats(Path(f.name))
 
     def print_sizes(self):
-        for sizes, stats in self.get_stats_for_treshold():
+        for sizes, stats in self._get_stats_for_treshold():
             print(
                 f"{sizes[0]} & {sizes[1]} & {stats.frames} & {stats.file_size / 2 ** 20:.2f}\\,MiB & {stats.ratio * 100:.2f}\\,\\% \\\\")
 
@@ -110,7 +110,7 @@ class FrameBlockingPlot(BasePlot):
         treshold = []
         tress = [1000, 2500, 5000, 10000, 20000, 40000, 60000, 80000]
         for it, tres in enumerate(tress):
-            for i, (sizes, stats) in enumerate(self.get_stats_for_treshold(tres)):
+            for i, (sizes, stats) in enumerate(self._get_stats_for_treshold(tres)):
                 print(f"Processing {it * len(self.frame_sizes) + i + 1} / {len(tress) * len(self.frame_sizes)}")
                 run.append(f"MinFS={sizes[0]}, MaxFS={sizes[1]}")
                 size.append(stats.file_size / 2 ** 20)
@@ -118,11 +118,11 @@ class FrameBlockingPlot(BasePlot):
 
         df = pd.DataFrame({
             "Run": run,
-            "ratio": size,
+            "size": size,
             "treshold": treshold
         })
 
-        s = sns.relplot(data=df, kind="line", x="treshold", y="ratio", hue="Run", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", x="treshold", y="size", hue="Run", height=2.5, aspect=3)
 
         s.set_xlabels("Energy treshold")
         s.set_ylabels("File size [MiB]")
