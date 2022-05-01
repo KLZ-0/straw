@@ -12,8 +12,6 @@ if __name__ == '__main__':
                         help="Output file")
     parser.add_argument("-d", "--decode", dest="decode", action="store_true",
                         help="Decode")
-    parser.add_argument("-f", "--flac", dest="flac_mode", action="store_true",
-                        help="FLAC mode")
 
     # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",
@@ -28,6 +26,10 @@ if __name__ == '__main__':
                         default=Default.min_frame_size, help="Override minimal frame size")
     parser.add_argument("--max-frame-size", dest="max_frame_size", metavar="MAX_FRAME_SIZE", type=int,
                         default=Default.max_frame_size, help="Override maximal frame size")
+    parser.add_argument("--framing-threshold", dest="framing_treshold", metavar="THRESHOLD", type=int,
+                        default=Default.framing_treshold, help="Override framing treshold")
+    parser.add_argument("--framing-resolution", dest="framing_resolution", metavar="RESOLUTION", type=int,
+                        default=Default.framing_resolution, help="Override framing resolution")
 
     args = parser.parse_args()
 

@@ -39,7 +39,8 @@ class Encoder(BaseCoder):
                  dynamic_blocksize=False,
                  min_block_size=Default.min_frame_size,
                  max_block_size=Default.max_frame_size,
-                 framing_treshold=Default.framing_treshold):
+                 framing_treshold=Default.framing_treshold,
+                 framing_resolution=Default.framing_resolution):
         """
 
         :param flac_mode:
@@ -53,6 +54,7 @@ class Encoder(BaseCoder):
         self._min_block_size = min_block_size
         self._max_block_size = max_block_size
         self._framing_treshold = framing_treshold
+        self._framing_resolution = framing_resolution
 
     def set_blocksizes(self, min_block_size: int = None, max_block_size: int = None):
         if min_block_size is not None:
@@ -169,7 +171,8 @@ class Encoder(BaseCoder):
             limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag],
                                                         min_block_size=self._min_block_size,
                                                         max_block_size=self._max_block_size,
-                                                        treshold=self._framing_treshold)
+                                                        treshold=self._framing_treshold,
+                                                        resolution=self._framing_resolution)
         else:
             limits = None
 
