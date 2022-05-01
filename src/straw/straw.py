@@ -18,7 +18,7 @@ def write(file, data: np.array, samplerate: int):
     e = Encoder()
     e.load_data(data, samplerate)
     e.encode()
-    e.save_file(Path(file))
+    e.save_file(Path(file).open("wb"))
 
 
 def _encode(args):

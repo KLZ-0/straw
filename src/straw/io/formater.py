@@ -1,8 +1,9 @@
 from pathlib import Path
+from typing import BinaryIO
 
 import pandas as pd
 
-from straw.io.flac import FLACFormatWriter, FLACFormatReader
+from straw.io.flac import FLACFormatReader
 from straw.io.params import StreamParams
 from straw.io.straw import StrawFormatWriter, StrawFormatReader
 
@@ -30,20 +31,22 @@ class Formatter:
         if params.bits_per_sample == 0:
             raise ValueError(f"Invalid bits per sample: {params.bits_per_sample}")
 
-    def save(self, df: pd.DataFrame, params: StreamParams, output_file: Path, flac_mode: bool = False):
+    def save(self, df: pd.DataFrame, params: StreamParams, output_stream: BinaryIO, flac_mode: bool = False):
         """
         Saves the dataframe into a formatted binary file
         :param df: source dataframe
         :param params: stream params
-        :param output_file: target file
+        :param output_stream: target file
         :param flac_mode: if true the output file will be a FLAC decoder compatible file
         :return: None
         """
         self.validate_dataframe(df, params)
         if flac_mode:
-            FLACFormatWriter(df, params).save(output_file)
+            raise NotImplementedError("FLAC mode is no longer supported")
         else:
-            StrawFormatWriter(df, params).save(output_file)
+            fw = StrawFormatWriter(params, output_stream)
+            fw.write(df)
+            fw.close_stream(params)
 
     def load(self, input_file: Path, flac_mode: bool = False) -> (pd.DataFrame, StreamParams):
         if flac_mode:

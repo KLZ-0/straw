@@ -21,9 +21,6 @@ class StrawFormatWriter(BaseWriter):
     def _stream(self):
         self._f.write("sTrW".encode("utf-8"))
         self._metadata_block()
-        secs = self._data.groupby("seq").apply(self._frame)
-        for sec in secs:
-            sec.tofile(self._f)
 
     def _metadata_block(self):
         sec = self._metadata_block_header()
@@ -45,7 +42,7 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self._params.sample_rate, length=sizes.samplerate)
         sec.frombytes(self.encode_int_utf8(self._params.channels - 1))
         sec += int2ba(self._params.bits_per_sample - 1, length=sizes.bps)
-        sec += int2ba(int(len(self._data[self._data["channel"] == 0])), length=sizes.frames)
+        sec += int2ba(self._params.total_frames, length=sizes.frames)
         sec += int2ba(self._params.total_samples, length=sizes.samples)
         sec.frombytes(self._params.md5)
 

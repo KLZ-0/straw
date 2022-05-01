@@ -52,7 +52,7 @@ class Encoder(BaseCoder):
         :param file: str or int or file-like object - anything that soundfile accepts
         :return: None
         """
-        self._source_size = file.stat().st_size
+        self._source_size = Path(file).stat().st_size
         with soundfile.SoundFile(file, "r") as wav:
             subtype = wav.subtype
             if subtype not in self._supported_subtypes:
@@ -114,18 +114,26 @@ class Encoder(BaseCoder):
         data_slice["frame_type"] = self._should_be_raw_maxbytes(data_slice)
         return data_slice
 
-    def save_file(self, output_file: Path):
+    def save_file(self, output_file):
         """
         Save the encoded signal
         :param output_file: target file
         :return: None
         """
+        self._params.total_frames = int(len(self._data[self._data["channel"] == 0]))
         self._tmp()
         # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
         # new_lens = self._data
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
+        opened = False
+        if not hasattr(output_file, "write"):
+            output_file = open(output_file, "wb")
+            opened = True
+
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
+        if opened:
+            output_file.close()
 
     ###########
     # Private #
