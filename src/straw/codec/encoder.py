@@ -12,7 +12,7 @@ from straw.compute import ParallelCompute
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
-from straw.static import SubframeType
+from straw.static import SubframeType, Default
 from straw.util import Signals
 
 
@@ -27,7 +27,12 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False, do_corrections=("shift", "bias"), dynamic_blocksize=False):
+    def __init__(self,
+                 flac_mode=False,
+                 do_corrections=("shift", "bias"),
+                 dynamic_blocksize=False,
+                 min_block_size=Default.min_frame_size,
+                 max_block_size=Default.max_frame_size):
         """
 
         :param flac_mode:
@@ -38,6 +43,8 @@ class Encoder(BaseCoder):
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
         self._do_corrections = do_corrections
         self._do_dynamic_blocking = dynamic_blocksize
+        self._min_block_size = min_block_size
+        self._max_block_size = max_block_size
 
     def load_file(self, file):
         """
@@ -134,7 +141,9 @@ class Encoder(BaseCoder):
         total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         if self._do_dynamic_blocking:
             lag = self._params.lags[0]
-            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag])
+            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag],
+                                                        min_block_size=self._min_block_size,
+                                                        max_block_size=self._max_block_size)
         else:
             limits = None
 

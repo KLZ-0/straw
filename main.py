@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 import straw
+from straw.static import Default
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
@@ -23,7 +24,15 @@ if __name__ == '__main__':
     parser.add_argument("--figures-dir", dest="fig_dir", metavar="FIG_DIR", type=str,
                         default="outputs", help="Override figure directory (default='outputs')")
 
+    parser.add_argument("--min-frame-size", dest="min_frame_size", metavar="MIN_FRAME_SIZE", type=int,
+                        default=Default.min_frame_size, help="Override minimal frame size")
+    parser.add_argument("--max-frame-size", dest="max_frame_size", metavar="MAX_FRAME_SIZE", type=int,
+                        default=Default.max_frame_size, help="Override maximal frame size")
+
     args = parser.parse_args()
+
+    if args.min_frame_size > args.max_frame_size:
+        raise ValueError("Minimal frame size can't be larger than maximal frame size")
 
     # Fix args
     if args.output_file:

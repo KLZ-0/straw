@@ -24,3 +24,8 @@ soundfile_dtype = {
     24: 32,
     32: 32,
 }
+
+
+class Default:
+    min_frame_size = 1 << 11
+    max_frame_size = 1 << 13

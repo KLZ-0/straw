@@ -22,7 +22,10 @@ def write(file, data: np.array, samplerate: int):
 
 
 def _encode(args):
-    e = Encoder(args.flac_mode, dynamic_blocksize=args.dynamic_blocksize)
+    e = Encoder(args.flac_mode,
+                dynamic_blocksize=args.dynamic_blocksize,
+                min_block_size=args.min_frame_size,
+                max_block_size=args.max_frame_size)
 
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))

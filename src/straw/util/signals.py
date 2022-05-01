@@ -1,6 +1,8 @@
 import librosa
 import numpy as np
 
+from straw.static import Default
+
 
 def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
     indices = [0]
@@ -23,9 +25,9 @@ class Signals:
     @classmethod
     def get_frame_limits_by_energy(cls,
                                    channel_data: np.array,
-                                   min_block_size: int = 1 << 11,
+                                   min_block_size: int = Default.min_frame_size,
                                    treshold: int = 20000,
-                                   max_block_size: int = 1 << 12,
+                                   max_block_size: int = Default.max_frame_size,
                                    resolution: int = 10):
         """
         Returns a list of indices where frames should start
