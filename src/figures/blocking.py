@@ -88,9 +88,10 @@ class FrameBlockingPlot(BasePlot):
     ]
 
     def get_stats_for_treshold(self, treshold=Default.framing_treshold):
-        self._e.set_framing_treshold(treshold)
+        self._e.framing_treshold = treshold
         for sizes in self.frame_sizes:
-            self._e.set_blocksizes(*sizes)
+            self._e.min_block_size = sizes[0]
+            self._e.max_block_size = sizes[1]
             self._e.load_file(self._args.input_files[0])
             self._e.encode()
             tmpfile = tempfile.NamedTemporaryFile(delete=True)

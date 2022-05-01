@@ -51,19 +51,10 @@ class Encoder(BaseCoder):
         self._ricer = Ricer(adaptive=True if not flac_mode else False)
         self._do_corrections = do_corrections
         self._do_dynamic_blocking = dynamic_blocksize
-        self._min_block_size = min_block_size
-        self._max_block_size = max_block_size
-        self._framing_treshold = framing_treshold
-        self._framing_resolution = framing_resolution
-
-    def set_blocksizes(self, min_block_size: int = None, max_block_size: int = None):
-        if min_block_size is not None:
-            self._min_block_size = min_block_size
-        if max_block_size is not None:
-            self._max_block_size = max_block_size
-
-    def set_framing_treshold(self, framing_treshold):
-        self._framing_treshold = framing_treshold
+        self.min_block_size = min_block_size
+        self.max_block_size = max_block_size
+        self.framing_treshold = framing_treshold
+        self.framing_resolution = framing_resolution
 
     def load_file(self, file):
         """
@@ -169,10 +160,10 @@ class Encoder(BaseCoder):
         if self._do_dynamic_blocking:
             lag = self._params.lags[0]
             limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag],
-                                                        min_block_size=self._min_block_size,
-                                                        max_block_size=self._max_block_size,
-                                                        treshold=self._framing_treshold,
-                                                        resolution=self._framing_resolution)
+                                                        min_block_size=self.min_block_size,
+                                                        max_block_size=self.max_block_size,
+                                                        treshold=self.framing_treshold,
+                                                        resolution=self.framing_resolution)
         else:
             limits = None
 
