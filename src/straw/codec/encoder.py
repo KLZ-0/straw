@@ -175,7 +175,7 @@ class Encoder(BaseCoder):
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
 
-        self._data = pd.DataFrame(ds)
+        self._data = pd.DataFrame(ds, copy=False)
 
     def _parametrize(self):
         """

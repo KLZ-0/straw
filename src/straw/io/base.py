@@ -100,7 +100,7 @@ class BaseReader(BaseIO):
             self._stream()
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
-        self._data = pd.DataFrame(self._raw, columns=static.columns)
+        self._data = pd.DataFrame(self._raw, columns=static.columns, copy=False)
 
     def _allocate_buffer(self):
         channels = self._params.channels
