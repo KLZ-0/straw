@@ -17,8 +17,7 @@ def plot_all(args=None):
 
     e = Encoder(dynamic_blocksize=True)
     # FrameBlockingPlot(e, args).print_sizes()
-    FrameBlockingPlot(e, args).plot_tresholds("blocking_dynamic_tresholds.pdf")
-    exit()
+    # FrameBlockingPlot(e, args).plot_tresholds("blocking_dynamic_tresholds.pdf")
 
     #######################
     # Without corrections #
@@ -58,7 +57,8 @@ def plot_all(args=None):
     # RicePlot(e, args).k_diff("rice_k_diff.pdf")
     # RicePlot(e, args).rand_comparison("rice_rand_comparison.pdf")
     # FrameBlockingPlot(e, args).frame_limits("blocking_dynamic.pdf")
-    FrameBlockingPlot(e, args).frame_energy("blocking_dynamic_energy.pdf")
+    # FrameBlockingPlot(e, args).frame_energy("blocking_dynamic_energy.pdf")
+    FrameBlockingPlot(e, args).fixed_blocksize("blocking_fixed.pdf")
 
     ###########################
     # With corrections + gain #
