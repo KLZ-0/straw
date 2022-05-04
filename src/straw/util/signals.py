@@ -1,7 +1,50 @@
-import librosa
 import numpy as np
 
 from straw.static import Default
+
+
+def zero_crossings(
+        y, *, threshold=1e-10, ref_magnitude=None, pad=True, zero_pos=True, axis=-1
+):
+    """
+    Source: librosa.zero_crossings
+    """
+    if threshold is None:
+        threshold = 0.0
+
+    if callable(ref_magnitude):
+        threshold = threshold * ref_magnitude(np.abs(y))
+
+    elif ref_magnitude is not None:
+        threshold = threshold * ref_magnitude
+
+    if threshold > 0:
+        y = y.copy()
+        y[np.abs(y) <= threshold] = 0
+
+    # Extract the sign bit
+    if zero_pos:
+        y_sign = np.signbit(y)
+    else:
+        y_sign = np.sign(y)
+
+    # Find the change-points by slicing
+    slice_pre = [slice(None)] * y.ndim
+    slice_pre[axis] = slice(1, None)
+
+    slice_post = [slice(None)] * y.ndim
+    slice_post[axis] = slice(-1)
+
+    # Since we've offset the input by one, pad back onto the front
+    padding = [(0, 0)] * y.ndim
+    padding[axis] = (1, 0)
+
+    return np.pad(
+        (y_sign[tuple(slice_post)] != y_sign[tuple(slice_pre)]),
+        padding,
+        mode="constant",
+        constant_values=pad,
+    )
 
 
 def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
@@ -37,8 +80,8 @@ class Signals:
         energies = cls.get_energies(channel_data, resolution, treshold)
         # Find indices where energy crosses a treshold
         # a crossing up means a high energy frame, crossing down a low energy frame
-        # borders = librosa.zero_crossings(energies)
-        borders = librosa.zero_crossings(energies - treshold, zero_pos=False)
+        # borders = zero_crossings(energies)
+        borders = zero_crossings(energies - treshold, zero_pos=False)
         all_indices = borders.nonzero()[0] * resolution
         all_indices[-1] = channel_data.shape[0]
 
