@@ -80,6 +80,22 @@ def quantize_lpc(double[:] lpc_c, int precision) -> int:
 
     return shift
 
+##############
+# Prediction #
+##############
+
+def compute_residual(cython.integral[:] frame, cython.integral[:] residual, int[:] qlp, int lp_quantization):
+    cdef Py_ssize_t data_len = frame.shape[0]
+    cdef Py_ssize_t order = qlp.shape[0]
+    cdef Py_ssize_t  i, j
+    cdef long _sum
+
+    for i in range(order, data_len):
+        _sum = 0
+        for j in range(order):
+            _sum += qlp[j] * frame[i - j - 1]
+        residual[i] = frame[i] - (_sum >> lp_quantization)
+
 ###############
 # Restoration #
 ###############

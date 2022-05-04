@@ -7,4 +7,3 @@ pandas
 cython
 crcmod
 tqdm
-librosa

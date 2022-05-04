@@ -1,5 +1,6 @@
 import mmap
 from pathlib import Path
+from typing import BinaryIO
 
 import numpy as np
 import pandas as pd
@@ -42,20 +43,31 @@ class BaseIO:
 
 
 class BaseWriter(BaseIO):
-    def __init__(self, data: pd.DataFrame, params: StreamParams):
-        self._data = data
-        self._params = params
+    def __init__(self, initial_params: StreamParams, output_stream: BinaryIO):
+        self._params = initial_params
+        self._f = output_stream
+        self._stream()
 
-    def save(self, output_file: Path):
+    def init_stream(self, params):
+        self._params = params
+        self._stream()
+
+    def write(self, data):
+        secs = data.groupby("seq").apply(self._frame)
+        for sec in secs:
+            sec.tofile(self._f)
+
+    def close_stream(self, params):
+        self._f.seek(0)
+        self._params = params
+        self._stream()
+
+    def _frame(self, df: pd.DataFrame):
         """
-        Saves the dataframe into a FLAC formatted binary file
-        :param output_file: target file
+        This should be overridden
         :return: None
         """
-        self._format_specific_checks()
-        with output_file.open("wb") as f:
-            self._f = f
-            self._stream()
+        pass
 
     @staticmethod
     def encode_int_utf8(val: int) -> bytes:
@@ -88,7 +100,7 @@ class BaseReader(BaseIO):
             self._stream()
         self._format_specific_checks()
         self._raw.sort(key=lambda x: x["idx"])
-        self._data = pd.DataFrame(self._raw, columns=static.columns)
+        self._data = pd.DataFrame(self._raw, columns=static.columns, copy=False)
 
     def _allocate_buffer(self):
         channels = self._params.channels

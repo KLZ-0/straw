@@ -3,10 +3,11 @@ import pandas as pd
 import seaborn as sns
 
 from figures.base import BasePlot
+from straw import correctors
 
 
 class CorrectionsPlot(BasePlot):
-    def shift(self):
+    def shift(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -23,9 +24,26 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("shift.pdf")
+        self.save(filename)
 
-    def gain(self):
+    @staticmethod
+    def _make_multichannel_df(frame: np.array, limits: tuple = None) -> pd.DataFrame:
+        if limits is not None:
+            frame = frame[:, limits[0]:limits[0] + limits[1]]
+
+        df = {
+            "sample": [],
+            "value": [],
+            "Channel": [],
+        }
+        for i, subframe in enumerate(frame):
+            df["sample"] += [u for u in range(subframe.shape[0])]
+            df["value"] += subframe.tolist()
+            df["Channel"] += [i for _ in range(subframe.shape[0])]
+
+        return pd.DataFrame(df, copy=False)
+
+    def gain(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -42,9 +60,9 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("gain.pdf")
+        self.save(filename)
 
-    def offset(self):
+    def offset(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -61,9 +79,9 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("offset.pdf")
+        self.save(filename)
 
-    def all(self):
+    def all(self, filename):
         frame = self._e.sample_frame()
         f = frame["frame"][8:160]
 
@@ -80,4 +98,21 @@ class CorrectionsPlot(BasePlot):
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
 
-        self.save("all.pdf")
+        self.save(filename)
+
+    def real(self, filename, corrected=()):
+        frame = self._e.samplebuffer_frame_multichannel(seq=4)
+        if corrected:
+            correctors.apply_corrections(frame, corrected, force_inplace=True)
+
+        df = self._make_multichannel_df(frame, limits=(1750, 80))
+
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="Channel", dashes=False, height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Sample value (16-bit)")
+        s.tight_layout()
+
+        if corrected:
+            self.save(filename)
+        else:
+            self.save(filename)

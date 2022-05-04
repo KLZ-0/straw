@@ -38,10 +38,11 @@ def compute_qlp(df: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.Da
     const_frames = df["frame"].apply(lambda x: not (x - x[0]).any())
     if const_frames.any():
         df.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
+        df.loc[~const_frames, "frame_type"] = SubframeType.RAW
         return df
 
     lpc = steps.compute_lpc(df["frame"], order)
-    if lpc is None:
+    if lpc is None or not steps.lpc_is_stable(lpc):
         df["frame_type"] = SubframeType.RAW
         return df
 
@@ -91,6 +92,6 @@ def compute_original(df: (pd.Series, pd.DataFrame), inplace=False):
         frame[len(df["qlp"]):] = df["residual"]
         df["restored"] = frame
 
-    steps.restore_signal_cython(frame, df["qlp"], df["shift"], inplace=inplace)
+    steps.restore_signal_cython(frame, df["qlp"], df["shift"])
 
     return df

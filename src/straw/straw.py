@@ -18,11 +18,17 @@ def write(file, data: np.array, samplerate: int):
     e = Encoder()
     e.load_data(data, samplerate)
     e.encode()
-    e.save_file(Path(file))
+    e.save_file(Path(file).open("wb"))
 
 
 def _encode(args):
-    e = Encoder(args.flac_mode, dynamic_blocksize=args.dynamic_blocksize)
+    e = Encoder(flac_mode=False,
+                dynamic_blocksize=args.dynamic_blocksize,
+                min_block_size=args.min_frame_size,
+                max_block_size=args.max_frame_size,
+                framing_treshold=args.framing_treshold,
+                framing_resolution=args.framing_resolution,
+                responsiveness=args.rice_responsiveness)
 
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))
@@ -45,7 +51,7 @@ def _encode(args):
 
 
 def _decode(args):
-    d = Decoder(args.flac_mode)
+    d = Decoder(flac_mode=False)
 
     start = timeit.default_timer()
     d.load_file(Path(args.input_files[0]))

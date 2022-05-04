@@ -57,7 +57,7 @@ class Modifiers:
     @staticmethod
     def transform_midside(x1: np.array, x2: np.array):
         diff = x1 - x2
-        mid = (x1 + x2) // 2
+        mid = (x1 + x2) >> 1
         x1[:] = diff
         x2[:] = mid
 
@@ -65,8 +65,8 @@ class Modifiers:
     def transform_midside_reverse(x1: np.array, x2: np.array):
         diff = x1.copy()
         mid = x2.copy()
-        x1[:] = mid + np.ceil(diff / 2)
-        x2[:] = mid - np.floor(diff // 2)
+        x1[:] = mid + (diff >> 1) + (diff & 1)
+        x2[:] = mid - (diff >> 1)
 
 
 class Decorrelator:
@@ -135,7 +135,7 @@ class Decorrelator:
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
-        if not (df["frame_type"] == SubframeType.LPC_COMMON).all():
+        if not (df["frame_type"] == SubframeType.LPC_COMMON).all() or len(df) == 1:
             return df
 
         order = Decorrelator._find_closest_lower_power_of_two(len(df))

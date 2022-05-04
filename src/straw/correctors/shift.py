@@ -8,9 +8,12 @@ from straw.io.params import StreamParams
 
 
 class ShiftCorrector(BaseCorrector):
-    def apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10) -> (np.ndarray, np.ndarray):
+    _lags: np.array = None
+
+    def apply(self, samplebuffer: np.ndarray, params: StreamParams, limit=10, parallel=True) -> (
+    np.ndarray, np.ndarray):
         windowed = (samplebuffer * get_window("nuttall", samplebuffer.shape[1])).astype(np.int64)
-        leading_channel = self._find_leading_channel(windowed, limit=limit)
+        leading_channel = self._find_leading_channel(windowed, limit=limit, parallel=parallel)
         params.lags = self._find_lags(windowed, leading_channel, limit=limit)
         params.leading_channel = leading_channel
         total_size = samplebuffer.shape[1] - np.max(params.lags)
@@ -18,14 +21,35 @@ class ShiftCorrector(BaseCorrector):
             lag = params.lags[i]
             params.removed_samples_start.append(samplebuffer[i][:lag])
             params.removed_samples_end.append(samplebuffer[i][total_size + lag:])
+        self._lags = params.lags
 
-    def _find_leading_channel(self, samplebuffer: np.ndarray, limit):
+    def apply_to_ndarray(self, data):
+        """
+        Performs shift inplace by rewriting each sample by a rolled array
+        NOTE: this is very inefficient and this operation is normally performed at framing/blocking
+         and this method is used only in figures where it needs to be done explicitly
+        """
+        for channel in range(data.shape[0]):
+            lag = self._lags[channel]
+            data[channel] = np.roll(data[channel], -lag)
+
+    def df_wrap_apply(self, frameset: pd.Series):
+        ndarr = np.stack(frameset.tolist())
+        self.apply(ndarr, StreamParams(), parallel=False)
+        self.apply_to_ndarray(ndarr)
+        for i, idx in enumerate(frameset.index):
+            frameset[idx][:] = ndarr[i]
+
+    def _find_leading_channel(self, samplebuffer: np.ndarray, limit, parallel):
         lags = np.zeros(samplebuffer.shape[0], dtype=np.int8)
         reference = samplebuffer[0]
-        lags[:] = ParallelCompute.get_instance().map_ndarray(samplebuffer, self._double_sided_corr, reference=reference,
-                                                             limit=limit)
-        # for i in range(1, samplebuffer.shape[0]):
-        #     lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
+        if parallel:
+            lags[:] = ParallelCompute.get_instance().map_ndarray(samplebuffer, self._double_sided_corr,
+                                                                 reference=reference,
+                                                                 limit=limit)
+        else:
+            for i in range(1, samplebuffer.shape[0]):
+                lags[i] = self._double_sided_corr(samplebuffer[i], reference=reference, limit=limit)
 
         return np.argmin(lags)
 

@@ -1,3 +1,6 @@
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -7,7 +10,7 @@ from straw.rice import Ricer
 
 
 class RicePlot(BasePlot):
-    def interleave(self):
+    def interleave(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -18,35 +21,38 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_interleave.png")
+        self.save(filename)
 
-    def static_m(self):
+    def static_m(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(signal))] + [i for i in range(len(signal))],
             "value": list(self._get_interleaved_signal(signal)) + list(self._get_params_static(signal)),
-            "type": ["interleaved signal" for _ in range(len(signal))] + ["m parameter" for _ in range(len(signal))],
+            " ": ["interleaved signal" for _ in range(len(signal))] + ["m parameter" for _ in range(len(signal))],
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_static_m.png")
+        self.save(filename)
 
-    def dynamic_m(self):
+    def dynamic_m(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(signal))] + [i for i in range(len(signal))],
             "value": list(self._get_interleaved_signal(signal)) + list(self._get_params_variable(signal)),
-            "type": ["signal" for _ in range(len(signal))] + ["static m" for _ in range(len(signal))],
+            " ": ["Signal" for _ in range(len(signal))] + ["Parameter (m)" for _ in range(len(signal))],
         })
 
-        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_dynamic_m.png")
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue=" ", height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Value (16-bit)")
+        s.tight_layout()
+        self.save(filename)
 
-    def k_diff(self):
+    def k_diff(self, filename):
         frame = self._e.sample_frame()
         signal = frame["frame"]
 
@@ -57,7 +63,44 @@ class RicePlot(BasePlot):
         })
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
-        self.save("rice_k_diff.png")
+        self.save(filename)
+
+    def rand_comparison(self, filename):
+        from numpy.random import default_rng
+        rng = default_rng(seed=[2444, 1248, 5685])
+        static = Ricer(adaptive=False)
+        dynamic = Ricer(adaptive=True)
+
+        df = {
+            "spike_width": [],
+            "value": [],
+            "Parameter type": [],
+        }
+
+        limit = 1000
+        spike = 10000
+        base_dataset = np.clip(rng.normal(0, limit / 5, size=4096), -limit, limit).astype(np.int64)
+        full_window = np.zeros(4096, dtype=np.int64)
+        for window_width in range(1, 512, 10):
+            window = np.clip(rng.normal(0, spike / 5, size=window_width), -spike, spike).astype(np.int64)
+            start_idx = full_window.shape[0] // 2 - window.shape[0] // 2
+            full_window[start_idx:start_idx + window.shape[0]] = window
+            dataset = base_dataset + full_window
+            bps = dynamic.guess_parameter(dataset)
+            df["spike_width"].append(window_width)
+            df["value"].append(len(dynamic.frame_to_bitstream(dataset, bps)) / 1000)
+            df["Parameter type"].append("Adaptive")
+            df["spike_width"].append(window_width)
+            df["value"].append(len(static.frame_to_bitstream(dataset, bps)) / 1000)
+            df["Parameter type"].append("Static")
+
+        df = pd.DataFrame(df)
+        s = sns.relplot(data=df, kind="line", x="spike_width", y="value", hue="Parameter type", height=2.5, aspect=3)
+        s.set_xlabels("Spike width")
+        s.set_ylabels("Bitstream size [kb]")
+        s.tight_layout()
+
+        self.save(filename)
 
     @staticmethod
     def _get_params_static(frame: np.ndarray) -> np.ndarray:
@@ -70,3 +113,36 @@ class RicePlot(BasePlot):
     @staticmethod
     def _get_interleaved_signal(frame: np.ndarray) -> np.ndarray:
         return Ricer.frame_to_interleaved(frame)
+
+    def _get_stats_for_responsiveness(self, resps: list):
+        for resp in resps:
+            self._e.set_rice_responsiveness(resp)
+            self._e.load_file(self._args.input_files[0])
+            self._e.encode()
+            tmpfile = tempfile.NamedTemporaryFile(delete=True)
+            with open(tmpfile.name, "w+b") as f:
+                self._e.save_file(f)
+                yield resp, self._e.get_stats(Path(f.name))
+
+    def plot_responsiveness(self, filename):
+        size = []
+        responsiveness = []
+        resps = [10, 15, 18, 19, 20, 21, 22, 23, 24, 26, 30]
+        for i, (resp, stats) in enumerate(self._get_stats_for_responsiveness(resps)):
+            print(f"Processing {i} / {len(resps) - 1}")
+            size.append(stats.file_size / 2 ** 20)
+            responsiveness.append(resp)
+
+        df = pd.DataFrame({
+            "size": size,
+            "responsiveness": responsiveness
+        })
+
+        s = sns.relplot(data=df, kind="line", x="responsiveness", y="size", height=2.5, aspect=3)
+
+        s.set_xlabels("Responsiveness")
+        s.set_ylabels("File size [MiB]")
+        s.tight_layout()
+
+        self.save(filename)
+        print(size)

@@ -21,6 +21,7 @@ class StrawSizes:
         frames = 27
         samples = 36
         md5 = 128
+        responsiveness = 8
         leading_channel = UTF8
         shift = 4
         removed_samples = None

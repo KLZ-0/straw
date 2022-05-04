@@ -3,11 +3,10 @@ import sys
 
 import numpy as np
 import pandas as pd
-import pyximport
+from numpy.lib.polynomial import roots
 from scipy.linalg import solve_toeplitz
 from scipy.signal import get_window
 
-pyximport.install()
 from . import ext_lpc
 
 
@@ -39,6 +38,10 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         window = get_window("tukey", signal[signal.index[0]].shape[0])
         r = np.asarray([_autocorr((s.astype(float) / (1 << 15)) * window, p + 1) for s in signal])
         r = np.mean(r, axis=0)
+        # lpc_c = np.zeros(p)
+        # for i in range(r.shape[0]):
+        #     lpc_c += solve_toeplitz(r[i, :-1], r[i, 1:], check_finite=False)
+        # return lpc_c / r.shape[0]
     else:
         if not signal.any():
             return None
@@ -47,6 +50,13 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
         r = _autocorr((signal.astype(float) / (1 << 15)) * window, p + 1)
 
     return solve_toeplitz(r[:-1], r[1:], check_finite=False)
+
+
+def lpc_is_stable(lpc_c) -> bool:
+    poly = np.zeros(lpc_c.shape[0] + 1)
+    poly[0] = 1
+    poly[1:] = -lpc_c
+    return np.max(np.abs(roots(poly))) < 1.0
 
 
 ################
@@ -195,8 +205,11 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     :return: frame residual with shape [order:]
     """
     shift = int(shift)
-    predicted = predict_signal(frame, qlp, shift)
-    tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
+    residual = frame.copy()
+    ext_lpc.compute_residual(frame, residual, qlp, shift)
+    tmp = residual[len(qlp):]
+    # predicted = predict_signal(frame, qlp, shift)
+    # tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
     if tmp.var() < frame.var():
         # TODO: we could use the same memory space but this would prevent us from using the raw signal after
         # frame[len(qlp):] = tmp
@@ -236,14 +249,13 @@ def restore_signal(residual, qlp, lp_quantization, warmup_samples):
     return data
 
 
-def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int, inplace: bool = False) -> np.array:
+def restore_signal_cython(frame: np.array, qlp: np.array, lp_quantization: int) -> np.array:
     """
     Restores the original signal given the residual with quantized LPC coefficients
     Wrapper around Cython extension for signal restoration
     :param frame: signal array initialized with the first samples from the original signal and the residual
     :param qlp: quantized LPC coefficients
     :param lp_quantization: quantization shift
-    :param inplace: whether the restoring should be done in place (faster)
     :return: reconstructed signal as a numpy array
     """
     # TODO: make this a proper wrapper without the need for duplicated lines

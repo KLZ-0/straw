@@ -13,7 +13,9 @@ class StreamParams:
     channels: int = None
     bits_per_sample: int = None
     total_samples: int = None
+    total_frames: int = None
     md5: bytes = None
+    responsiveness: int = None
     leading_channel: int = None
     lags: np.ndarray  # length equal to number of channels, each value represents lag on a channel
     removed_samples_start = []  # removed samples for each channel from the start

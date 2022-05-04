@@ -67,6 +67,8 @@ One of:
 - `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the
   audio data even when the error does not result in an invalid bitstream.
 
+- `<8>` Rice coding responsiveness
+
 - `<1>` Has shift correction
 
 - `<8-?>` if (Has shift correction) "UTF-8" coded leading channel

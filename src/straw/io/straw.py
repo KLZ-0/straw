@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pyximport
 from bitarray import bitarray
 from bitarray.util import int2ba
 from tqdm import tqdm
@@ -8,8 +7,6 @@ from tqdm import tqdm
 from straw.io.base import BaseWriter, BaseReader
 from straw.io.sizes import StrawSizes
 from straw.static import SubframeType
-
-pyximport.install()
 from . import ext_io
 
 
@@ -21,9 +18,6 @@ class StrawFormatWriter(BaseWriter):
     def _stream(self):
         self._f.write("sTrW".encode("utf-8"))
         self._metadata_block()
-        secs = self._data.groupby("seq").apply(self._frame)
-        for sec in secs:
-            sec.tofile(self._f)
 
     def _metadata_block(self):
         sec = self._metadata_block_header()
@@ -45,9 +39,10 @@ class StrawFormatWriter(BaseWriter):
         sec += int2ba(self._params.sample_rate, length=sizes.samplerate)
         sec.frombytes(self.encode_int_utf8(self._params.channels - 1))
         sec += int2ba(self._params.bits_per_sample - 1, length=sizes.bps)
-        sec += int2ba(int(len(self._data[self._data["channel"] == 0])), length=sizes.frames)
+        sec += int2ba(self._params.total_frames, length=sizes.frames)
         sec += int2ba(self._params.total_samples, length=sizes.samples)
         sec.frombytes(self._params.md5)
+        sec += int2ba(self._params.responsiveness, length=sizes.responsiveness)
 
         # Shift
         if self._params.lags.any():
@@ -233,6 +228,8 @@ class StrawFormatReader(BaseReader):
         expected_frames = self._sec.get_int(length=sizes.frames)
         self._params.total_samples = self._sec.get_int(length=sizes.samples)
         self._params.md5 = self._sec.get_bytes(length=sizes.md5)
+        self._params.responsiveness = self._sec.get_int(length=sizes.responsiveness)
+        self._ricer.responsiveness = self._params.responsiveness
 
         # Allocate sample buffer
         self._allocate_buffer()

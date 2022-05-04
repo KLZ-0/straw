@@ -49,6 +49,9 @@ class BaseCoder:
     def sample_frame_multichannel(self, seq=0) -> pd.DataFrame:
         return self._data[self._data["seq"] == seq]
 
+    def samplebuffer_frame_multichannel(self, seq=0, blocksize=4096) -> np.array:
+        return self._samplebuffer[:, seq * blocksize:seq * blocksize + blocksize].copy()
+
     def get_data(self) -> pd.DataFrame:
         return self._data
 

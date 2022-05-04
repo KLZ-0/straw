@@ -6,15 +6,20 @@ import numpy as np
 import pandas as pd
 import soundfile
 
-from straw import lpc, static
+from straw import lpc, static, correctors
 from straw.codec.base import BaseCoder
 from straw.compute import ParallelCompute
-from straw.correctors import BiasCorrector, ShiftCorrector, Decorrelator, GainCorrector
 from straw.io import Formatter
 from straw.io.params import StreamParams
 from straw.rice import Ricer
-from straw.static import SubframeType
+from straw.static import SubframeType, Default
 from straw.util import Signals
+
+
+class EncoderStats:
+    frames: int = 0
+    file_size: int = 0
+    ratio: int = 0
 
 
 class Encoder(BaseCoder):
@@ -28,7 +33,15 @@ class Encoder(BaseCoder):
     # Public #
     ##########
 
-    def __init__(self, flac_mode=False, do_corrections=("bias", "shift"), dynamic_blocksize=False):
+    def __init__(self,
+                 flac_mode=False,
+                 do_corrections=("shift", "bias"),
+                 dynamic_blocksize=False,
+                 min_block_size=Default.min_frame_size,
+                 max_block_size=Default.max_frame_size,
+                 framing_treshold=Default.framing_treshold,
+                 framing_resolution=Default.framing_resolution,
+                 responsiveness=Default.rice_responsiveness):
         """
 
         :param flac_mode:
@@ -36,9 +49,18 @@ class Encoder(BaseCoder):
         :param dynamic_blocksize:
         """
         super(Encoder, self).__init__(flac_mode)
-        self._ricer = Ricer(adaptive=True if not flac_mode else False)
+        self._ricer = Ricer(adaptive=True if not flac_mode else False, responsiveness=responsiveness)
+        self._params.responsiveness = responsiveness
         self._do_corrections = do_corrections
         self._do_dynamic_blocking = dynamic_blocksize
+        self.min_block_size = min_block_size
+        self.max_block_size = max_block_size
+        self.framing_treshold = framing_treshold
+        self.framing_resolution = framing_resolution
+
+    def set_rice_responsiveness(self, responsiveness):
+        self._ricer.responsiveness = responsiveness
+        self._params.responsiveness = responsiveness
 
     def load_file(self, file):
         """
@@ -46,7 +68,7 @@ class Encoder(BaseCoder):
         :param file: str or int or file-like object - anything that soundfile accepts
         :return: None
         """
-        self._source_size = file.stat().st_size
+        self._source_size = Path(file).stat().st_size
         with soundfile.SoundFile(file, "r") as wav:
             subtype = wav.subtype
             if subtype not in self._supported_subtypes:
@@ -78,7 +100,7 @@ class Encoder(BaseCoder):
 
         self._params.sample_rate = samplerate
         self._params.md5 = self.get_md5()
-        self._apply_corrections()
+        correctors.apply_corrections(self._samplebuffer, self._do_corrections, self._params)
         self._create_dataframe()
 
     def encode(self):
@@ -95,27 +117,39 @@ class Encoder(BaseCoder):
         self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
+        # correctors.ShiftCorrector().df_wrap_apply(data_slice["frame"])
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
+        # correctors.GainCorrector().df_wrap_apply(data_slice["residual"])
+        # correctors.ShiftCorrector().df_wrap_apply(data_slice["residual"])
+        # correctors.BiasCorrector().df_wrap_apply(data_slice["residual"])
+        data_slice = correctors.Decorrelator().midside_decorrelate(data_slice, "residual")
         data_slice["bps"] = data_slice["residual"].apply(self._ricer.guess_parameter)
-        data_slice = Decorrelator().midside_decorrelate(data_slice, "residual")
         data_slice["stream"] = self._ricer.frames_to_bitstreams(data_slice, parallel=False)
         data_slice["stream_len"] = data_slice["stream"].apply(len)
         data_slice["frame_type"] = self._should_be_raw_maxbytes(data_slice)
         return data_slice
 
-    def save_file(self, output_file: Path):
+    def save_file(self, output_file):
         """
         Save the encoded signal
         :param output_file: target file
         :return: None
         """
+        self._params.total_frames = int(len(self._data[self._data["channel"] == 0]))
         self._tmp()
         # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
         # new_lens = self._data
         # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
         # diff = (new_lens - old_lens)["stream_len"]
+        opened = False
+        if not hasattr(output_file, "write"):
+            output_file = open(output_file, "wb")
+            opened = True
+
         Formatter().save(self._data, self._params, output_file, self._flac_mode)
+        if opened:
+            output_file.close()
 
     ###########
     # Private #
@@ -131,7 +165,11 @@ class Encoder(BaseCoder):
         total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
         if self._do_dynamic_blocking:
             lag = self._params.lags[0]
-            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag])
+            limits = Signals.get_frame_limits_by_energy(self._samplebuffer[0][lag:total_size + lag],
+                                                        min_block_size=self.min_block_size,
+                                                        max_block_size=self.max_block_size,
+                                                        treshold=self.framing_treshold,
+                                                        resolution=self.framing_resolution)
         else:
             limits = None
 
@@ -143,7 +181,7 @@ class Encoder(BaseCoder):
             ds["frame"] += sliced
             ds["channel"] += [channel for _ in range(len(sliced))]
 
-        self._data = pd.DataFrame(ds)
+        self._data = pd.DataFrame(ds, copy=False)
 
     def _parametrize(self):
         """
@@ -170,23 +208,12 @@ class Encoder(BaseCoder):
             df["frame_type"] = SubframeType.RAW
         return df["frame_type"]
 
-    def _apply_corrections(self):
-        for correction in self._do_corrections:
-            if correction == "gain":
-                GainCorrector().apply(self._samplebuffer, self._params)
-            elif correction == "bias":
-                BiasCorrector().apply(self._samplebuffer, self._params)
-            elif correction == "shift":
-                ShiftCorrector().apply(self._samplebuffer, self._params)
-            else:
-                raise ValueError(f"Invalid correction name: '{correction}', must be one of ('gain', 'bias', 'shift')")
-
     def _decorrelate_signals(self, data_slice, col_name="residual"):
         # TODO: do not decorrelate for frames with separate LPC
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         # self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
         #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
-        data_slice = data_slice.groupby("seq").apply(Decorrelator().midside_decorrelate, col_name=col_name)
+        data_slice = data_slice.groupby("seq").apply(correctors.Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice["was_coded"] = 0
 
     #########
@@ -237,6 +264,13 @@ class Encoder(BaseCoder):
     ###########
     # Utility #
     ###########
+
+    def get_stats(self, output_file: Path) -> EncoderStats:
+        stats = EncoderStats()
+        stats.file_size = output_file.stat().st_size
+        stats.ratio = output_file.stat().st_size / self._source_size
+        stats.frames = len(self._data.groupby('seq').groups)
+        return stats
 
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         """
