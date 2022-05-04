@@ -3,3 +3,7 @@
 /inputs/
 /outputs/
 /doc/.obsidian/
+*.c
+*.so
+*.o
+cython_debug*

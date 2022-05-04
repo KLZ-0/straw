@@ -3,13 +3,12 @@ import sys
 
 import numpy as np
 import pandas as pd
-import pyximport
 from numpy.lib.polynomial import roots
 from scipy.linalg import solve_toeplitz
 from scipy.signal import get_window
 
-pyximport.install()
 from . import ext_lpc
+
 
 ####################
 # LPC coefficients #

@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import pyximport
 from bitarray import bitarray
 from bitarray.util import int2ba
 from tqdm import tqdm
@@ -8,8 +7,6 @@ from tqdm import tqdm
 from straw.io.base import BaseWriter, BaseReader
 from straw.io.sizes import StrawSizes
 from straw.static import SubframeType
-
-pyximport.install()
 from . import ext_io
 
 

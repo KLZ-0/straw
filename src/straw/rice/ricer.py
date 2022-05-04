@@ -1,13 +1,10 @@
 import numpy as np
 import pandas as pd
-import pyximport
 from bitarray import bitarray
 
 from straw.compute import ParallelCompute
 from straw.io.sizes import StrawSizes
 from straw.static import SubframeType, Default
-
-pyximport.install()
 from . import ext_rice
 
 
