@@ -73,6 +73,9 @@ class Decoder(BaseCoder):
         Test the decoder with a sample file
         :return:
         """
+        if not wav_file.exists():
+            return
+
         tmp, _ = soundfile.read(wav_file, dtype="int16")
         tmp = tmp.swapaxes(1, 0)
         if not (self._samplebuffer - tmp).any():
