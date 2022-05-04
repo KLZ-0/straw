@@ -4,7 +4,8 @@ from pathlib import Path
 import straw
 from straw.static import Default
 
-if __name__ == '__main__':
+
+def main():
     parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
     parser.add_argument("-i", "--input", dest="input_files", metavar="INPUT_FILE", type=str, nargs="+",
                         help="Input files", required=True)
@@ -13,7 +14,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--decode", dest="decode", action="store_true",
                         help="Decode")
 
-    # TODO: remove this if done with test runs
     parser.add_argument("--figures", dest="figures", action="store_true",
                         help="Generate figures - temporary option for runs with non-consistent behavior")
     parser.add_argument("--no-dynamic-blocks", dest="dynamic_blocksize", action="store_false",

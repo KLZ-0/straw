@@ -3,7 +3,11 @@
 /inputs/
 /outputs/
 /doc/.obsidian/
+cython_debug*
+build/
+.eggs/
 *.c
 *.so
 *.o
-cython_debug*
+*.egg-info
+*.egg
