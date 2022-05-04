@@ -17,7 +17,7 @@ with (ROOT / "requirements.txt").open("r") as f:
         if not line.startswith("#")
     ]
 
-with (ROOT / "requirements.txt").open("r") as f:
+with (ROOT / "README.md").open("r") as f:
     README = f.read()
 
 setup(
@@ -27,10 +27,10 @@ setup(
     #     "setuptools>=18.0",
     #     "cython",
     # ],
-    name="Straw",
-    version="0.1",
+    name="straw-codec",
+    version="0.2",
     description="Lossless codec for multichannel audio",
-    author="Adrian Kalazi",
+    author="KLZ-0",
     author_email="adrian@kalazi.com",
     url="https://github.com/KLZ-0/straw/",
     packages=[pkg for pkg in find_packages(ROOT / "src") if "figures" not in pkg],
@@ -39,6 +39,7 @@ setup(
     ext_modules=extensions,
     python_requires=">=3.6",
     long_description=README,
+    long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
