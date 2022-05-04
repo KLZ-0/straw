@@ -38,6 +38,7 @@ def compute_qlp(df: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.Da
     const_frames = df["frame"].apply(lambda x: not (x - x[0]).any())
     if const_frames.any():
         df.loc[const_frames, "frame_type"] = SubframeType.CONSTANT
+        df.loc[~const_frames, "frame_type"] = SubframeType.RAW
         return df
 
     lpc = steps.compute_lpc(df["frame"], order)
