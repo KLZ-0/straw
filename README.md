@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/badge/PyPI-straw--codec-blue.svg)](https://pypi.org/project/straw-codec/)
 
-Straw is a lossless audio codec intended for efficiently storing multichannel audio
+Straw is a lossless audio codec intended for efficiently storing multichannel audio.
 
 # Current state
 
@@ -12,8 +12,6 @@ Straw is a lossless audio codec intended for efficiently storing multichannel au
 The interface and imports are still subject to change.
 
 # Installation
-
-Create a Python virtual environment, activate it and install the dependencies
 
 #### From PyPI
 
