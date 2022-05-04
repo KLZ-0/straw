@@ -41,7 +41,10 @@ if args.output_file:
     args.output_file = Path(args.output_file)
 else:
     pth = Path(args.input_files[0])
-    args.output_file = (pth.parent / pth.stem).with_suffix(".straw")
+    if args.decode:
+        args.output_file = (pth.parent / pth.stem).with_suffix(".wav")
+    else:
+        args.output_file = (pth.parent / pth.stem).with_suffix(".straw")
 
 # TODO: this part has to get proper args
 

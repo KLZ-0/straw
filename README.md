@@ -1,27 +1,36 @@
 # Straw
 
-[![PyTest Status](https://github.com/KLZ-0/straw/workflows/PyTest/badge.svg)](https://github.com/KLZ-0/straw/actions/)
+[![PyPI](https://img.shields.io/badge/PyPI-straw--codec-blue.svg)](https://pypi.org/project/straw-codec/)
 
 Straw is a lossless audio codec intended for efficiently storing multichannel audio
 
 # Current state
 
-[![Stability Status](https://img.shields.io/badge/Stability-mediocre-orange.svg)](https://github.com/KLZ-0/straw/tree/dev)
+[![PyTest Status](https://github.com/KLZ-0/straw/workflows/PyTest/badge.svg)](https://github.com/KLZ-0/straw/actions/)
+[![Stability Status](https://img.shields.io/badge/Stability-mediocre-yellowgreen.svg)](https://github.com/KLZ-0/straw/tree/dev)
 
-This project is still a work in progress and as such is not yet ready to be used safely.
-
-The interface and imports are subject to frequent change.
-
-**The use of this library in its current form is strongly discouraged!**
+The interface and imports are still subject to change.
 
 # Installation
 
 Create a Python virtual environment, activate it and install the dependencies
 
+#### From PyPI
+
 ```shell
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# system-wide
+pip install straw-codec
+# local
+pip install --user straw-codec
+```
+
+#### From GitHub
+
+```shell
+# clone this repo
+git clone https://github.com/KLZ-0/straw.git && cd straw
+# install
+pip install .
 ```
 
 # Usage
@@ -39,21 +48,14 @@ straw.write("new_file.straw", data, sample_rate)
 
 ### Standalone encoder/decoder
 
-First activate the virtual environment:
-
-```shell
-source venv/bin/activate
-export PYTHONPATH=$PYTHONPATH:src
-```
-
 Encoding:
 
 ```shell
-python3 main.py -i /path/to/input.wav -o /path/to/output.straw
+straw -i /path/to/input.wav -o /path/to/output.straw
 ```
 
 Decoding:
 
 ```shell
-python3 main.py -d -i /path/to/input.straw -o /path/to/output.wav
+straw -d -i /path/to/input.straw -o /path/to/output.wav
 ```
