@@ -3,48 +3,13 @@ import numpy as np
 from straw.static import Default
 
 
-def zero_crossings(
-        y, *, threshold=1e-10, ref_magnitude=None, pad=True, zero_pos=True, axis=-1
-):
-    """
-    Source: librosa.zero_crossings
-    """
-    if threshold is None:
-        threshold = 0.0
-
-    if callable(ref_magnitude):
-        threshold = threshold * ref_magnitude(np.abs(y))
-
-    elif ref_magnitude is not None:
-        threshold = threshold * ref_magnitude
-
-    if threshold > 0:
-        y = y.copy()
-        y[np.abs(y) <= threshold] = 0
-
-    # Extract the sign bit
+def zero_crossings(y, zero_pos: bool = True):
     if zero_pos:
         y_sign = np.signbit(y)
     else:
         y_sign = np.sign(y)
 
-    # Find the change-points by slicing
-    slice_pre = [slice(None)] * y.ndim
-    slice_pre[axis] = slice(1, None)
-
-    slice_post = [slice(None)] * y.ndim
-    slice_post[axis] = slice(-1)
-
-    # Since we've offset the input by one, pad back onto the front
-    padding = [(0, 0)] * y.ndim
-    padding[axis] = (1, 0)
-
-    return np.pad(
-        (y_sign[tuple(slice_post)] != y_sign[tuple(slice_pre)]),
-        padding,
-        mode="constant",
-        constant_values=pad,
-    )
+    return np.insert(y_sign[1:] != y_sign[:-1], 0, 1)
 
 
 def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
