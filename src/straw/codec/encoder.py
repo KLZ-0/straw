@@ -41,7 +41,8 @@ class Encoder(BaseCoder):
                  max_block_size=Default.max_frame_size,
                  framing_treshold=Default.framing_treshold,
                  framing_resolution=Default.framing_resolution,
-                 responsiveness=Default.rice_responsiveness):
+                 responsiveness=Default.rice_responsiveness,
+                 parallelize=True):
         """
 
         :param flac_mode:
@@ -57,6 +58,7 @@ class Encoder(BaseCoder):
         self.max_block_size = max_block_size
         self.framing_treshold = framing_treshold
         self.framing_resolution = framing_resolution
+        self.parallelize = parallelize
 
     def set_rice_responsiveness(self, responsiveness):
         self._ricer.responsiveness = responsiveness
@@ -113,8 +115,10 @@ class Encoder(BaseCoder):
         self._init_frame_types()
 
         groups = self._data.groupby("seq")
-        # self._data = groups.apply(self._encode_frame)
-        self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
+        if self.parallelize:
+            self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
+        else:
+            self._data = groups.apply(self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
         # correctors.ShiftCorrector().df_wrap_apply(data_slice["frame"])

@@ -16,6 +16,7 @@ def read(file) -> (np.array, int):
 
 def write(file, data: np.array, samplerate: int):
     e = Encoder()
+    # TODO: fix this
     e.load_data(data, samplerate)
     e.encode()
     e.save_file(Path(file).open("wb"))
@@ -28,7 +29,8 @@ def _encode(args):
                 max_block_size=args.max_frame_size,
                 framing_treshold=args.framing_treshold,
                 framing_resolution=args.framing_resolution,
-                responsiveness=args.rice_responsiveness)
+                responsiveness=args.rice_responsiveness,
+                parallelize=args.parallel)
 
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))

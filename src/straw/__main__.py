@@ -31,6 +31,9 @@ parser.add_argument("--framing-resolution", dest="framing_resolution", metavar="
 parser.add_argument("--rice-responsiveness", dest="rice_responsiveness", metavar="RESPONSIVENESS", type=int,
                     default=Default.rice_responsiveness, help="Override Rice codding responsiveness")
 
+parser.add_argument("--no-parallel", dest="parallel", action="store_false",
+                    help="Disable parallelization")
+
 args = parser.parse_args()
 
 if args.min_frame_size > args.max_frame_size:
