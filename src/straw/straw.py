@@ -35,25 +35,25 @@ def _encode(args):
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
 
     mid = timeit.default_timer()
     e.encode()
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> encode: {stop - mid}", file=sys.stderr)
 
     mid = timeit.default_timer()
     e.save_file(args.output_file)
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
 
-    if args.verbose:
+    if args.verbose and not args.silent:
         e.print_stats(args.output_file, stream=sys.stderr)
 
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
 
 
@@ -63,30 +63,30 @@ def _decode(args):
     start = timeit.default_timer()
     d.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
 
     mid = timeit.default_timer()
     d.decode()
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> decode: {stop - mid}", file=sys.stderr)
 
     mid = timeit.default_timer()
     d.save_file(args.output_file)
     stop = timeit.default_timer()
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
 
-    if Path(args.input_files[0]).stem == "1min":
-        d.test()
+    # if Path(args.input_files[0]).stem == "1min":
+    #     d.test()
 
-    if args.verbose:
+    if not args.silent:
         print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
 
 
 def run(args):
-    if args.verbose:
+    if args.verbose and not args.silent:
         print(args, file=sys.stderr)
     if not args.decode:
         _encode(args)
