@@ -16,8 +16,7 @@ def read(file) -> (np.array, int):
 
 def write(file, data: np.array, samplerate: int):
     e = Encoder()
-    # TODO: fix this
-    e.load_data(data, samplerate)
+    e.load_data(data, samplerate, data.dtype.itemsize * 8)
     e.encode()
     e.save_file(Path(file).open("wb"))
 
