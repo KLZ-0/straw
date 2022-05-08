@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from .blocking import FrameBlockingPlot
@@ -10,6 +11,10 @@ def plot_all(args=None):
     from .experiments import Experiments
     from .lpc import LPCPlot
     from .rice import RicePlot
+
+    print("Welcome to the figure generator!", file=sys.stderr)
+    print(f"To disable/enable specific figure generation, comment/uncomment the corresponding line in '{__file__}'",
+          file=sys.stderr)
 
     ###########
     # Special #

@@ -65,14 +65,14 @@ class LPCPlot(BasePlot):
         pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[shift:shift + samples]
 
         df = pd.DataFrame({
-            "sample": [i for i in range(len(f))] + [i for i in range(len(pred))] + [i for i in range(len(pred))] + [i
-                                                                                                                    for
-                                                                                                                    i in
-                                                                                                                    range(
-                                                                                                                        len(pred))],
-            "Signal": ["Original" for _ in range(len(f))] + ["Predicted" for _ in range(len(pred))] + ["Residual" for _
-                                                                                                       in range(
-                    len(pred))] + ["Residual" for _ in range(len(pred))],
+            "sample": [i for i in range(len(f))] +
+                      [i for i in range(len(pred))] +
+                      [i for i in range(len(pred))] +
+                      [i for i in range(len(pred))],
+            "Signal": ["Original" for _ in range(len(f))] +
+                      ["Predicted" for _ in range(len(pred))] +
+                      ["Residual" for _ in range(len(pred))] +
+                      ["Residual" for _ in range(len(pred))],
             "value": np.append(np.append(np.append(f, pred), f - pred), f - pred),
             "type": ["Frame" for _ in range(len(f) * 3)] + ["Residual (scaled)" for _ in range(len(f))]
         })
