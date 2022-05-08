@@ -64,16 +64,22 @@ class LPCPlot(BasePlot):
         pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:samples]
 
         df = pd.DataFrame({
-            "sample": [i for i in range(len(f))] + [i for i in range(len(pred))] + [i for i in range(len(pred))],
+            "sample": [i for i in range(len(f))] + [i for i in range(len(pred))] + [i for i in range(len(pred))] + [i
+                                                                                                                    for
+                                                                                                                    i in
+                                                                                                                    range(
+                                                                                                                        len(pred))],
             "Signal": ["Original" for _ in range(len(f))] + ["Predicted" for _ in range(len(pred))] + ["Residual" for _
                                                                                                        in range(
-                    len(pred))],
-            "value": np.append(np.append(f, pred), f - pred)
+                    len(pred))] + ["Residual" for _ in range(len(pred))],
+            "value": np.append(np.append(np.append(f, pred), f - pred), f - pred),
+            "type": ["Frame" for _ in range(len(f) * 3)] + ["Residual" for _ in range(len(f))]
         })
 
-        s = sns.relplot(data=df, kind="line", hue="Signal", x="sample", y="value", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", col="type", col_wrap=1, hue="Signal", x="sample", y="value", height=2.5,
+                        aspect=3, facet_kws={"sharey": False, "sharex": False})
 
-        s.ax.set_title("Frame")
+        s.set_titles("{col_name}")
         s.set_xlabels("Sample")
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
