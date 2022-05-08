@@ -59,9 +59,10 @@ class LPCPlot(BasePlot):
         Shows the original frame and a predicted frame
         """
         frame = self._e.sample_frame()
+        shift = 75
         samples = 160
-        f = frame["frame"][frame["qlp"].shape[0]:samples + frame["qlp"].shape[0]]
-        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:samples]
+        f = frame["frame"][shift + frame["qlp"].shape[0]:shift + samples + frame["qlp"].shape[0]]
+        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[shift:shift + samples]
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(f))] + [i for i in range(len(pred))] + [i for i in range(len(pred))] + [i
@@ -73,7 +74,7 @@ class LPCPlot(BasePlot):
                                                                                                        in range(
                     len(pred))] + ["Residual" for _ in range(len(pred))],
             "value": np.append(np.append(np.append(f, pred), f - pred), f - pred),
-            "type": ["Frame" for _ in range(len(f) * 3)] + ["Residual" for _ in range(len(f))]
+            "type": ["Frame" for _ in range(len(f) * 3)] + ["Residual (scaled)" for _ in range(len(f))]
         })
 
         s = sns.relplot(data=df, kind="line", col="type", col_wrap=1, hue="Signal", x="sample", y="value", height=2.5,
