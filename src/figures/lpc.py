@@ -59,19 +59,21 @@ class LPCPlot(BasePlot):
         Shows the original frame and a predicted frame
         """
         frame = self._e.sample_frame()
-        # FIXME: magic number order=8
-        f = frame["frame"][8:160]
-        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:152]
+        samples = 160
+        f = frame["frame"][frame["qlp"].shape[0]:samples + frame["qlp"].shape[0]]
+        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:samples]
 
         df = pd.DataFrame({
-            "sample": [i for i in range(len(f))] + [i for i in range(len(pred))],
-            "source": ["Original" for _ in range(len(f))] + ["Predicted" for _ in range(len(pred))],
-            "value": np.append(f, pred)
+            "sample": [i for i in range(len(f))] + [i for i in range(len(pred))] + [i for i in range(len(pred))],
+            "Signal": ["Original" for _ in range(len(f))] + ["Predicted" for _ in range(len(pred))] + ["Residual" for _
+                                                                                                       in range(
+                    len(pred))],
+            "value": np.append(np.append(f, pred), f - pred)
         })
 
-        s = sns.relplot(data=df, kind="line", col="source", col_wrap=1, x="sample", y="value", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", hue="Signal", x="sample", y="value", height=2.5, aspect=3)
 
-        s.set_titles("{col_name}")
+        s.ax.set_title("Frame")
         s.set_xlabels("Sample")
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
@@ -84,9 +86,9 @@ class LPCPlot(BasePlot):
         :return:
         """
         frame = self._e.sample_frame()
-        # FIXME: magic number order=8
-        f = frame["frame"][8:160]
-        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:152]
+        samples = 160
+        f = frame["frame"][frame["qlp"].shape[0]:samples + frame["qlp"].shape[0]]
+        pred = steps.predict_signal(frame["frame"], frame["qlp"], frame["shift"])[:samples]
 
         df = pd.DataFrame({
             "sample": [i for i in range(len(f))],
@@ -95,7 +97,7 @@ class LPCPlot(BasePlot):
 
         s = sns.relplot(data=df, kind="line", x="sample", y="value", height=2.5, aspect=3)
 
-        s.set_titles("Residual")
+        s.ax.set_title("Residual")
         s.set_xlabels("Sample")
         s.set_ylabels("Sample value (16-bit)")
         s.tight_layout()
