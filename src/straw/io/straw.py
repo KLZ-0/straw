@@ -196,9 +196,12 @@ class StrawFormatReader(BaseReader):
         if marker.decode("utf-8") != "sTrW":
             raise ValueError("Not a valid Straw file!")
         expected_frames = self._metadata_block()
-        pbar = tqdm(range(expected_frames))
-        pbar.set_description(f"Loading frames")
-        for i in pbar:
+        if self.show_progress:
+            pbar = tqdm(range(expected_frames))
+            pbar.set_description(f"Loading frames")
+        else:
+            pbar = range(expected_frames)
+        for _ in pbar:
             if self._sec.is_eof():
                 pbar.close()
                 break

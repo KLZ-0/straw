@@ -48,11 +48,12 @@ class Formatter:
             fw.write(df)
             fw.close_stream(params)
 
-    def load(self, input_file: Path, flac_mode: bool = False) -> (pd.DataFrame, StreamParams):
+    def load(self, input_file: Path, flac_mode: bool = False, show_progress: bool = True) -> (
+    pd.DataFrame, StreamParams):
         if flac_mode:
             reader = FLACFormatReader()
         else:
-            reader = StrawFormatReader()
+            reader = StrawFormatReader(show_progress)
 
         reader.load(input_file)
         self.validate_dataframe(reader.get_data(), reader.get_params())

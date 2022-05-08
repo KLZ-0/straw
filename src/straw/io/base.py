@@ -83,9 +83,10 @@ class BaseReader(BaseIO):
     _samplebuffer_ptr: int = 0
     _samplebuffer: np.array
 
-    def __init__(self):
+    def __init__(self, show_progress: bool = True):
         self._params = StreamParams()
         self._raw = []
+        self.show_progress = show_progress
 
     def load(self, input_file: Path) -> (pd.DataFrame, StreamParams):
         """

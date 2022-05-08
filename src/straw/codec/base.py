@@ -27,8 +27,11 @@ class BaseCoder:
 
     _subtype_pattern = "PCM_{}"
 
-    def __init__(self, flac_mode=False):
+    def __init__(self, flac_mode=False, show_progress: bool = False):
+        if flac_mode:
+            raise NotImplementedError("FLAC mode is not supported anymore")
         self._flac_mode = flac_mode
+        self.show_progress = show_progress
 
     def _slice_channel_data_into_frames(self, data: np.array, limits: np.array = None):
         if limits is None:

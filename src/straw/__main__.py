@@ -33,6 +33,8 @@ parser.add_argument("--rice-responsiveness", dest="rice_responsiveness", metavar
 
 parser.add_argument("--no-parallel", dest="parallel", action="store_false",
                     help="Disable parallelization")
+parser.add_argument("--verbose", dest="verbose", action="store_true",
+                    help="Verbose output")
 
 args = parser.parse_args()
 

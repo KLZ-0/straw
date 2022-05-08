@@ -42,14 +42,15 @@ class Encoder(BaseCoder):
                  framing_treshold=Default.framing_treshold,
                  framing_resolution=Default.framing_resolution,
                  responsiveness=Default.rice_responsiveness,
-                 parallelize=True):
+                 parallelize=True,
+                 show_progress: bool = False):
         """
 
         :param flac_mode:
         :param do_corrections: an iterable containing the corrections to be done, can contain "gain", "bias" and "shift"
         :param dynamic_blocksize:
         """
-        super(Encoder, self).__init__(flac_mode)
+        super(Encoder, self).__init__(flac_mode, show_progress=show_progress)
         self._ricer = Ricer(adaptive=True if not flac_mode else False, responsiveness=responsiveness)
         self._params.responsiveness = responsiveness
         self._do_corrections = do_corrections
