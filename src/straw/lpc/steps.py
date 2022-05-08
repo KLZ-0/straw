@@ -1,5 +1,4 @@
 import math
-import sys
 
 import numpy as np
 import pandas as pd
@@ -73,75 +72,6 @@ def lpc_is_stable(lpc_c) -> bool:
 ################
 # Quantization #
 ################
-
-FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN = 5
-
-
-def quantize_lpc(lpc_c, precision) -> (np.array, int):
-    """
-    Implementation: https://github.com/xiph/flac/blob/master/src/libFLAC/lpc.c
-    TODO: can be heavily optimized
-    :param lpc_c:
-    :param precision:
-    :return: tuple(QLP, shift)
-    """
-    # reserve 1 bit for sign
-    precision -= 1
-
-    qmax = 1 << precision
-    qmin = -qmax
-    qmax -= 1
-
-    cmax = 0.0
-    for i in range(len(lpc_c)):
-        d = np.abs(lpc_c[i])
-        if d > cmax:
-            cmax = d
-
-    if cmax <= 0:
-        return None, 0
-
-    max_shiftlimit = 1 << (1 << (FLAC__SUBFRAME_LPC_QLP_SHIFT_LEN - 1)) - 1
-    min_shiftlimit = -max_shiftlimit - 1
-
-    _, log2cmax = math.frexp(cmax)
-    log2cmax -= 1
-
-    shift = precision - log2cmax - 1
-
-    if shift > max_shiftlimit:
-        shift = max_shiftlimit
-    elif shift < min_shiftlimit:
-        return None, 0
-
-    # if shift >= 0
-    # TODO: add way for negative shift
-    if shift < 0:
-        print("Negative shift not yet supported", file=sys.stderr)
-        exit(1)
-
-    error = 0.0
-    q = 0
-    qlp_c = np.zeros(len(lpc_c), dtype="i4")
-    for i in range(len(lpc_c)):
-        error += lpc_c[i] * (1 << shift)
-        q = round(error)
-
-        # overflows
-        if q > qmax + 1:
-            print("Overflow1")
-        if q < qmin:
-            print("Overflow2")
-
-        if q > qmax:
-            q = qmax
-        elif q < qmin:
-            q = qmin
-
-        error -= q
-        qlp_c[i] = q
-
-    return qlp_c, shift
 
 
 def quant_alt(lpc_c, precision) -> (np.array, int, int):

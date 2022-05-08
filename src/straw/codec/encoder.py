@@ -128,8 +128,7 @@ class Encoder(BaseCoder):
         Encode the data in the internal DataFrame
         :return: None
         """
-        # Extract stream parameters & initialize frame types
-        self._parametrize()
+        # Initialize frame types
         self._init_frame_types()
 
         groups = self._data.groupby("seq")
@@ -164,11 +163,6 @@ class Encoder(BaseCoder):
         :return: None
         """
         self._params.total_frames = int(len(self._data[self._data["channel"] == 0]))
-        self._tmp()
-        # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
-        # new_lens = self._data
-        # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
-        # diff = (new_lens - old_lens)["stream_len"]
         opened = False
         if not hasattr(output_file, "write"):
             output_file = open(output_file, "wb")
@@ -210,18 +204,6 @@ class Encoder(BaseCoder):
 
         self._data = pd.DataFrame(ds, copy=False)
 
-    def _parametrize(self):
-        """
-        Parameter extraction to be used for encoding the whole stream
-        :return: None
-        """
-        if self._flac_mode:
-            self._params.max_block_size = int(self._data["frame"].apply(len).max())
-            self._params.min_block_size = self._params.max_block_size
-            self._params.min_frame_size = 0  # unknown
-            self._params.max_frame_size = 0
-        # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
-
     def _init_frame_types(self):
         # all frames are LPC frames by default
         self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
@@ -242,51 +224,6 @@ class Encoder(BaseCoder):
         #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice = data_slice.groupby("seq").apply(correctors.Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice["was_coded"] = 0
-
-    #########
-    # Other #
-    #########
-
-    def _print_var(self, seq=0):
-        old_stream_len = 214523
-        stream_len = self._data[self._data["seq"] == seq]["stream_len"].sum()
-        print("- stream_len:", stream_len)
-        print("- stream_len diff:", stream_len - old_stream_len)
-        old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
-        nocorr_var = np.asarray([10997.481, 24395.01, 50948.516, 36896.603, 21682.603, 11630.761,
-                                 14912.361, 18267.361])
-        self._print_var_details(seq, np.var, "var", nocorr_var)
-        self._print_var_details(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
-
-    def _print_var_details(self, seq, func, name, old_vals=None):
-        residuals = self._data[self._data["seq"] == seq]["residual"]
-        residuals = residuals.apply(lambda x: x[1740:1800])
-        var = residuals.apply(func).to_numpy()
-        print(f"- {name}:", np.array2string(var, separator=", ", precision=3, suppress_small=True))
-        if old_vals is not None:
-            print(f"- original {name}:", np.array2string(old_vals, precision=3, suppress_small=True))
-            print(f"- {name} difference:", np.array2string(var - old_vals, precision=3, suppress_small=True))
-            print(f"total {name} diff: {(var - old_vals).sum():.3f}")
-
-    def _tmp(self):
-        """
-        Temporary method for experiments and plots
-        """
-        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
-        # self._print_var(seq=5)
-        # from figures import show_frame
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 60))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1730, 60))
-        # show_frame(self._data[self._data["seq"] == 5], terminate=False, limit=(1750, 60))
-        # show_frame(self._data[self._data["seq"] == 5], terminate=False, col_name="residual", limit=(1730, 60))
-        # exit()
-        # df = self._data[(self._data["seq"] == 66) & (self._data["channel"] == 0)]
-        # show_frame(df, col_name="frame", terminate=False)
-        # # df["zeros"] = df["frame"].apply(self._get_zerocrossing_rate)
-        # # show_frame(df, col_name="zeros", terminate=False)
-        # df["energy"] = df["frame"].apply(self._get_shorttime_energy)
-        # show_frame(df, col_name="energy")
-        pass
 
     ###########
     # Utility #

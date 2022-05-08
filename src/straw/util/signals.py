@@ -74,13 +74,6 @@ class Signals:
         return indices
 
     @staticmethod
-    def signaltonoise(a, axis=0, ddof=0):
-        a = np.asanyarray(a)
-        m = a.mean(axis)
-        sd = a.std(axis=axis, ddof=ddof)
-        return 20 * np.log10(abs(np.where(sd == 0, 0, m / sd)))
-
-    @staticmethod
     def get_energies(data: np.array,
                      resolution: int = Default.framing_resolution,
                      treshold: int = Default.framing_treshold):
