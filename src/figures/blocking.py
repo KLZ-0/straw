@@ -1,6 +1,7 @@
 import tempfile
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import pyplot as plt
@@ -63,18 +64,25 @@ class FrameBlockingPlot(BasePlot):
         energy = energy[:-1]
 
         df = pd.DataFrame({
-            "sample": [i for i in range(energy.shape[0])],
-            "value": energy
+            "sample": [i for i in range(frame.shape[1])] + [i for i in range(energy.shape[0])],
+            "value": np.append(frame[0], energy),
+            "type": ["Frame" for _ in range(frame.shape[1])] + ["Energy" for _ in range(energy.shape[0])],
         })
 
-        s = sns.relplot(data=df, kind="line", x="sample", y="value", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", col="type", col_wrap=1, x="sample", y="value", height=2.5, aspect=3,
+                        facet_kws={"sharey": False, "sharex": False})
 
         for limit_x in limits:
-            plt.axvline(x=limit_x / resolution, ymin=0, ymax=1, color="red")
-        plt.axhline(y=treshold, xmin=0, xmax=1, color="green")
+            s.axes[0].axvline(x=limit_x, ymin=0, ymax=1, color="red")
+            s.axes[1].axvline(x=limit_x / resolution, ymin=0, ymax=1, color="red")
+        s.axes[1].axhline(y=treshold, xmin=0, xmax=1, color="green")
 
-        s.set_xlabels("Sample group (precision = 10)")
-        s.set_ylabels("Energy")
+        s.set_titles("{col_name}")
+        s.axes[0].set_xlabel("Sample")
+        s.axes[0].set_ylabel("Sample value (16-bit)")
+        s.axes[1].set_xlabel("Sample group (precision = 10)")
+        s.axes[1].set_ylabel("Energy")
+        # s.set_xlabels("Sample group (precision = 10)")
         s.tight_layout()
 
         self.save(filename)
