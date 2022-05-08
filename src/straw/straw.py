@@ -30,59 +30,71 @@ def _encode(args):
                 framing_resolution=args.framing_resolution,
                 responsiveness=args.rice_responsiveness,
                 parallelize=args.parallel,
-                show_progress=True)
+                show_progress=False)
 
+    if not args.silent:
+        print(f"Loading file ... ", end="", file=sys.stderr)
     start = timeit.default_timer()
     e.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
+        print(f"DONE in {stop - start:.3f} s", file=sys.stderr)
 
+    if not args.silent:
+        print(f"Encoding ... ", end="", file=sys.stderr)
     mid = timeit.default_timer()
     e.encode()
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> encode: {stop - mid}", file=sys.stderr)
+        print(f"DONE in {stop - mid:.3f} s", file=sys.stderr)
 
+    if not args.silent:
+        print(f"Saving to file ... ", end="", file=sys.stderr)
     mid = timeit.default_timer()
     e.save_file(args.output_file)
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
+        print(f"DONE in {stop - mid:.3f} s", file=sys.stderr)
 
     if args.verbose and not args.silent:
         e.print_stats(args.output_file, stream=sys.stderr)
 
     if not args.silent:
-        print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
+        print(f"Total processing time: {stop - start:.3f} s", file=sys.stderr)
 
 
 def _decode(args):
-    d = Decoder(flac_mode=False, show_progress=True)
+    d = Decoder(flac_mode=False, show_progress=False)
 
+    if not args.silent:
+        print(f"Loading file ... ", end="", file=sys.stderr)
     start = timeit.default_timer()
     d.load_file(Path(args.input_files[0]))
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> load_file: {stop - start}", file=sys.stderr)
+        print(f"DONE in {stop - start:.3f} s", file=sys.stderr)
 
+    if not args.silent:
+        print(f"Decoding ... ", end="", file=sys.stderr)
     mid = timeit.default_timer()
     d.decode()
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> decode: {stop - mid}", file=sys.stderr)
+        print(f"DONE in {stop - mid:.3f} s", file=sys.stderr)
 
+    if not args.silent:
+        print(f"Saving to file ... ", end="", file=sys.stderr)
     mid = timeit.default_timer()
     d.save_file(args.output_file)
     stop = timeit.default_timer()
     if not args.silent:
-        print(f"<TIME> save_file: {stop - mid}", file=sys.stderr)
+        print(f"DONE in {stop - mid:.3f} s", file=sys.stderr)
 
     # if Path(args.input_files[0]).stem == "1min":
     #     d.test()
 
     if not args.silent:
-        print(f"<TIME> total: {stop - start:.3f} seconds", file=sys.stderr)
+        print(f"Total processing time: {stop - start:.3f} s", file=sys.stderr)
 
 
 def run(args):
