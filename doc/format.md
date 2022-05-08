@@ -36,8 +36,7 @@ Heavily based on the FLAC format
     ~127 : invalid, to avoid confusion with a frame sync code
     ```
 
-- `<0/24>` if(BLOCK_TYPE != STREAMINFO) Length (in bytes) of metadata to follow (does not include the size of the
-  METADATA_BLOCK_HEADER)
+- `<0/24>` if(BLOCK_TYPE != STREAMINFO) Length (in bytes) of metadata to follow (does not include the size of the METADATA_BLOCK_HEADER)
 
 ## METADATA_BLOCK_DATA
 
@@ -61,11 +60,9 @@ One of:
 
 - `<27>` Total number of frames
 
-- `<36>` Total samples in stream. 'Samples' means inter-channel sample, i.e. one second of 44.1Khz audio will have 44100
-  samples regardless of the number of channels. A value of zero here means the number of total samples is unknown.
+- `<36>` Total samples in stream. 'Samples' means inter-channel sample, i.e. one second of 44.1Khz audio will have 44100 samples regardless of the number of channels. A value of zero here means the number of total samples is unknown.
 
-- `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the
-  audio data even when the error does not result in an invalid bitstream.
+- `<128>` MD5 signature of the unencoded audio data. This allows the decoder to determine if an error exists in the audio data even when the error does not result in an invalid bitstream.
 
 - `<8>` Rice coding responsiveness
 
@@ -73,11 +70,9 @@ One of:
 
 - `<8-?>` if (Has shift correction) "UTF-8" coded leading channel
 
-- `<n*4>` if (Has shift correction) Shift needed for each channel compared to the leading channel, n = number of
-  channels
+- `<n*4>` if (Has shift correction) Shift needed for each channel compared to the leading channel, n = number of channels
 
-- `<c*n*b>` if (Has shift correction) Removed samples start + end flattened, c = number of channels, n = number of
-  removed samples (max lag), b = bits per sample
+- `<c*n*b>` if (Has shift correction) Removed samples start + end flattened, c = number of channels, n = number of removed samples (max lag), b = bits per sample
   - NOTE: the values are signed two's-complement
 
 - `<1>` Has bias correction
@@ -88,8 +83,7 @@ One of:
 - `<1>` Has gain correction
 
 - `<n*12>` if (Has gain correction == 1) Gain correction coefficients (factor) - 1.0, n = number of channels
-  - These are unsigned quantized floating point numbers with the range (1 to inf) by for storage purposes 1.0 is
-    subtracted since the coefficients are always larger than 1
+  - These are unsigned quantized floating point numbers with the range (1 to inf) by for storage purposes 1.0 is subtracted since the coefficients are always larger than 1
   - The strongest channel will always have a factor of 1.0 (or 0 quantized)
 
 - `<4>` if (Has gain correction == 1) Gain shift in bits
@@ -131,13 +125,11 @@ The "UTF-8" coding is the same variable length code used to store compressed UCS
 
 - `<32>` Size of the frame in bytes (size including the header sync code and the frame footer)
 
-- `<8>` CRC-8 (polynomial = x^8 + x^2 + x^1 + x^0, initialized with 0) of everything before the crc, including the sync
-  code
+- `<8>` CRC-8 (polynomial = x^8 + x^2 + x^1 + x^0, initialized with 0) of everything before the crc, including the sync code
 
 ## FRAME_FOOTER
 
-- `<16>` CRC-16 (polynomial = x^16 + x^15 + x^2 + x^0, initialized with 0) of everything before the crc, back to and
-  including the frame header sync code
+- `<16>` CRC-16 (polynomial = x^16 + x^15 + x^2 + x^0, initialized with 0) of everything before the crc, back to and including the frame header sync code
 
 ## SUBFRAME
 

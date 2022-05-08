@@ -3,51 +3,29 @@ import numpy as np
 from straw.static import Default
 
 
-def zero_crossings(
-        y, *, threshold=1e-10, ref_magnitude=None, pad=True, zero_pos=True, axis=-1
-):
+def zero_crossings(x, zero_pos: bool = True):
     """
-    Source: librosa.zero_crossings
+    Similar output to librosa.zero_crossings but more efficient
+    :param x: signal
+    :param zero_pos: whether to count the first number as a zero crossing
+    :return: Zero crossings
     """
-    if threshold is None:
-        threshold = 0.0
-
-    if callable(ref_magnitude):
-        threshold = threshold * ref_magnitude(np.abs(y))
-
-    elif ref_magnitude is not None:
-        threshold = threshold * ref_magnitude
-
-    if threshold > 0:
-        y = y.copy()
-        y[np.abs(y) <= threshold] = 0
-
-    # Extract the sign bit
     if zero_pos:
-        y_sign = np.signbit(y)
+        x_sign = np.signbit(x)
     else:
-        y_sign = np.sign(y)
+        x_sign = np.sign(x)
 
-    # Find the change-points by slicing
-    slice_pre = [slice(None)] * y.ndim
-    slice_pre[axis] = slice(1, None)
-
-    slice_post = [slice(None)] * y.ndim
-    slice_post[axis] = slice(-1)
-
-    # Since we've offset the input by one, pad back onto the front
-    padding = [(0, 0)] * y.ndim
-    padding[axis] = (1, 0)
-
-    return np.pad(
-        (y_sign[tuple(slice_post)] != y_sign[tuple(slice_pre)]),
-        padding,
-        mode="constant",
-        constant_values=pad,
-    )
+    return np.insert(x_sign[1:] != x_sign[:-1], 0, 1)
 
 
 def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
+    """
+    Resample the indices so that the new block sizes are between min_block_size and max_block_size
+    :param raw_indices: indices to be resampled
+    :param min_block_size: minimal allowed block size
+    :param max_block_size: maximal allowed block size
+    :return: new indices
+    """
     indices = [0]
     currect_size = 0
     for i in range(1, raw_indices.shape[0]):
@@ -73,7 +51,13 @@ class Signals:
                                    max_block_size: int = Default.max_frame_size,
                                    resolution: int = Default.framing_resolution):
         """
-        Returns a list of indices where frames should start
+        Returns a list of indices where frames should start, determined by the short-time energy
+        :param channel_data: full data of one channel
+        :param min_block_size: minimal allowed block size
+        :param treshold: energy threshold
+        :param max_block_size: maximal allowed block size
+        :param resolution: framing resolution
+        :return: Indices of frame borders including the last border
         """
         if resolution is None:
             resolution = min_block_size
@@ -90,16 +74,16 @@ class Signals:
         return indices
 
     @staticmethod
-    def signaltonoise(a, axis=0, ddof=0):
-        a = np.asanyarray(a)
-        m = a.mean(axis)
-        sd = a.std(axis=axis, ddof=ddof)
-        return 20 * np.log10(abs(np.where(sd == 0, 0, m / sd)))
-
-    @staticmethod
     def get_energies(data: np.array,
                      resolution: int = Default.framing_resolution,
                      treshold: int = Default.framing_treshold):
+        """
+        Return the energies of a frame
+        :param data: frame data
+        :param resolution: framing resolution
+        :param treshold: energy threshold
+        :return: short-term energies in a frame
+        """
         data = data.astype(np.int64)
         lst = []
         for i in range(0, data.shape[0], resolution):

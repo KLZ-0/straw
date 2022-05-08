@@ -13,6 +13,9 @@ from straw.rice import Ricer
 
 
 class BaseIO:
+    """
+    Base class for Readers and Writers
+    """
     _data: pd.DataFrame
     _params: StreamParams
     _f = None
@@ -36,9 +39,17 @@ class BaseIO:
         pass
 
     def get_data(self):
+        """
+        Query the data view
+        :return: data view
+        """
         return self._data
 
     def get_params(self):
+        """
+        Query the params
+        :return: params
+        """
         return self._params
 
 
@@ -83,9 +94,10 @@ class BaseReader(BaseIO):
     _samplebuffer_ptr: int = 0
     _samplebuffer: np.array
 
-    def __init__(self):
+    def __init__(self, show_progress: bool = True):
         self._params = StreamParams()
         self._raw = []
+        self.show_progress = show_progress
 
     def load(self, input_file: Path) -> (pd.DataFrame, StreamParams):
         """
@@ -103,6 +115,10 @@ class BaseReader(BaseIO):
         self._data = pd.DataFrame(self._raw, columns=static.columns, copy=False)
 
     def _allocate_buffer(self):
+        """
+        Allocate the samplebuffer
+        :return: None
+        """
         channels = self._params.channels
         total_samples = self._params.total_samples
         dtype_bits = static.soundfile_dtype[self._params.bits_per_sample]
@@ -110,4 +126,8 @@ class BaseReader(BaseIO):
         self._samplebuffer = self._samplebuffer.swapaxes(1, 0)
 
     def get_buffer(self):
+        """
+        Query the samplebuffer view
+        :return: samplebuffer view
+        """
         return self._samplebuffer

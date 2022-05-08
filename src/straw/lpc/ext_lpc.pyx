@@ -102,14 +102,6 @@ def compute_residual(cython.integral[:] frame, cython.integral[:] residual, int[
 
 
 def restore_signal(cython.integral[:] frame, int[:] qlp, int lp_quantization):
-    """
-    Restores the original signal given the residual with quantized LPC coefficients
-    :param frame: signal array initialized with the first samples from the original signal and the residual
-    :param qlp: quantized LPC coefficients
-    :param lp_quantization: quantization shift
-    :return: reconstructed signal as a numpy array
-    # TODO: make this function take an array of blocksize where first order samples are warmup samples and the rest is residual
-    """
     cdef Py_ssize_t data_len = frame.shape[0]
     cdef Py_ssize_t order = qlp.shape[0]
     cdef Py_ssize_t  i, j

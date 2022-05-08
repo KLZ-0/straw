@@ -3,7 +3,6 @@ from typing import BinaryIO
 
 import pandas as pd
 
-from straw.io.flac import FLACFormatReader
 from straw.io.params import StreamParams
 from straw.io.straw import StrawFormatWriter, StrawFormatReader
 
@@ -21,7 +20,6 @@ class Formatter:
         :param params: stream params
         :return: None
         """
-        # TODO: make normal checks
         return
         # noinspection PyUnreachableCode
         if len(df) == 0:
@@ -48,11 +46,12 @@ class Formatter:
             fw.write(df)
             fw.close_stream(params)
 
-    def load(self, input_file: Path, flac_mode: bool = False) -> (pd.DataFrame, StreamParams):
+    def load(self, input_file: Path, flac_mode: bool = False, show_progress: bool = True) -> (
+    pd.DataFrame, StreamParams):
         if flac_mode:
-            reader = FLACFormatReader()
+            raise NotImplementedError("FLAC mode is no longer supported")
         else:
-            reader = StrawFormatReader()
+            reader = StrawFormatReader(show_progress)
 
         reader.load(input_file)
         self.validate_dataframe(reader.get_data(), reader.get_params())

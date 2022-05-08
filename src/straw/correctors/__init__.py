@@ -11,6 +11,14 @@ def apply_corrections(data: np.array,
                       corrections: tuple,
                       target_params: StreamParams = StreamParams(),
                       force_inplace: bool = False):
+    """
+    Apply the given corrections to the data in thegiven order
+    :param data: array to apply the corrections to - ndarray with dimensions (channels, samples)
+    :param corrections: corrections to apply
+    :param target_params: stream params where the correction params should be stored
+    :param force_inplace: force the operation inplace (mainly shift correction)
+    :return:
+    """
     for correction in corrections:
         if correction == "gain":
             GainCorrector().apply(data, target_params)

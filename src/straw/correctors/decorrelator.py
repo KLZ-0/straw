@@ -10,6 +10,11 @@ class Modifiers:
     #############################
     @staticmethod
     def indicator(x):
+        """
+        A cutoff indicator function
+        :param x:
+        :return:
+        """
         return np.mean(np.abs(x))
 
     @staticmethod
@@ -132,6 +137,13 @@ class Decorrelator:
 
     @staticmethod
     def midside_decorrelate(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
+        """
+        Apply the mid-side decorrelation
+        :param df: source DataFrame
+        :param col_name: column that should be decorrelated
+        :param iterated: whether the decorrelation should be performed in iterations
+        :return: modified DataFrame
+        """
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 
@@ -158,6 +170,13 @@ class Decorrelator:
 
     @staticmethod
     def midside_decorrelate_revert(df: pd.DataFrame, col_name: str = "residual", iterated: bool = True):
+        """
+        Apply the reverse of mid-side decorrelation
+        :param df: source DataFrame
+        :param col_name: column that should be decorrelated
+        :param iterated: whether the decorrelation should be performed in iterations
+        :return: modified DataFrame
+        """
         if col_name not in df.columns:
             raise ValueError(f"Column '{col_name}' not in dataframe")
 

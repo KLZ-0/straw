@@ -1,3 +1,8 @@
+"""
+Static values of the codec
+"""
+
+
 class SubframeType:
     CONSTANT = 0b00
     RAW = 0b01

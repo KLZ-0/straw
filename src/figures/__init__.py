@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from .blocking import FrameBlockingPlot
@@ -11,6 +12,10 @@ def plot_all(args=None):
     from .lpc import LPCPlot
     from .rice import RicePlot
 
+    print("Welcome to the figure generator!", file=sys.stderr)
+    print(f"To disable/enable specific figure generation, comment/uncomment the corresponding line in '{__file__}'",
+          file=sys.stderr)
+
     ###########
     # Special #
     ###########
@@ -18,7 +23,7 @@ def plot_all(args=None):
     e = Encoder(dynamic_blocksize=True)
     # FrameBlockingPlot(e, args).print_sizes()
     # FrameBlockingPlot(e, args).plot_tresholds("blocking_dynamic_tresholds.pdf")
-    RicePlot(e, args).plot_responsiveness("rice_responsiveness.pdf")
+    # RicePlot(e, args).plot_responsiveness("rice_responsiveness.pdf")
 
     #######################
     # Without corrections #
@@ -59,7 +64,7 @@ def plot_all(args=None):
     # RicePlot(e, args).rand_comparison("rice_rand_comparison.pdf")
     # FrameBlockingPlot(e, args).frame_limits("blocking_dynamic.pdf")
     # FrameBlockingPlot(e, args).frame_energy("blocking_dynamic_energy.pdf")
-    FrameBlockingPlot(e, args).fixed_blocksize("blocking_fixed.pdf")
+    # FrameBlockingPlot(e, args).fixed_blocksize("blocking_fixed.pdf")
 
     ###########################
     # With corrections + gain #

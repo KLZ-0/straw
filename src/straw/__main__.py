@@ -4,6 +4,11 @@ from pathlib import Path
 from straw.static import Default
 from straw.straw import run
 
+"""
+The main executable script
+When called parses the command line arguments and acts accordingly
+"""
+
 parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
 parser.add_argument("-i", "--input", dest="input_files", metavar="INPUT_FILE", type=str, nargs="+",
                     help="Input files", required=True)
@@ -31,6 +36,13 @@ parser.add_argument("--framing-resolution", dest="framing_resolution", metavar="
 parser.add_argument("--rice-responsiveness", dest="rice_responsiveness", metavar="RESPONSIVENESS", type=int,
                     default=Default.rice_responsiveness, help="Override Rice codding responsiveness")
 
+parser.add_argument("--no-parallel", dest="parallel", action="store_false",
+                    help="Disable parallelization")
+parser.add_argument("--silent", dest="silent", action="store_true",
+                    help="Silence the coder completely")
+parser.add_argument("--verbose", dest="verbose", action="store_true",
+                    help="Verbose output")
+
 args = parser.parse_args()
 
 if args.min_frame_size > args.max_frame_size:
@@ -45,8 +57,6 @@ else:
         args.output_file = (pth.parent / pth.stem).with_suffix(".wav")
     else:
         args.output_file = (pth.parent / pth.stem).with_suffix(".straw")
-
-# TODO: this part has to get proper args
 
 if args.figures:
     from figures import plot_all

@@ -19,7 +19,7 @@ class Decoder(BaseCoder):
         :param input_file: file to load
         :return: None
         """
-        reader = Formatter().load(input_file, self._flac_mode)
+        reader = Formatter().load(input_file, self._flac_mode, show_progress=self.show_progress)
         self._data = reader.get_data()
         self._params = reader.get_params()
         self._samplebuffer = reader.get_buffer()
@@ -73,6 +73,9 @@ class Decoder(BaseCoder):
         Test the decoder with a sample file
         :return:
         """
+        if not wav_file.exists():
+            return
+
         tmp, _ = soundfile.read(wav_file, dtype="int16")
         tmp = tmp.swapaxes(1, 0)
         if not (self._samplebuffer - tmp).any():

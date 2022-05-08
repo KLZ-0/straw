@@ -23,8 +23,6 @@ class EncoderStats:
 
 
 class Encoder(BaseCoder):
-    # Values which should be parametrized
-    # TODO: find the best values for these
     _lpc_order = 20  # can be sourced from len(df["qlp"]) once per group
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
     _params = StreamParams()
@@ -41,14 +39,21 @@ class Encoder(BaseCoder):
                  max_block_size=Default.max_frame_size,
                  framing_treshold=Default.framing_treshold,
                  framing_resolution=Default.framing_resolution,
-                 responsiveness=Default.rice_responsiveness):
+                 responsiveness=Default.rice_responsiveness,
+                 parallelize=True,
+                 show_progress: bool = False):
         """
-
-        :param flac_mode:
-        :param do_corrections: an iterable containing the corrections to be done, can contain "gain", "bias" and "shift"
-        :param dynamic_blocksize:
+        Encoder constructor
+        :param do_corrections: tuple of correction to be performed
+        :param dynamic_blocksize: whether to perform dynamic block slicing
+        :param min_block_size: minimal block size
+        :param max_block_size: maximal block size
+        :param framing_treshold: framing treshold
+        :param framing_resolution: framing resolution
+        :param responsiveness: Rice coding responsiveness
+        :param parallelize: if True use parallelization while encoding
         """
-        super(Encoder, self).__init__(flac_mode)
+        super(Encoder, self).__init__(flac_mode, show_progress=show_progress)
         self._ricer = Ricer(adaptive=True if not flac_mode else False, responsiveness=responsiveness)
         self._params.responsiveness = responsiveness
         self._do_corrections = do_corrections
@@ -57,8 +62,14 @@ class Encoder(BaseCoder):
         self.max_block_size = max_block_size
         self.framing_treshold = framing_treshold
         self.framing_resolution = framing_resolution
+        self.parallelize = parallelize
 
     def set_rice_responsiveness(self, responsiveness):
+        """
+        Set a new Rice coding responsiveness
+        :param responsiveness: new Rice responsiveness
+        :return: None
+        """
         self._ricer.responsiveness = responsiveness
         self._params.responsiveness = responsiveness
 
@@ -82,6 +93,13 @@ class Encoder(BaseCoder):
         self.load_data(data, sr, bits_per_sample)
 
     def load_data(self, data: np.array, samplerate: int, bits_per_sample: int):
+        """
+        Load the given data into the internal DataFrame
+        :param data: data to be loaded
+        :param samplerate: samplerate of the given data
+        :param bits_per_sample: bits per sample of the original data (can be lower than the bit width of data.dtype)
+        :return: None
+        """
         if len(data.shape) == 1:
             self._samplebuffer = data.reshape((1, -1))
         elif data.shape[0] > data.shape[1]:
@@ -105,18 +123,24 @@ class Encoder(BaseCoder):
 
     def encode(self):
         """
-        Encode the signal
+        Encode the data in the internal DataFrame
         :return: None
         """
-        # Extract stream parameters & initialize frame types
-        self._parametrize()
+        # Initialize frame types
         self._init_frame_types()
 
         groups = self._data.groupby("seq")
-        # self._data = groups.apply(self._encode_frame)
-        self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
+        if self.parallelize and self._params.channels > 1:
+            self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
+        else:
+            self._data = groups.apply(self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
+        """
+        Encode one frame - group of subframes
+        :param data_slice: slice of a DataFrame containing a group of subframes
+        :return: modified data_slice
+        """
         # correctors.ShiftCorrector().df_wrap_apply(data_slice["frame"])
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
@@ -137,11 +161,6 @@ class Encoder(BaseCoder):
         :return: None
         """
         self._params.total_frames = int(len(self._data[self._data["channel"] == 0]))
-        self._tmp()
-        # self._data.to_pickle("/tmp/old_streamlen.pkl.gz")
-        # new_lens = self._data
-        # old_lens = pd.read_pickle("/tmp/old_streamlen.pkl.gz")
-        # diff = (new_lens - old_lens)["stream_len"]
         opened = False
         if not hasattr(output_file, "write"):
             output_file = open(output_file, "wb")
@@ -159,7 +178,7 @@ class Encoder(BaseCoder):
         """
         Create a dataframe from the raw signal, this includes slicing the signal into specific views
         NOTE: the underlying memory stays as a contiguous memory chunk
-        :return:
+        :return: None
         """
 
         total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
@@ -183,18 +202,6 @@ class Encoder(BaseCoder):
 
         self._data = pd.DataFrame(ds, copy=False)
 
-    def _parametrize(self):
-        """
-        Parameter extraction to be used for encoding the whole stream
-        :return: None
-        """
-        if self._flac_mode:
-            self._params.max_block_size = int(self._data["frame"].apply(len).max())
-            self._params.min_block_size = self._params.max_block_size
-            self._params.min_frame_size = 0  # unknown
-            self._params.max_frame_size = 0
-        # self._params.total_samples = int(self._data[self._data["channel"] == 0]["frame"].apply(len).sum())
-
     def _init_frame_types(self):
         # all frames are LPC frames by default
         self._data["frame_type"] = np.full(len(self._data["frame"]), SubframeType.LPC, dtype="B")
@@ -208,64 +215,24 @@ class Encoder(BaseCoder):
             df["frame_type"] = SubframeType.RAW
         return df["frame_type"]
 
-    def _decorrelate_signals(self, data_slice, col_name="residual"):
-        # TODO: do not decorrelate for frames with separate LPC
+    @staticmethod
+    def _decorrelate_signals(data_slice, col_name="residual"):
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         # self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
         #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice = data_slice.groupby("seq").apply(correctors.Decorrelator().midside_decorrelate, col_name=col_name)
         data_slice["was_coded"] = 0
 
-    #########
-    # Other #
-    #########
-
-    def _print_var(self, seq=0):
-        old_stream_len = 214523
-        stream_len = self._data[self._data["seq"] == seq]["stream_len"].sum()
-        print("- stream_len:", stream_len)
-        print("- stream_len diff:", stream_len - old_stream_len)
-        old_maxabs = np.asarray([352, 373, 581, 516, 432, 349, 380, 391])
-        nocorr_var = np.asarray([10997.481, 24395.01, 50948.516, 36896.603, 21682.603, 11630.761,
-                                 14912.361, 18267.361])
-        self._print_var_details(seq, np.var, "var", nocorr_var)
-        self._print_var_details(seq, lambda x: np.max(np.abs(x)), "absmax", old_maxabs)
-
-    def _print_var_details(self, seq, func, name, old_vals=None):
-        residuals = self._data[self._data["seq"] == seq]["residual"]
-        residuals = residuals.apply(lambda x: x[1740:1800])
-        var = residuals.apply(func).to_numpy()
-        print(f"- {name}:", np.array2string(var, separator=", ", precision=3, suppress_small=True))
-        if old_vals is not None:
-            print(f"- original {name}:", np.array2string(old_vals, precision=3, suppress_small=True))
-            print(f"- {name} difference:", np.array2string(var - old_vals, precision=3, suppress_small=True))
-            print(f"total {name} diff: {(var - old_vals).sum():.3f}")
-
-    def _tmp(self):
-        """
-        Temporary method for experiments and plots
-        """
-        # self._data.groupby("seq").apply(lambda df: df["frame"].apply(cross_similarity, data_ref=df["frame"][df.index[0]]))
-        # self._print_var(seq=5)
-        # from figures import show_frame
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, limit=(1750, 60))
-        # show_frame(self._data[self._data["seq"] == 4], terminate=False, col_name="residual", limit=(1730, 60))
-        # show_frame(self._data[self._data["seq"] == 5], terminate=False, limit=(1750, 60))
-        # show_frame(self._data[self._data["seq"] == 5], terminate=False, col_name="residual", limit=(1730, 60))
-        # exit()
-        # df = self._data[(self._data["seq"] == 66) & (self._data["channel"] == 0)]
-        # show_frame(df, col_name="frame", terminate=False)
-        # # df["zeros"] = df["frame"].apply(self._get_zerocrossing_rate)
-        # # show_frame(df, col_name="zeros", terminate=False)
-        # df["energy"] = df["frame"].apply(self._get_shorttime_energy)
-        # show_frame(df, col_name="energy")
-        pass
-
     ###########
     # Utility #
     ###########
 
     def get_stats(self, output_file: Path) -> EncoderStats:
+        """
+        Return the stats of the encoding
+        :param output_file: the output file for comparison
+        :return:
+        """
         stats = EncoderStats()
         stats.file_size = output_file.stat().st_size
         stats.ratio = output_file.stat().st_size / self._source_size
@@ -274,7 +241,7 @@ class Encoder(BaseCoder):
 
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         """
-        Print a bunch of stuff...
+        Verbose output - print a bunch of stuff...
         :param output_file: output file (only the size is needed)
         :param stream: stream where the output should be written
         :return: None
@@ -292,5 +259,4 @@ class Encoder(BaseCoder):
               file=stream)
         print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.4f}", file=stream)
 
-        # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
