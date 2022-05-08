@@ -17,10 +17,13 @@ class RicePlot(BasePlot):
         df = pd.DataFrame({
             "sample": [i for i in range(len(signal))] + [i for i in range(len(signal))],
             "value": list(signal) + list(self._get_interleaved_signal(signal)),
-            "type": ["original" for _ in range(len(signal))] + ["interleaved" for _ in range(len(signal))],
+            "Signal": ["Original" for _ in range(len(signal))] + ["Interleaved" for _ in range(len(signal))],
         })
 
-        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="type", height=2.5, aspect=3)
+        s = sns.relplot(data=df, kind="line", x="sample", y="value", hue="Signal", height=2.5, aspect=3)
+        s.set_xlabels("Sample")
+        s.set_ylabels("Value (16-bit)")
+        s.tight_layout()
         self.save(filename)
 
     def static_m(self, filename):

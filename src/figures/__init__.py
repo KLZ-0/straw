@@ -57,13 +57,13 @@ def plot_all(args=None):
     # LPCPlot(e, args).residual("residual.pdf")
     # LPCPlot(e, args).common_lpc_autoc_averaging("lpc_averaged.png")
     # LPCPlot(e, args).common_lpc_variances("lpc_averaged_variances.png")
-    # RicePlot(e, args).interleave("rice_interleave.pdf")
+    RicePlot(e, args).interleave("rice_interleave.pdf")
     # RicePlot(e, args).static_m("rice_static_m.pdf")
     # RicePlot(e, args).dynamic_m("rice_dynamic_m.pdf")
     # RicePlot(e, args).k_diff("rice_k_diff.pdf")
     # RicePlot(e, args).rand_comparison("rice_rand_comparison.pdf")
     # FrameBlockingPlot(e, args).frame_limits("blocking_dynamic.pdf")
-    FrameBlockingPlot(e, args).frame_energy("blocking_dynamic_energy.pdf")
+    # FrameBlockingPlot(e, args).frame_energy("blocking_dynamic_energy.pdf")
     # FrameBlockingPlot(e, args).fixed_blocksize("blocking_fixed.pdf")
 
     ###########################
