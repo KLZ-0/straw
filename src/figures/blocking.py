@@ -130,9 +130,10 @@ class FrameBlockingPlot(BasePlot):
             "treshold": treshold
         })
 
+        sns.set_style("whitegrid")
         s = sns.relplot(data=df, kind="line", x="treshold", y="size", hue="Run", height=2.5, aspect=3)
 
-        s.set_xlabels("Energy treshold")
+        s.set_xlabels("Energy threshold")
         s.set_ylabels("File size [MiB]")
         s.tight_layout()
 
