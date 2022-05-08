@@ -115,7 +115,7 @@ class Encoder(BaseCoder):
         self._init_frame_types()
 
         groups = self._data.groupby("seq")
-        if self.parallelize:
+        if self.parallelize and self._params.channels > 1:
             self._data = ParallelCompute.get_instance().map_group(groups, self._encode_frame)
         else:
             self._data = groups.apply(self._encode_frame)

@@ -57,7 +57,7 @@ class ParallelCompute:
         return self._parallelize(data, partial(self._run_on_subset, func))
 
     def _group_parallelize(self, data, func):
-        chunksize = int(len(data) / self.cpus) * 2
+        chunksize = min(int(len(data) / self.cpus) * 2, 1)
         with Pool(self.cpus + 1) as p:
             ret_list = p.map(func, [group for name, group in data], chunksize=chunksize)
         if not ret_list:
