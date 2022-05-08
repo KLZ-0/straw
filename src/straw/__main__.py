@@ -4,6 +4,11 @@ from pathlib import Path
 from straw.static import Default
 from straw.straw import run
 
+"""
+The main executable script
+When called parses the command line arguments and acts accordingly
+"""
+
 parser = argparse.ArgumentParser(description="Lossless multi-channel audio codec")
 parser.add_argument("-i", "--input", dest="input_files", metavar="INPUT_FILE", type=str, nargs="+",
                     help="Input files", required=True)

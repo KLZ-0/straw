@@ -18,7 +18,7 @@ class LPCPlot(BasePlot):
         """
         frame = self._e.sample_frame()
         lpc = steps.compute_lpc(frame["frame"], 8)
-        qlp, shift = steps.quantize_lpc(lpc, 12)
+        qlp, shift = steps.quantize_lpc_cython(lpc, 12)
 
         df = pd.DataFrame({
             "LPC": lpc,

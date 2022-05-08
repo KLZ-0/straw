@@ -16,6 +16,12 @@ from . import ext_lpc
 
 
 def _autocorr(signal: np.array, target_len: int) -> np.array:
+    """
+    Computes autocorrelation
+    :param signal: signal to be autocorrelated
+    :param target_len: number of coefficients
+    :return: autocorrelation coefficients
+    """
     return np.asarray([signal[:len(signal) - i].dot(signal[i:]) for i in range(target_len)])
 
 
@@ -53,6 +59,11 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
 
 
 def lpc_is_stable(lpc_c) -> bool:
+    """
+    Determines whether an LPC filter is stable
+    :param lpc_c: LPC coefficients
+    :return: True if stable, False otherwise
+    """
     poly = np.zeros(lpc_c.shape[0] + 1)
     poly[0] = 1
     poly[1:] = -lpc_c
@@ -134,6 +145,14 @@ def quantize_lpc(lpc_c, precision) -> (np.array, int):
 
 
 def quant_alt(lpc_c, precision) -> (np.array, int, int):
+    """
+    Alternative implementation for direct quantization
+    More time-efficient but not precise
+    Currenty not used
+    :param lpc_c: numpy array of LPC coefficients to be quantized
+    :param precision: target precition in bits
+    :return: tuple(QLP, precision, shift)
+    """
     # drop 1 bit for sign
     precision -= 1
 
@@ -165,6 +184,14 @@ def quantize_lpc_cython(lpc_c, precision) -> (np.array, int, int):
 
 
 def simple_quantize(lpc_c, precision) -> (np.array, int, int):
+    """
+    Yet another implementation for quantization
+    Currenty not used
+    :param lpc_c: numpy array of LPC coefficients to be quantized
+    :param precision: target precition in bits
+    :return: tuple(QLP, precision, shift)
+    """
+
     qmax = 1 << precision - 1
     qmin = -qmax
     qmax -= 1
@@ -182,7 +209,7 @@ def simple_quantize(lpc_c, precision) -> (np.array, int, int):
 
 def predict_signal(frame: np.array, qlp: np.array, shift):
     """
-    Executes LPC prediction
+    Performs LPC prediction
     The resulting predicted signal starts with the order-th sample
     :param frame: signal frame
     :param qlp: quantized LPC coefficients
@@ -211,7 +238,7 @@ def predict_compute_residual(frame: np.array, qlp: np.array, shift: int):
     # predicted = predict_signal(frame, qlp, shift)
     # tmp = (frame[len(qlp):] - predicted).astype(frame.dtype)
     if tmp.var() < frame.var():
-        # TODO: we could use the same memory space but this would prevent us from using the raw signal after
+        # IDEA: we could use the same memory space but this would prevent us from using the raw signal after
         # frame[len(qlp):] = tmp
         # return frame[len(qlp):]
         return tmp

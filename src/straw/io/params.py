@@ -1,5 +1,9 @@
 import numpy as np
 
+"""
+Parameters of the Straw and FLAC format
+"""
+
 
 class StreamParams:
     def alloc_arrays(self):

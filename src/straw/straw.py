@@ -8,6 +8,11 @@ from straw import Encoder, Decoder
 
 
 def read(file) -> (np.array, int):
+    """
+    Read a Straw file (compatibility function to soundfile.read)
+    :param file: Input file
+    :return: soundfile compatible array and samplerate
+    """
     d = Decoder()
     d.load_file(Path(file))
     d.decode()
@@ -15,6 +20,13 @@ def read(file) -> (np.array, int):
 
 
 def write(file, data: np.array, samplerate: int):
+    """
+    Write a Straw file (compatibility function to soundfile.write)
+    :param file: Output file
+    :param data: Data to be written
+    :param samplerate: Sample rate of the given data
+    :return: None
+    """
     e = Encoder()
     e.load_data(data, samplerate, data.dtype.itemsize * 8)
     e.encode()
@@ -22,6 +34,11 @@ def write(file, data: np.array, samplerate: int):
 
 
 def _encode(args):
+    """
+    Internal encoder call from the executable script
+    :param args: command line args (see straw/__main__.py)
+    :return: None
+    """
     e = Encoder(flac_mode=False,
                 dynamic_blocksize=args.dynamic_blocksize,
                 min_block_size=args.min_frame_size,
@@ -64,6 +81,11 @@ def _encode(args):
 
 
 def _decode(args):
+    """
+    Internal decoder call from the executable script
+    :param args: command line args (see straw/__main__.py)
+    :return: None
+    """
     d = Decoder(flac_mode=False, show_progress=False)
 
     if not args.silent:
@@ -98,6 +120,11 @@ def _decode(args):
 
 
 def run(args):
+    """
+    Run the encoder/decoder
+    :param args: command line args (see straw/__main__.py)
+    :return: None
+    """
     if args.verbose and not args.silent:
         print(args, file=sys.stderr)
     if not args.decode:

@@ -9,6 +9,11 @@ from straw.io.sizes import StrawSizes
 from straw.static import SubframeType
 from . import ext_io
 
+"""
+This file contains the Straw format witing/reading interface
+The format is witten using recursive descent
+"""
+
 
 class StrawFormatWriter(BaseWriter):
     def _format_specific_checks(self):

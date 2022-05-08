@@ -3,14 +3,14 @@ from multiprocessing import Pool, cpu_count
 
 import numpy as np
 import pandas as pd
-
-"""
-based on https://stackoverflow.com/a/53135031
-and https://stackoverflow.com/a/27027632
-"""
+from pandas.core.groupby import DataFrameGroupBy
 
 
 class ParallelCompute:
+    """
+    Class used to access the thread pool
+    This class is a singleton
+    """
     __instance = None
 
     cpus: int
@@ -19,14 +19,17 @@ class ParallelCompute:
 
     @staticmethod
     def get_instance():
-        """ Static access method. """
+        """
+        Get the instance of this class
+        :return:
+        """
         if ParallelCompute.__instance is None:
             ParallelCompute()
         return ParallelCompute.__instance
 
     def __init__(self, cpus=cpu_count()):
         """
-        Initialize the compute class
+        Private constructor
         :param cpus: number of CPUs to use when parallel is True, None means use all
         """
         if ParallelCompute.__instance is not None:
@@ -43,9 +46,9 @@ class ParallelCompute:
     def _run_on_subset(self, func, data_subset):
         return data_subset.apply(func, args=self._apply_args, **self._apply_kwargs)
 
-    def map(self, data, func, args=(), **kwargs) -> pd.Series:
+    def map(self, data, func: callable, args=(), **kwargs) -> pd.Series:
         """
-        Apply the functiom to the given DataFrame or Series in parallel
+        Apply the function to the given DataFrame or Series in parallel
         :param data: DataFrame or Series to which func will be applied
         :param func: function to apply
         :param args: args to use in apply
@@ -70,7 +73,15 @@ class ParallelCompute:
     def _group_run_on_subset(self, func, data_subset):
         return func(data_subset, *self._apply_args, **self._apply_kwargs)
 
-    def map_group(self, data, func, args=(), **kwargs) -> pd.DataFrame:
+    def map_group(self, data: DataFrameGroupBy, func: callable, args=(), **kwargs) -> pd.DataFrame:
+        """
+        Apply the function to the given DataFrame groupby object in parallel
+        :param data: DataFrame to which func will be applied
+        :param func: function to apply
+        :param args: args to use in apply
+        :param kwargs: kwargs to use in apply
+        :return: DataFrame or Series with applied data
+        """
         self._apply_args = args
         self._apply_kwargs = kwargs
         return self._group_parallelize(data, partial(self._group_run_on_subset, func))
@@ -80,7 +91,15 @@ class ParallelCompute:
             ret_list = p.map(func, data)
         return ret_list
 
-    def map_ndarray(self, data, func, args=(), **kwargs):
+    def map_ndarray(self, data: np.array, func: callable, args=(), **kwargs):
+        """
+        Apply the functiom to the given numpy array in parallel
+        :param data: numpy array to which func will be applied
+        :param func: function to apply
+        :param args: args to use in apply
+        :param kwargs: kwargs to use in apply
+        :return: DataFrame or Series with applied data
+        """
         self._apply_args = args
         self._apply_kwargs = kwargs
         return self._ndarray_parallelize(data, partial(self._group_run_on_subset, func))

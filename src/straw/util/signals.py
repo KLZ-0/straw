@@ -3,16 +3,29 @@ import numpy as np
 from straw.static import Default
 
 
-def zero_crossings(y, zero_pos: bool = True):
+def zero_crossings(x, zero_pos: bool = True):
+    """
+    Similar output to librosa.zero_crossings but more efficient
+    :param x: signal
+    :param zero_pos: whether to count the first number as a zero crossing
+    :return: Zero crossings
+    """
     if zero_pos:
-        y_sign = np.signbit(y)
+        x_sign = np.signbit(x)
     else:
-        y_sign = np.sign(y)
+        x_sign = np.sign(x)
 
-    return np.insert(y_sign[1:] != y_sign[:-1], 0, 1)
+    return np.insert(x_sign[1:] != x_sign[:-1], 0, 1)
 
 
 def resample_indices(raw_indices: np.array, min_block_size: int, max_block_size: int):
+    """
+    Resample the indices so that the new block sizes are between min_block_size and max_block_size
+    :param raw_indices: indices to be resampled
+    :param min_block_size: minimal allowed block size
+    :param max_block_size: maximal allowed block size
+    :return: new indices
+    """
     indices = [0]
     currect_size = 0
     for i in range(1, raw_indices.shape[0]):
@@ -38,7 +51,13 @@ class Signals:
                                    max_block_size: int = Default.max_frame_size,
                                    resolution: int = Default.framing_resolution):
         """
-        Returns a list of indices where frames should start
+        Returns a list of indices where frames should start, determined by the short-time energy
+        :param channel_data: full data of one channel
+        :param min_block_size: minimal allowed block size
+        :param treshold: energy threshold
+        :param max_block_size: maximal allowed block size
+        :param resolution: framing resolution
+        :return: Indices of frame borders including the last border
         """
         if resolution is None:
             resolution = min_block_size
@@ -65,6 +84,13 @@ class Signals:
     def get_energies(data: np.array,
                      resolution: int = Default.framing_resolution,
                      treshold: int = Default.framing_treshold):
+        """
+        Return the energies of a frame
+        :param data: frame data
+        :param resolution: framing resolution
+        :param treshold: energy threshold
+        :return: short-term energies in a frame
+        """
         data = data.astype(np.int64)
         lst = []
         for i in range(0, data.shape[0], resolution):

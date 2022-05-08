@@ -24,6 +24,11 @@ class Ricer:
     ##########################
 
     def guess_parameter(self, frame_residual: np.array) -> np.int8:
+        """
+        Estimate the best starting encoding parameter
+        :param frame_residual: residual to be encoded
+        :return: starting k parameter
+        """
         if frame_residual is None:
             return np.int8(0)
         smallframe = frame_residual[:self.responsiveness].astype(np.int64)
@@ -128,12 +133,24 @@ class Ricer:
 
     @staticmethod
     def frame_to_kparams(frame: np.ndarray, k: int, responsiveness: int = 16):
+        """
+        Transforms a frame to the used k params
+        :param frame: frame to be encoded
+        :param k: the starting k parameter
+        :param responsiveness: responsiveness value
+        :return: k parameters in the frame
+        """
         frame = np.copy(frame)
         ext_rice.kparams(frame, k, responsiveness)
         return frame
 
     @staticmethod
     def frame_to_interleaved(frame: np.ndarray):
+        """
+        Transforms a frame to interleaved values
+        :param frame: frame to be interleaved
+        :return: frame with interelaved values
+        """
         frame = np.copy(frame)
         ext_rice.interleave_frame(frame)
         return frame

@@ -45,10 +45,15 @@ class Encoder(BaseCoder):
                  parallelize=True,
                  show_progress: bool = False):
         """
-
-        :param flac_mode:
-        :param do_corrections: an iterable containing the corrections to be done, can contain "gain", "bias" and "shift"
-        :param dynamic_blocksize:
+        Encoder constructor
+        :param do_corrections: tuple of correction to be performed
+        :param dynamic_blocksize: whether to perform dynamic block slicing
+        :param min_block_size: minimal block size
+        :param max_block_size: maximal block size
+        :param framing_treshold: framing treshold
+        :param framing_resolution: framing resolution
+        :param responsiveness: Rice coding responsiveness
+        :param parallelize: if True use parallelization while encoding
         """
         super(Encoder, self).__init__(flac_mode, show_progress=show_progress)
         self._ricer = Ricer(adaptive=True if not flac_mode else False, responsiveness=responsiveness)
@@ -62,6 +67,11 @@ class Encoder(BaseCoder):
         self.parallelize = parallelize
 
     def set_rice_responsiveness(self, responsiveness):
+        """
+        Set a new Rice coding responsiveness
+        :param responsiveness: new Rice responsiveness
+        :return: None
+        """
         self._ricer.responsiveness = responsiveness
         self._params.responsiveness = responsiveness
 
@@ -85,6 +95,13 @@ class Encoder(BaseCoder):
         self.load_data(data, sr, bits_per_sample)
 
     def load_data(self, data: np.array, samplerate: int, bits_per_sample: int):
+        """
+        Load the given data into the internal DataFrame
+        :param data: data to be loaded
+        :param samplerate: samplerate of the given data
+        :param bits_per_sample: bits per sample of the original data (can be lower than the bit width of data.dtype)
+        :return: None
+        """
         if len(data.shape) == 1:
             self._samplebuffer = data.reshape((1, -1))
         elif data.shape[0] > data.shape[1]:
@@ -108,7 +125,7 @@ class Encoder(BaseCoder):
 
     def encode(self):
         """
-        Encode the signal
+        Encode the data in the internal DataFrame
         :return: None
         """
         # Extract stream parameters & initialize frame types
@@ -122,6 +139,11 @@ class Encoder(BaseCoder):
             self._data = groups.apply(self._encode_frame)
 
     def _encode_frame(self, data_slice: pd.DataFrame):
+        """
+        Encode one frame - group of subframes
+        :param data_slice: slice of a DataFrame containing a group of subframes
+        :return: modified data_slice
+        """
         # correctors.ShiftCorrector().df_wrap_apply(data_slice["frame"])
         lpc.compute_qlp(data_slice, order=self._lpc_order, qlp_coeff_precision=self._lpc_precision)
         lpc.compute_residual(data_slice)
@@ -164,7 +186,7 @@ class Encoder(BaseCoder):
         """
         Create a dataframe from the raw signal, this includes slicing the signal into specific views
         NOTE: the underlying memory stays as a contiguous memory chunk
-        :return:
+        :return: None
         """
 
         total_size = self._samplebuffer.shape[1] - np.max(self._params.lags)
@@ -213,8 +235,8 @@ class Encoder(BaseCoder):
             df["frame_type"] = SubframeType.RAW
         return df["frame_type"]
 
-    def _decorrelate_signals(self, data_slice, col_name="residual"):
-        # TODO: do not decorrelate for frames with separate LPC
+    @staticmethod
+    def _decorrelate_signals(data_slice, col_name="residual"):
         # self._data = self._data.groupby("seq").apply(Decorrelator().localized_decorrelate, col_name=col_name)
         # self._data = ParallelCompute.get_instance().map_group(self._data.groupby("seq"),
         #                                                       Decorrelator().midside_decorrelate, col_name=col_name)
@@ -271,6 +293,11 @@ class Encoder(BaseCoder):
     ###########
 
     def get_stats(self, output_file: Path) -> EncoderStats:
+        """
+        Return the stats of the encoding
+        :param output_file: the output file for comparison
+        :return:
+        """
         stats = EncoderStats()
         stats.file_size = output_file.stat().st_size
         stats.ratio = output_file.stat().st_size / self._source_size
@@ -279,7 +306,7 @@ class Encoder(BaseCoder):
 
     def print_stats(self, output_file: Path, stream: TextIO = sys.stdout):
         """
-        Print a bunch of stuff...
+        Verbose output - print a bunch of stuff...
         :param output_file: output file (only the size is needed)
         :param stream: stream where the output should be written
         :return: None
@@ -297,5 +324,4 @@ class Encoder(BaseCoder):
               file=stream)
         print(f"Grand Ratio = {output_file.stat().st_size / self._source_size:.4f}", file=stream)
 
-        # FIXME: this is misleading
         print(f"Size of the resulting dataframe: {self.usage_mib():.3f} MiB", file=stream)
