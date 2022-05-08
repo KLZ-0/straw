@@ -18,8 +18,6 @@ def _interleave(x):
 def rice_str(num, m):
     """
         Return the rice encoded number with golomb parameter m
-        TODO: probably rework to pure rice encoding with m -> k so that m = 2^k
-        TODO: also create a version with bitstream output instead of ascii
         :param num: number to be encoded
         :param m: rice parameter
         :return: None

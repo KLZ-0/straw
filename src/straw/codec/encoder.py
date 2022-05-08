@@ -23,8 +23,6 @@ class EncoderStats:
 
 
 class Encoder(BaseCoder):
-    # Values which should be parametrized
-    # TODO: find the best values for these
     _lpc_order = 20  # can be sourced from len(df["qlp"]) once per group
     _lpc_precision = 12  # bits, stored in df["qlp_precision"] once per group
     _params = StreamParams()

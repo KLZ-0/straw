@@ -20,7 +20,6 @@ class Formatter:
         :param params: stream params
         :return: None
         """
-        # TODO: make normal checks
         return
         # noinspection PyUnreachableCode
         if len(df) == 0:

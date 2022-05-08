@@ -58,8 +58,6 @@ else:
     else:
         args.output_file = (pth.parent / pth.stem).with_suffix(".straw")
 
-# TODO: this part has to get proper args
-
 if args.figures:
     from figures import plot_all
 
