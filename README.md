@@ -7,7 +7,7 @@ Straw is a lossless audio codec intended for efficiently storing multichannel au
 # Current state
 
 [![PyTest Status](https://github.com/KLZ-0/straw/workflows/PyTest/badge.svg)](https://github.com/KLZ-0/straw/actions/)
-[![Stability Status](https://img.shields.io/badge/Stability-mediocre-yellowgreen.svg)](https://github.com/KLZ-0/straw/tree/dev)
+[![Stability Status](https://img.shields.io/badge/Stability-good-brightgreen.svg)](https://github.com/KLZ-0/straw/tree/dev)
 
 The interface and imports are still subject to change.
 
