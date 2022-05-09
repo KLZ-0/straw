@@ -28,7 +28,7 @@ setup(
     #     "cython",
     # ],
     name="straw-codec",
-    version="0.4",
+    version="0.5",
     description="Lossless codec for multichannel audio",
     author="KLZ-0",
     author_email="adrian@kalazi.com",
@@ -46,6 +46,6 @@ setup(
         "Operating System :: OS Independent",
     ],
     entry_points={
-        "console_scripts": ["straw=straw:__main__"],
+        "console_scripts": ["straw=straw.__main__:main"],
     },
 )
