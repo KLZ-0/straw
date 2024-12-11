@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 import pandas as pd
-from numpy.lib.polynomial import roots
+from numpy.polynomial.polynomial import Polynomial
 from scipy.linalg import solve_toeplitz
 from scipy.signal import get_window
 
@@ -66,7 +66,7 @@ def lpc_is_stable(lpc_c) -> bool:
     poly = np.zeros(lpc_c.shape[0] + 1)
     poly[0] = 1
     poly[1:] = -lpc_c
-    return np.max(np.abs(roots(poly))) < 1.0
+    return np.max(np.abs(Polynomial(poly).roots())) < 1.0
 
 
 ################
