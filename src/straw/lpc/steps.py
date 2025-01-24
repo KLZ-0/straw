@@ -57,18 +57,6 @@ def compute_lpc(signal: np.array, p: int) -> np.array:
     return solve_toeplitz(r[:-1], r[1:], check_finite=False)
 
 
-def lpc_is_stable(lpc_c) -> bool:
-    """
-    Determines whether an LPC filter is stable
-    :param lpc_c: LPC coefficients
-    :return: True if stable, False otherwise
-    """
-    poly = np.zeros(lpc_c.shape[0] + 1)
-    poly[0] = 1
-    poly[1:] = -lpc_c
-    return np.max(np.abs(Polynomial(poly).roots())) < 1.0
-
-
 ################
 # Quantization #
 ################

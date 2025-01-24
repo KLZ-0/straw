@@ -42,9 +42,10 @@ def compute_qlp(df: pd.DataFrame, order: int, qlp_coeff_precision: int) -> pd.Da
         return df
 
     lpc = steps.compute_lpc(df["frame"], order)
-    if lpc is None or not steps.lpc_is_stable(lpc):
-        df["frame_type"] = SubframeType.RAW
-        return df
+    # NOTE: testing for stability is not required as LPC coefficients calculated from autocorr are inherently stable
+    # if lpc is None or not steps.lpc_is_stable(lpc):
+    #     df["frame_type"] = SubframeType.RAW
+    #     return df
 
     qlp, precision, shift = steps.quantize_lpc_cython(lpc, qlp_coeff_precision)
     df["frame_type"] = SubframeType.LPC_COMMON
